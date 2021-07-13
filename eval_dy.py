@@ -18,7 +18,7 @@ from utils import add_log, convert_groups_to_colors
 from utils import create_instance_colors, set_seed, Tee, count_parameters
 
 import matplotlib.pyplot as plt
-
+import pdb; pdb.set_trace()
 
 args = gen_args()
 set_seed(args.random_seed)
