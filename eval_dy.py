@@ -80,7 +80,7 @@ for idx_episode in range(len(infos)):
     p_gt = []
     s_gt = []
     for step in range(args.time_step):
-        data_path = os.path.join(args.dataf, 'valid', str(infos[idx_episode]), str(step) + '.h5')
+        data_path = os.path.join(args.dataf, 'demo', str(infos[idx_episode]), str(step) + '.h5')
 
         data = load_data(data_names, data_path)
 
