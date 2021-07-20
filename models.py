@@ -5,7 +5,7 @@ import torch.nn as nn
 import torch.nn.functional as F
 from torch.autograd import Variable
 
-from data import prepare_input
+from data_utils import prepare_input
 
 
 class Encoder(nn.Module):

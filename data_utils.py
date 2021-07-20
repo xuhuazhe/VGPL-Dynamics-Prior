@@ -352,8 +352,13 @@ def axisEqual3D(ax):
 def visualize_neighbors(anchors, queries, idx, neighbors):
     fig = plt.figure()
     ax = fig.add_subplot(111, projection='3d')
-
-    ax.scatter(queries[idx, 0], queries[idx, 1], queries[idx, 2], c='g', s=80)
+    # import pdb; pdb.set_trace()
+    # green is the first thing in positions
+    # red is all the neighbors
+    # shaded is all the particles
+    # blue is the ball
+    ax.scatter(queries[-1, 0], queries[-1, 1], queries[-1, 2], c='b', s=80)
+    # ax.scatter(queries[idx, 0], queries[idx, 1], queries[idx, 2], c='g', s=80)
     ax.scatter(anchors[neighbors, 0], anchors[neighbors, 1], anchors[neighbors, 2], c='r', s=80)
     ax.scatter(anchors[:, 0], anchors[:, 1], anchors[:, 2], alpha=0.2)
     axisEqual3D(ax)
@@ -450,7 +455,15 @@ def get_env_group(args, n_particles, scene_params, use_gpu=False):
     p_instance = torch.zeros(B, n_particles, args.n_instance)
     physics_param = torch.zeros(B, n_particles)
 
-    if args.env == 'RigidFall':
+    if args.env == 'Pinch':
+        norm_g = normalize_scene_param(scene_params, 1, args.physics_param_range)
+        physics_param[:] = torch.FloatTensor(norm_g).view(B, 1)
+        p_rigid[:] = 0
+        for i in range(args.n_instance):
+            p_instance[:, :, i] = 1
+
+
+    elif args.env == 'RigidFall':
         norm_g = normalize_scene_param(scene_params, 1, args.physics_param_range)
         physics_param[:] = torch.FloatTensor(norm_g).view(B, 1)
 
@@ -500,7 +513,32 @@ def prepare_input(positions, n_particle, n_shape, args, var=False):
 
     ##### add env specific graph components
     rels = []
-    if args.env == 'RigidFall':
+    if args.env == 'Pinch':
+        attr[n_particle, 1] = 1
+        attr[n_particle+1, 2] = 1
+        pos = positions.data.cpu().numpy() if var else positions
+
+        # floor to points
+        dis = pos[:n_particle, 1] - pos[n_particle, 1]
+        nodes = np.nonzero(dis < args.neighbor_radius)[0]
+        # print('visualize floor neighbors')
+        # visualize_neighbors(pos, pos, 0, nodes)
+        # print(np.sort(dis)[:10])
+
+        floor = np.ones(nodes.shape[0], dtype=np.int) * n_particle
+        rels += [np.stack([nodes, floor], axis=1)]
+
+        # to primitive
+        disp = np.sqrt(np.sum((pos[:n_particle] - pos[n_particle+1])**2, 1))  #np.sqrt(np.sum((pos[:n_particle, :] - pos[n_particle+1, :])**2, axis=1))
+        nodes = np.nonzero(disp < (args.neighbor_radius+0.02))[0]
+        # print('visualize prim neighbors')
+        # visualize_neighbors(pos, pos, 0, nodes)
+        # print(np.sort(dis)[:10])
+        prim = np.ones(nodes.shape[0], dtype=np.int) * (n_particle+1)
+        rels += [np.stack([nodes, prim], axis=1)]
+
+
+    elif args.env == 'RigidFall':
         # object attr:
         # [particle, floor]
         attr[n_particle, 1] = 1
@@ -509,7 +547,6 @@ def prepare_input(positions, n_particle, n_shape, args, var=False):
         # conncetion between floor and particles when they are close enough
         dis = pos[:n_particle, 1] - pos[n_particle, 1]
         nodes = np.nonzero(dis < args.neighbor_radius)[0]
-
         '''
         if verbose:
             visualize_neighbors(pos, pos, 0, nodes)
@@ -523,7 +560,6 @@ def prepare_input(positions, n_particle, n_shape, args, var=False):
         pos = positions.data.cpu().numpy() if var else positions
         dis = np.sqrt(np.sum((pos[n_particle] - pos[:n_particle])**2, 1))
         nodes = np.nonzero(dis < args.neighbor_radius)[0]
-
         '''
         if verbose:
             visualize_neighbors(pos, pos, 0, nodes)
@@ -532,13 +568,12 @@ def prepare_input(positions, n_particle, n_shape, args, var=False):
 
         pin = np.ones(nodes.shape[0], dtype=np.int) * n_particle
         rels += [np.stack([nodes, pin], axis=1)]
-
     else:
         AssertionError("Unsupported env %s" % args.env)
 
     ##### add relations between leaf particles
 
-    if args.env in ['RigidFall', 'MassRope']:
+    if args.env in ['RigidFall', 'MassRope', 'Pinch']:
         queries = np.arange(n_particle)
         anchors = np.arange(n_particle)
 
@@ -604,7 +639,7 @@ class PhysicsFleXDataset(Dataset):
         if args.gen_vision:
             os.system('mkdir -p ' + self.vision_dir)
 
-        if args.env in ['RigidFall', 'MassRope']:
+        if args.env in ['RigidFall', 'MassRope', 'Pinch']:
             self.data_names = ['positions', 'shape_quats', 'scene_params']
         else:
             raise AssertionError("Unsupported env")
@@ -663,7 +698,7 @@ class PhysicsFleXDataset(Dataset):
         pool = mp.Pool(processes=cores)
         data = pool.map(gen_PyFleX, infos)
 
-        print("Training data generated, warpping up stats ...")
+        print("Training data generated, wrapping up stats ...")
 
         if self.phase == 'train' and self.args.gen_stat:
             # positions [x, y, z]
@@ -683,7 +718,6 @@ class PhysicsFleXDataset(Dataset):
         args = self.args
 
         offset = args.time_step - args.sequence_length + 1
-
         idx_rollout = idx // offset
         st_idx = idx % offset
         ed_idx = st_idx + args.sequence_length
@@ -694,7 +728,10 @@ class PhysicsFleXDataset(Dataset):
             max_n_rel = 0
             for t in range(st_idx, ed_idx):
                 # load data
-                data_path = os.path.join(self.data_dir, str(idx_rollout), str(t) + '.h5')
+                if self.args.env == 'Pinch':
+                    data_path = os.path.join(self.data_dir, str(idx_rollout).zfill(3), str(t) + '.h5')
+                else:
+                    data_path = os.path.join(self.data_dir, str(idx_rollout), str(t) + '.h5')
                 data = load_data(self.data_names, data_path)
 
                 # load scene param

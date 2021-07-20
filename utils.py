@@ -41,7 +41,6 @@ def my_collate(batch):
         R = torch.FloatTensor(torch.stack(R))
 
         ret.append(R)
-
     return tuple(ret)
 
 

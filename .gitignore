@@ -9,4 +9,4 @@ dump_*/
 
 *.swp
 *.swo
-
+data/*

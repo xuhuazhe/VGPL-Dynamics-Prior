@@ -15,8 +15,8 @@ from torch.optim.lr_scheduler import ReduceLROnPlateau
 from torch.utils.data import DataLoader
 
 from config import gen_args
-from data import PhysicsFleXDataset
-from data import prepare_input, get_scene_info, get_env_group
+from data_utils import PhysicsFleXDataset
+from data_utils import prepare_input, get_scene_info, get_env_group
 from models import Model, ChamferLoss
 from utils import make_graph, check_gradient, set_seed, AverageMeter, get_lr, Tee
 from utils import count_parameters, my_collate
@@ -140,7 +140,7 @@ for epoch in range(st_epoch, args.n_epoch):
                 # scene_params: B x param_dim
                 # Rrs, Rss: B x seq_length x n_rel x (n_p + n_s)
                 attrs, particles, n_particles, n_shapes, scene_params, Rrs, Rss = data
-
+                # import pdb; pdb.set_trace()
                 if use_gpu:
                     attrs = attrs.cuda()
                     particles = particles.cuda()

@@ -11,14 +11,13 @@ import torch.nn.functional as F
 from torch.autograd import Variable
 
 from config import gen_args
-from data import load_data, get_scene_info, normalize_scene_param
-from data import get_env_group, prepare_input, denormalize
+from data_utils import load_data, get_scene_info, normalize_scene_param
+from data_utils import get_env_group, prepare_input, denormalize
 from models import Model
 from utils import add_log, convert_groups_to_colors
 from utils import create_instance_colors, set_seed, Tee, count_parameters
 
 import matplotlib.pyplot as plt
-import pdb; pdb.set_trace()
 
 args = gen_args()
 set_seed(args.random_seed)
@@ -33,7 +32,7 @@ tee = Tee(os.path.join(args.evalf, 'eval.log'), 'w')
 
 data_names = args.data_names
 
-use_gpu = torch.cuda.is_available()
+use_gpu = 0 #torch.cuda.is_available()
 
 # create model and load weights
 model = Model(args, use_gpu)
@@ -48,7 +47,7 @@ model_path = os.path.join(args.outf, model_name)
 print("Loading network from %s" % model_path)
 
 if args.stage == 'dy':
-    pretrained_dict = torch.load(model_path)
+    pretrained_dict = torch.load(model_path, map_location=torch.device('cpu') )
     model_dict = model.state_dict()
     # only load parameters in dynamics_predictor
     pretrained_dict = {
@@ -83,7 +82,6 @@ for idx_episode in range(len(infos)):
         data_path = os.path.join(args.dataf, 'demo', str(infos[idx_episode]), str(step) + '.h5')
 
         data = load_data(data_names, data_path)
-
         if n_particle == 0 and n_shape == 0:
             n_particle, n_shape, scene_params = get_scene_info(data)
             scene_params = torch.FloatTensor(scene_params).unsqueeze(0)
@@ -96,7 +94,6 @@ for idx_episode in range(len(infos)):
 
         p_gt.append(data[0])
         s_gt.append(data[1])
-
     # p_gt: time_step x N x state_dim
     # s_gt: time_step x n_s x 4
     p_gt = torch.FloatTensor(np.stack(p_gt))

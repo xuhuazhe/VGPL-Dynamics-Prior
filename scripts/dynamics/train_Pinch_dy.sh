@@ -1,6 +1,6 @@
 CUDA_VISIBLE_DEVICES=0		\
 python train.py 		\
-	--env MassRope 		\
+	--env Pinch 		\
 	--stage dy		\
 	--gen_data 0 		\
 	--gen_stat 0		\
@@ -19,4 +19,4 @@ python train.py 		\
 	--verbose_model 0	\
 	--log_per_iter 100	\
 	--ckp_per_iter 5000	\
-	--eval 0 
+	--eval 0
