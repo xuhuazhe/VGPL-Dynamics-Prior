@@ -100,7 +100,7 @@ else:
 scheduler = ReduceLROnPlateau(optimizer, 'min', factor=0.8, patience=3, verbose=True)
 
 # define loss
-particle_dist_loss = torch.nn.L1Loss()
+particle_dist_loss = ChamferLoss()   #torch.nn.L1Loss()
 
 if use_gpu:
     model = model.cuda()
@@ -112,6 +112,7 @@ print(args)
 st_epoch = args.resume_epoch if args.resume_epoch > 0 else 0
 best_valid_loss = np.inf
 
+training_stats = {'loss':[], 'loss_raw':[], 'iters': []}
 for epoch in range(st_epoch, args.n_epoch):
 
     for phase in phases:
@@ -187,7 +188,7 @@ for epoch in range(st_epoch, args.n_epoch):
                     gt_motion_norm = (gt_motion - mean_d) / std_d
                     pred_motion_norm = torch.cat([pred_motion_norm, gt_motion_norm[:, n_particle:]], 1)
 
-                    loss = F.l1_loss(pred_motion_norm[:, :n_particle], gt_motion_norm[:, :n_particle])
+                    loss = particle_dist_loss(pred_pos, gt_pos) #F.l1_loss(pred_motion_norm[:, :n_particle], gt_motion_norm[:, :n_particle])
                     loss_raw = F.l1_loss(pred_pos, gt_pos)
 
                     meter_loss.update(loss.item(), B)
@@ -198,7 +199,9 @@ for epoch in range(st_epoch, args.n_epoch):
                     print('%s epoch[%d/%d] iter[%d/%d] LR: %.6f, loss: %.6f (%.6f), loss_raw: %.8f (%.8f)' % (
                         phase, epoch, args.n_epoch, i, len(dataloaders[phase]), get_lr(optimizer),
                         loss.item(), meter_loss.avg, loss_raw.item(), meter_loss_raw.avg))
-
+                    training_stats['loss'].append(loss.item())
+                    training_stats['loss_raw'].append(loss_raw.item())
+                    training_stats['iters'].append(epoch * len(dataloaders[phase]) + i)
 
             # update model parameters
             if phase == 'train':
@@ -214,6 +217,9 @@ for epoch in range(st_epoch, args.n_epoch):
 
         print('%s epoch[%d/%d] Loss: %.6f, Best valid: %.6f' % (
             phase, epoch, args.n_epoch, meter_loss.avg, best_valid_loss))
+
+        with open(args.outf + '/train.npy','wb') as f:
+            np.save(f, training_stats)
 
         if phase == 'valid' and not args.eval:
             scheduler.step(meter_loss.avg)
