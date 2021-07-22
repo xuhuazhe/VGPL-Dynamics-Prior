@@ -199,9 +199,12 @@ for epoch in range(st_epoch, args.n_epoch):
                     print('%s epoch[%d/%d] iter[%d/%d] LR: %.6f, loss: %.6f (%.6f), loss_raw: %.8f (%.8f)' % (
                         phase, epoch, args.n_epoch, i, len(dataloaders[phase]), get_lr(optimizer),
                         loss.item(), meter_loss.avg, loss_raw.item(), meter_loss_raw.avg))
-                    training_stats['loss'].append(loss.item())
-                    training_stats['loss_raw'].append(loss_raw.item())
-                    training_stats['iters'].append(epoch * len(dataloaders[phase]) + i)
+                    if phase == 'train':
+                        training_stats['loss'].append(loss.item())
+                        training_stats['loss_raw'].append(loss_raw.item())
+                        training_stats['iters'].append(epoch * len(dataloaders[phase]) + i)
+                    # with open(args.outf + '/train.npy', 'wb') as f:
+                    #     np.save(f, training_stats)
 
             # update model parameters
             if phase == 'train':
@@ -209,7 +212,7 @@ for epoch in range(st_epoch, args.n_epoch):
                 loss.backward()
                 optimizer.step()
 
-            if phase == 'train' and i > 0 and i % args.ckp_per_iter == 0:
+            if phase == 'train' and i > 0 and ((epoch * len(dataloaders[phase])) + i) % args.ckp_per_iter == 0:
                 model_path = '%s/net_epoch_%d_iter_%d.pth' % (args.outf, epoch, i)
                 torch.save(model.state_dict(), model_path)
 
