@@ -433,7 +433,7 @@ class EarthMoverLoss(torch.nn.Module):
         y_ = y[:, None, :, :].repeat(1, x.size(1), 1, 1)  # y: [B, N, M, D]
         dis = torch.norm(torch.add(x_, -y_), 2, dim=3)  # dis: [B, N, M]
         for i in range(dis.shape[0]):
-            cost_matrix = dis[i].numpy()
+            cost_matrix = dis[i].cpu().numpy()
             ind1, ind2 = scipy.optimize.linear_sum_assignment(cost_matrix, maximize=False)
             x[i] = x[i, ind1]
             y[i] = y[i, ind2]
