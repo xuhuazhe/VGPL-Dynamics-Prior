@@ -400,3 +400,23 @@ class ChamferLoss(torch.nn.Module):
         # pred: [B, N, D]
         # label: [B, M, D]
         return self.chamfer_distance(pred, label)
+
+class HausdorfLoss(torch.nn.Module):
+    def __init__(self):
+        super(ChamferLoss, self).__init__()
+
+    def hausdorf_distance(self, x, y):
+        # x: [B, N, D]
+        # y: [B, M, D]
+        x = x[:, :, None, :].repeat(1, 1, y.size(1), 1) # x: [B, N, M, D]
+        y = y[:, None, :, :].repeat(1, x.size(1), 1, 1) # y: [B, N, M, D]
+        dis = torch.norm(torch.add(x, -y), 2, dim=3)    # dis: [B, N, M]
+        dis_xy = torch.mean(torch.min(dis, dim=2)[0])   # dis_xy: mean over N
+        dis_yx = torch.mean(torch.min(dis, dim=1)[0])   # dis_yx: mean over M
+
+        return torch.max(dis_xy, dis_yx)
+
+    def __call__(self, pred, label):
+        # pred: [B, N, D]
+        # label: [B, M, D]
+        return self.hausdorf_distance(pred, label)

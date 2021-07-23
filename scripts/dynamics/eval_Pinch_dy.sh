@@ -1,4 +1,4 @@
-python eval_dy.py 		\
+python eval_dy_pinch.py 		\
 	--env Pinch 		\
 	--stage dy 		\
 	--eval_epoch -1		\

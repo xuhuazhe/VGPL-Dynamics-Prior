@@ -17,7 +17,7 @@ from torch.utils.data import DataLoader
 from config import gen_args
 from data_utils import PhysicsFleXDataset
 from data_utils import prepare_input, get_scene_info, get_env_group
-from models import Model, ChamferLoss
+from models import Model, ChamferLoss, HausdorfLoss
 from utils import make_graph, check_gradient, set_seed, AverageMeter, get_lr, Tee
 from utils import count_parameters, my_collate
 
@@ -101,7 +101,7 @@ scheduler = ReduceLROnPlateau(optimizer, 'min', factor=0.8, patience=3, verbose=
 
 # define loss
 particle_dist_loss = ChamferLoss()   #torch.nn.L1Loss()
-
+h_loss = HausdorfLoss()
 if use_gpu:
     model = model.cuda()
 
@@ -188,7 +188,7 @@ for epoch in range(st_epoch, args.n_epoch):
                     gt_motion_norm = (gt_motion - mean_d) / std_d
                     pred_motion_norm = torch.cat([pred_motion_norm, gt_motion_norm[:, n_particle:]], 1)
 
-                    loss = particle_dist_loss(pred_pos, gt_pos) #F.l1_loss(pred_motion_norm[:, :n_particle], gt_motion_norm[:, :n_particle])
+                    loss = particle_dist_loss(pred_pos, gt_pos) + h_loss(pred_pos, gt_pos) #F.l1_loss(pred_motion_norm[:, :n_particle], gt_motion_norm[:, :n_particle])
                     loss_raw = F.l1_loss(pred_pos, gt_pos)
 
                     meter_loss.update(loss.item(), B)
