@@ -403,7 +403,7 @@ class ChamferLoss(torch.nn.Module):
 
 class HausdorfLoss(torch.nn.Module):
     def __init__(self):
-        super(ChamferLoss, self).__init__()
+        super(HausdorfLoss, self).__init__()
 
     def hausdorf_distance(self, x, y):
         # x: [B, N, D]
