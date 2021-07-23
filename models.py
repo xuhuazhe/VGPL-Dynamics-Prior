@@ -434,18 +434,18 @@ class EarthMoverLoss(torch.nn.Module):
         dis = torch.norm(torch.add(x_, -y_), 2, dim=3)  # dis: [B, N, M]
         x_list = []
         y_list = []
-        x.requires_grad = True
-        y.requires_grad = True
+        # x.requires_grad = True
+        # y.requires_grad = True
         for i in range(dis.shape[0]):
             cost_matrix = dis[i].detach().cpu().numpy()
             ind1, ind2 = scipy.optimize.linear_sum_assignment(cost_matrix, maximize=False)
-            # x_list.append(x[i, ind1])
-            # y_list.append(y[i, ind2])
-            x[i] = x[i, ind1]
-            y[i] = y[i, ind2]
-        # new_x = torch.stack(x_list)
-        # new_y = torch.stack(y_list)
-        emd = torch.mean(torch.norm(torch.add(x, -y), 2, dim=2))
+            x_list.append(x[i, ind1])
+            y_list.append(y[i, ind2])
+            # x[i] = x[i, ind1]
+            # y[i] = y[i, ind2]
+        new_x = torch.stack(x_list)
+        new_y = torch.stack(y_list)
+        emd = torch.mean(torch.norm(torch.add(new_x, -new_y), 2, dim=2))
         return emd
 
     def __call__(self, pred, label):
@@ -454,8 +454,8 @@ class EarthMoverLoss(torch.nn.Module):
         return self.em_distance(pred, label)
 
 if __name__ == "__main__":
-    x = torch.tensor(np.array([[[1,2,3],[4,5,6]]]))
-    y = torch.tensor(np.array([[[4.1, 5.1, 6.1], [1.1, 2.1, 3.1]]]))
+    x = torch.tensor(np.array([[[1.,2.,3.],[4.,5.,6.]]]), requires_grad=True)
+    y = torch.tensor(np.array([[[4.1, 5.1, 6.1], [1.1, 2.1, 3.1]]]), requires_grad=True)
     emdLoss = EarthMoverLoss()
     emd = emdLoss(x, y)
 
