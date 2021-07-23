@@ -429,7 +429,6 @@ class EarthMoverLoss(torch.nn.Module):
     def em_distance(self, x, y):
         # x: [B, N, D]
         # y: [B, M, D]
-        import pdb; pdb.set_trace()
         x_ = x[:, :, None, :].repeat(1, 1, y.size(1), 1)  # x: [B, N, M, D]
         y_ = y[:, None, :, :].repeat(1, x.size(1), 1, 1)  # y: [B, N, M, D]
         dis = torch.norm(torch.add(x_, -y_), 2, dim=3)  # dis: [B, N, M]
