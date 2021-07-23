@@ -6,7 +6,8 @@ import torch.nn.functional as F
 from torch.autograd import Variable
 
 from data_utils import prepare_input
-
+import scipy
+from scipy import optimize
 
 class Encoder(nn.Module):
     def __init__(self, input_size, hidden_size, output_size):
@@ -420,3 +421,36 @@ class HausdorfLoss(torch.nn.Module):
         # pred: [B, N, D]
         # label: [B, M, D]
         return self.hausdorf_distance(pred, label)
+
+class EarthMoverLoss(torch.nn.Module):
+    def __init__(self):
+        super(EarthMoverLoss, self).__init__()
+
+    def em_distance(self, x, y):
+        # x: [B, N, D]
+        # y: [B, M, D]
+        import pdb; pdb.set_trace()
+        x_ = x[:, :, None, :].repeat(1, 1, y.size(1), 1)  # x: [B, N, M, D]
+        y_ = y[:, None, :, :].repeat(1, x.size(1), 1, 1)  # y: [B, N, M, D]
+        dis = torch.norm(torch.add(x_, -y_), 2, dim=3)  # dis: [B, N, M]
+        for i in range(dis.shape[0]):
+            cost_matrix = dis[i].numpy()
+            ind1, ind2 = scipy.optimize.linear_sum_assignment(cost_matrix, maximize=False)
+            x[i] = x[i, ind1]
+            y[i] = y[i, ind2]
+        emd = torch.mean(torch.norm(torch.add(x, -y), 2, dim=2))
+        return emd
+
+    def __call__(self, pred, label):
+        # pred: [B, N, D]
+        # label: [B, M, D]
+        return self.em_distance(pred, label)
+
+if __name__ == "__main__":
+    x = torch.tensor(np.array([[[1,2,3],[4,5,6]]]))
+    y = torch.tensor(np.array([[[4.1, 5.1, 6.1], [1.1, 2.1, 3.1]]]))
+    emdLoss = EarthMoverLoss()
+    emd = emdLoss(x, y)
+
+
+

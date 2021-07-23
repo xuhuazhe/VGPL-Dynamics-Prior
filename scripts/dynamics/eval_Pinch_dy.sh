@@ -1,7 +1,8 @@
 python eval_dy_pinch.py 		\
 	--env Pinch 		\
 	--stage dy 		\
-	--eval_epoch -1		\
+	--eval_epoch 996    \
+	--eval_iter 28      \
 	--eval_set train 	\
 	--verbose_data 0	\
 	--sequence_length 49	\
