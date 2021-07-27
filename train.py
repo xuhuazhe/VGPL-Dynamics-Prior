@@ -188,8 +188,17 @@ for epoch in range(st_epoch, args.n_epoch):
                     mean_d, std_d = model.stat[2:]
                     gt_motion_norm = (gt_motion - mean_d) / std_d
                     pred_motion_norm = torch.cat([pred_motion_norm, gt_motion_norm[:, n_particle:]], 1)
+                    if args.losstype == 'emd':
+                        loss = emd_loss(pred_pos, gt_pos)  #particle_dist_loss(pred_pos, gt_pos) + h_loss(pred_pos, gt_pos) #F.l1_loss(pred_motion_norm[:, :n_particle], gt_motion_norm[:, :n_particle])
+                    elif args.losstype == 'chamfer':
+                        loss = particle_dist_loss(pred_pos, gt_pos)
+                    elif args.losstype == 'hausdorff':
+                        loss = particle_dist_loss(pred_pos, gt_pos) + h_loss(pred_pos, gt_pos)
+                    elif args.losstype == 'l1':
+                        loss = F.l1_loss(pred_motion_norm[:, :n_particle], gt_motion_norm[:, :n_particle])
+                    else:
+                        raise NotImplementedError
 
-                    loss = emd_loss(pred_pos, gt_pos)  #particle_dist_loss(pred_pos, gt_pos) + h_loss(pred_pos, gt_pos) #F.l1_loss(pred_motion_norm[:, :n_particle], gt_motion_norm[:, :n_particle])
                     loss_raw = F.l1_loss(pred_pos, gt_pos)
 
                     meter_loss.update(loss.item(), B)

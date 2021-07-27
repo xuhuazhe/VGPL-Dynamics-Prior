@@ -21,6 +21,7 @@ parser.add_argument('--nf_pos', type=int, default=150)
 parser.add_argument('--nf_memory', type=int, default=150)
 parser.add_argument('--mem_nlayer', type=int, default=2)
 parser.add_argument('--nf_effect', type=int, default=150)
+parser.add_argument('--losstype', type=str, default='l1')
 
 parser.add_argument('--outf', default='files')
 parser.add_argument('--evalf', default='eval')
@@ -223,6 +224,8 @@ def gen_args():
     if args.augment_ratio > 0:
         args.outf += '_aug%.2f' % args.augment_ratio
         args.evalf += '_aug%.2f' % args.augment_ratio
+
+    args.outf += args.losstype
 
 
     # evaluation checkpoints
