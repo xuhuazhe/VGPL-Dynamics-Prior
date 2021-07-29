@@ -198,8 +198,8 @@ for epoch in range(st_epoch, args.n_epoch):
                         loss = F.l1_loss(pred_motion_norm[:, :n_particle], gt_motion_norm[:, :n_particle])
                     else:
                         raise NotImplementedError
-                    if args.stdreg:
-                        loss += 0.01 * std_cluster
+                    # if args.stdreg:
+                    #     loss += 0.01 * std_cluster
                     loss_raw = F.l1_loss(pred_pos, gt_pos)
 
                     meter_loss.update(loss.item(), B)
