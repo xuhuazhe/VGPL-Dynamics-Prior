@@ -20,4 +20,5 @@ python train.py 		\
 	--log_per_iter 100	\
 	--ckp_per_iter 5000	\
 	--eval 0            \
-	--losstype emd
+	--losstype emd      \
+	--stdreg  1

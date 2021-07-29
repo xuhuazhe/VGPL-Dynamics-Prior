@@ -17,7 +17,7 @@ def my_collate(batch):
     len_rel = 2
 
     ret = []
-    for i in range(len_batch - len_rel):
+    for i in range(len_batch - len_rel - 1):
         d = [item[i] for item in batch]
         if isinstance(d[0], int):
             d = torch.LongTensor(d)
@@ -28,7 +28,7 @@ def my_collate(batch):
     # processing relations
     # R: B x seq_length x n_rel x (n_p + n_s)
     for i in range(len_rel):
-        R = [item[-len_rel + i] for item in batch]
+        R = [item[-len_rel + i - 1] for item in batch]
         max_n_rel = 0
         seq_length, _, N = R[0].size()
         for j in range(len(R)):
@@ -41,6 +41,14 @@ def my_collate(batch):
         R = torch.FloatTensor(torch.stack(R))
 
         ret.append(R)
+
+    d = [item[-1] for item in batch]
+    if isinstance(d[0], int):
+        d = torch.LongTensor(d)
+    else:
+        d = torch.FloatTensor(torch.stack(d))
+    ret.append(d)
+
     return tuple(ret)
 
 

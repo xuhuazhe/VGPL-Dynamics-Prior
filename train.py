@@ -141,12 +141,12 @@ for epoch in range(st_epoch, args.n_epoch):
                 # n_shapes: B
                 # scene_params: B x param_dim
                 # Rrs, Rss: B x seq_length x n_rel x (n_p + n_s)
-                attrs, particles, n_particles, n_shapes, scene_params, Rrs, Rss = data
-                # import pdb; pdb.set_trace()
+                attrs, particles, n_particles, n_shapes, scene_params, Rrs, Rss, cluster_onehots = data
                 if use_gpu:
                     attrs = attrs.cuda()
                     particles = particles.cuda()
                     Rrs, Rss = Rrs.cuda(), Rss.cuda()
+                    cluster_onehots = cluster_onehots.cuda()
 
                 # statistics
                 B = attrs.size(0)
@@ -169,13 +169,13 @@ for epoch in range(st_epoch, args.n_epoch):
                     # Rrs_cur, Rss_cur: B x n_rel x (n_p + n_s)
                     Rr_cur = Rrs[:, args.n_his - 1]
                     Rs_cur = Rss[:, args.n_his - 1]
-
+                    cluster_onehot = cluster_onehots[:, args.n_his - 1]
                     # predict the velocity at the next time step
-                    inputs = [attrs, state_cur, Rr_cur, Rs_cur, memory_init, groups_gt]
+                    inputs = [attrs, state_cur, Rr_cur, Rs_cur, memory_init, groups_gt, cluster_onehot]
 
                     # pred_pos (unnormalized): B x n_p x state_dim
                     # pred_motion_norm (normalized): B x n_p x state_dim
-                    pred_pos, pred_motion_norm = model.predict_dynamics(inputs)
+                    pred_pos, pred_motion_norm, std_cluster = model.predict_dynamics(inputs)
 
                     # concatenate the state of the shapes
                     # pred_pos (unnormalized): B x (n_p + n_s) x state_dim
@@ -198,7 +198,8 @@ for epoch in range(st_epoch, args.n_epoch):
                         loss = F.l1_loss(pred_motion_norm[:, :n_particle], gt_motion_norm[:, :n_particle])
                     else:
                         raise NotImplementedError
-
+                    if args.stdreg:
+                        loss += 0.01 * std_cluster
                     loss_raw = F.l1_loss(pred_pos, gt_pos)
 
                     meter_loss.update(loss.item(), B)

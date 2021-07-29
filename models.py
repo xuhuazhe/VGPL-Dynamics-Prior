@@ -155,7 +155,8 @@ class DynamicsPredictor(nn.Module):
         #   p_rigid: B x n_instance
         #   p_instance: B x n_particle x n_instance
         #   physics_param: B x n_particle
-        attrs, state, Rr_cur, Rs_cur, memory, group = inputs
+        # cluster: num_of_particles (N) x num_of_clusters (k)
+        attrs, state, Rr_cur, Rs_cur, memory, group, cluster = inputs
         p_rigid, p_instance, physics_param = group
 
         # Rr_cur_t, Rs_cur_t: B x N x n_rel
@@ -187,7 +188,7 @@ class DynamicsPredictor(nn.Module):
             offset = offset.cuda()
 
         # p_rigid_per_particle: B x n_p x 1
-        p_rigid_per_particle = torch.sum(p_instance * p_rigid[:, None, :], 2, keepdim=True)
+        p_rigid_per_particle = torch.sum(p_instance * p_rigid[:, None, :], 2, keepdim=True)  # this is trying to keep both instance label and rigidity label
 
         # instance_center: B x n_instance x (n_his * state_dim)
         instance_center = p_instance.transpose(1, 2).bmm(state_norm_t[:, :n_p])
@@ -222,7 +223,6 @@ class DynamicsPredictor(nn.Module):
         # attrs_s: B x n_rel x -1
         attrs_r = Rr_cur.bmm(attrs)
         attrs_s = Rs_cur.bmm(attrs)
-
         # receiver_state, sender_state
         # state_norm_r: B x n_rel x -1
         # state_norm_s: B x n_rel x -1
@@ -317,14 +317,30 @@ class DynamicsPredictor(nn.Module):
         rigid_motion = (p_1 - p_0).view(B, n_instance, n_p, state_dim)
         rigid_motion = (rigid_motion - mean_d) / std_d
 
+        """regularize non regid motion within a cluster"""
+        # TODO： now it does not align with torch std, missing (n-1)/n
+        # non_rigid_motion_dist = torch.norm(non_rigid_motion, 2, dim=2)
+        counter = torch.ones_like(non_rigid_motion)
+        X = non_rigid_motion.transpose(1,2).bmm(cluster)
+        X2 = torch.square(non_rigid_motion).transpose(1,2).bmm(cluster)
+        n_count = counter.transpose(1,2).bmm(cluster)
+        variance = (X2 / n_count)  - (X / n_count)**2
+        std = torch.sqrt(variance)
+
+        # total_std = []
+        # for j in range(cluster.shape[0]):
+        #     for i in range(cluster.shape[2]):
+        #         index = (cluster[j, :, i] == 1).nonzero(as_tuple=True)[0]
+        #         this_cluster_mo = non_rigid_motion[j, index]
+        #         this_std = torch.std(this_cluster_mo, dim=0)
+        #         total_std.append(this_std)
+        # total_std = torch.stack(total_std)
+        # import pdb; pdb.set_trace()
         # merge rigid and non-rigid motion
         # rigid_motion      (B x n_instance x n_p x state_dim)
         # non_rigid_motion  (B x n_p x state_dim)
         pred_motion = (1. - p_rigid_per_particle) * non_rigid_motion
-        pred_motion += torch.sum(
-            p_rigid[:, :, None, None] * \
-            p_instance.transpose(1, 2)[:, :, :, None] * \
-            rigid_motion, 1)
+        pred_motion += torch.sum(p_rigid[:, :, None, None] * p_instance.transpose(1, 2)[:, :, :, None] * rigid_motion, 1)
 
         pred_pos = state[:, -1, :n_p] + torch.clamp(pred_motion * std_d + mean_d, max=0.025, min=-0.025)
         # print(torch.max(torch.norm(torch.clamp(pred_motion * std_d + mean_d, max=0.025, min=-0.025), dim=2)))
@@ -333,7 +349,7 @@ class DynamicsPredictor(nn.Module):
 
         # pred_pos (unnormalized): B x n_p x state_dim
         # pred_motion_norm (normalized): B x n_p x state_dim
-        return pred_pos, pred_motion
+        return pred_pos, pred_motion, torch.mean(std)    #, torch.sum(torch.mean(torch.stack(total_std, 0), 0))
 
 
 

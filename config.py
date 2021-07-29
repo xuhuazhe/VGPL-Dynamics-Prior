@@ -22,6 +22,7 @@ parser.add_argument('--nf_memory', type=int, default=150)
 parser.add_argument('--mem_nlayer', type=int, default=2)
 parser.add_argument('--nf_effect', type=int, default=150)
 parser.add_argument('--losstype', type=str, default='l1')
+parser.add_argument('--stdreg', type=int, default=0)
 
 parser.add_argument('--outf', default='files')
 parser.add_argument('--evalf', default='eval')

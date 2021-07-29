@@ -15,6 +15,7 @@ from torch.autograd import Variable
 from torch.utils.data import Dataset
 
 from utils import rand_int, rand_float
+from sklearn.cluster import KMeans
 
 
 ### from DPI
@@ -349,7 +350,7 @@ def axisEqual3D(ax):
         getattr(ax, 'set_{}lim'.format(dim))(ctr - r, ctr + r)
 
 
-def visualize_neighbors(anchors, queries, idx, neighbors):
+def visualize_neighbors(anchors, queries, idx, neighbors, leaf=False):
     fig = plt.figure()
     ax = fig.add_subplot(111, projection='3d')
     # import pdb; pdb.set_trace()
@@ -357,7 +358,8 @@ def visualize_neighbors(anchors, queries, idx, neighbors):
     # red is all the neighbors
     # shaded is all the particles
     # blue is the ball
-    ax.scatter(queries[-1, 0], queries[-1, 1], queries[-1, 2], c='b', s=80)
+    if not leaf:
+        ax.scatter(queries[-1, 0], queries[-1, 1], queries[-1, 2], c='b', s=80)
     # ax.scatter(queries[idx, 0], queries[idx, 1], queries[idx, 2], c='g', s=80)
     ax.scatter(anchors[neighbors, 0], anchors[neighbors, 1], anchors[neighbors, 2], c='r', s=80)
     ax.scatter(anchors[:, 0], anchors[:, 1], anchors[:, 2], alpha=0.2)
@@ -373,10 +375,11 @@ def find_relations_neighbor(pos, query_idx, anchor_idx, radius, order, var=False
     point_tree = spatial.cKDTree(pos[anchor_idx])
     neighbors = point_tree.query_ball_point(pos[query_idx], radius, p=order)
 
-    '''
-    for i in range(len(neighbors)):
-        visualize_neighbors(pos[anchor_idx], pos[query_idx], i, neighbors[i])
-    '''
+    # '''
+    # for i in range(len(neighbors)):
+    #     import pdb; pdb.set_trace()
+    #     visualize_neighbors(pos[anchor_idx], pos[query_idx], i, neighbors[i])
+    # '''
 
     relations = []
     for i in range(len(neighbors)):
@@ -503,6 +506,8 @@ def prepare_input(positions, n_particle, n_shape, args, var=False):
 
     count_nodes = n_particle + n_shape
 
+    cluster_onehot = None
+
     if verbose:
         print("prepare_input::positions", positions.shape)
         print("prepare_input::n_particle", n_particle)
@@ -536,6 +541,12 @@ def prepare_input(positions, n_particle, n_shape, args, var=False):
         # print(np.sort(dis)[:10])
         prim = np.ones(nodes.shape[0], dtype=np.int) * (n_particle+1)
         rels += [np.stack([nodes, prim], axis=1)]
+
+        """Start to do K-Means"""
+        kmeans = KMeans(n_clusters=10, random_state=0).fit(pos[:n_particle])
+        cluster_label = kmeans.labels_
+        cluster_onehot = np.zeros((cluster_label.size, cluster_label.max() + 1))
+        cluster_onehot[np.arange(cluster_label.size), cluster_label] = 1
 
 
     elif args.env == 'RigidFall':
@@ -616,13 +627,14 @@ def prepare_input(positions, n_particle, n_shape, args, var=False):
                 print(i, attr[i], attr[i + 1])
 
     attr = torch.FloatTensor(attr)
+    cluster_onehot = torch.FloatTensor(cluster_onehot)
     assert attr.size(0) == count_nodes
     assert attr.size(1) == args.attr_dim
 
     # attr: (n_p + n_s) x attr_dim
     # particle (unnormalized): (n_p + n_s) x state_dim
     # Rr, Rs: n_rel x (n_p + n_s)
-    return attr, particle, Rr, Rs
+    return attr, particle, Rr, Rs, cluster_onehot
 
 
 class PhysicsFleXDataset(Dataset):
@@ -724,7 +736,7 @@ class PhysicsFleXDataset(Dataset):
 
         if args.stage in ['dy']:
             # load ground truth data
-            attrs, particles, Rrs, Rss = [], [], [], []
+            attrs, particles, Rrs, Rss, cluster_onehots= [], [], [], [], []
             max_n_rel = 0
             for t in range(st_idx, ed_idx):
                 # load data
@@ -741,14 +753,14 @@ class PhysicsFleXDataset(Dataset):
                 # attr: (n_p + n_s) x attr_dim
                 # particle (unnormalized): (n_p + n_s) x state_dim
                 # Rr, Rs: n_rel x (n_p + n_s)
-                attr, particle, Rr, Rs = prepare_input(data[0], n_particle, n_shape, self.args)
-
+                attr, particle, Rr, Rs, cluster_onehot = prepare_input(data[0], n_particle, n_shape, self.args)
                 max_n_rel = max(max_n_rel, Rr.size(0))
 
                 attrs.append(attr)
                 particles.append(particle.numpy())
                 Rrs.append(Rr)
                 Rss.append(Rs)
+                cluster_onehots.append(cluster_onehot)
 
 
         '''
@@ -827,8 +839,7 @@ class PhysicsFleXDataset(Dataset):
                 Rrs[i], Rss[i] = Rr, Rs
             Rr = torch.FloatTensor(np.stack(Rrs))
             Rs = torch.FloatTensor(np.stack(Rss))
-
-
+            cluster_onehot = torch.FloatTensor(np.stack(cluster_onehots))
         if args.stage in ['dy']:
-            return attr, particles, n_particle, n_shape, scene_params, Rr, Rs
+            return attr, particles, n_particle, n_shape, scene_params, Rr, Rs, cluster_onehot
 
