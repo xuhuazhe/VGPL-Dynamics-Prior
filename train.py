@@ -210,6 +210,7 @@ for epoch in range(st_epoch, args.n_epoch):
                     print('%s epoch[%d/%d] iter[%d/%d] LR: %.6f, loss: %.6f (%.6f), loss_raw: %.8f (%.8f)' % (
                         phase, epoch, args.n_epoch, i, len(dataloaders[phase]), get_lr(optimizer),
                         loss.item(), meter_loss.avg, loss_raw.item(), meter_loss_raw.avg))
+                    print('std_cluster', std_cluster)
                     if phase == 'train':
                         training_stats['loss'].append(loss.item())
                         training_stats['loss_raw'].append(loss_raw.item())
