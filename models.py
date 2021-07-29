@@ -325,7 +325,7 @@ class DynamicsPredictor(nn.Module):
         X2 = torch.square(non_rigid_motion).transpose(1,2).bmm(cluster)
         n_count = counter.transpose(1,2).bmm(cluster)
         variance = (X2 / n_count)  - (X / n_count)**2
-        std = torch.sqrt(variance)
+        std = torch.sqrt(variance + 1e-6)
 
         # total_std = []
         # for j in range(cluster.shape[0]):
