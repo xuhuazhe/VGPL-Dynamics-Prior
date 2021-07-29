@@ -454,7 +454,10 @@ class EarthMoverLoss(torch.nn.Module):
         # y.requires_grad = True
         for i in range(dis.shape[0]):
             cost_matrix = dis[i].detach().cpu().numpy()
-            ind1, ind2 = scipy.optimize.linear_sum_assignment(cost_matrix, maximize=False)
+            try:
+                ind1, ind2 = scipy.optimize.linear_sum_assignment(cost_matrix, maximize=False)
+            except:
+                import pdb; pdb.set_trace()
             x_list.append(x[i, ind1])
             y_list.append(y[i, ind2])
             # x[i] = x[i, ind1]
