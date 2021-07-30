@@ -1,6 +1,7 @@
 #!/usr/bin/env bash
 #SBATCH --job-name=VGPL-Pinch
-#SBATCH --partition=viscam1
+#SBATCH --partition=viscam
+#SBATCH --nodelist=viscam1
 #SBATCH --gres=gpu:1
 #SBATCH --mem=20G
 #SBATCH --output=/sailhome/hxu/VGPL/%A.out
