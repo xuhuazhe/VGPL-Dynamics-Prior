@@ -199,7 +199,7 @@ for epoch in range(st_epoch, args.n_epoch):
                     else:
                         raise NotImplementedError
                     if args.stdreg:
-                        loss += 0.01 * std_cluster
+                        loss += args.stdreg_weight * std_cluster
                     loss_raw = F.l1_loss(pred_pos, gt_pos)
 
                     meter_loss.update(loss.item(), B)

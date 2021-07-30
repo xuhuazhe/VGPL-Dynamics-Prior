@@ -320,13 +320,12 @@ class DynamicsPredictor(nn.Module):
         """regularize non regid motion within a cluster"""
         # TODO： now it does not align with torch std, missing (n-1)/n
         # non_rigid_motion_dist = torch.norm(non_rigid_motion, 2, dim=2)
-        counter = torch.ones_like(non_rigid_motion)
+        # counter = torch.ones_like(non_rigid_motion)
         X = non_rigid_motion.transpose(1,2).bmm(cluster)
         X2 = torch.square(non_rigid_motion).transpose(1,2).bmm(cluster)
-        n_count = counter.transpose(1,2).bmm(cluster)
+        n_count = cluster.sum(1).unsqueeze(1).repeat(1,3,1)  #counter.transpose(1,2).bmm(cluster)
         variance = (X2 / n_count)  - (X / n_count)**2
         std = torch.sqrt(variance + 1e-6)
-
         # total_std = []
         # for j in range(cluster.shape[0]):
         #     for i in range(cluster.shape[2]):
