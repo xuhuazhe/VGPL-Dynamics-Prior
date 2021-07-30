@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 #SBATCH --job-name=VGPL-Pinch
 #SBATCH --partition=viscam
-#SBATCH --nodelist=viscam1
+#SBATCH --nodelist=viscam2
 #SBATCH --gres=gpu:1
 #SBATCH --mem=20G
 #SBATCH --output=/sailhome/hxu/VGPL/%A.out
@@ -9,7 +9,7 @@
 #SBATCH --cpus-per-task=20
 source ~/.bashrc
 conda activate deformable
-export PYTHONPATH="/viscam/u/hxu/projects/deformable/baselines:/viscam/u/hxu/projects/deformable/PlasticineLab"
+export PYTHONPATH="/viscam/u/hxu/projects/deformable/baselines:/viscam/u/hxu/projects/deformable/VGPL-Dynamics-Prior"
 cd /viscam/u/hxu/projects/deformable/PlasticineLab
 export LD_LIBRARY_PATH="/sailhome/hxu/my_lib/:$LD_LIBRARY_PATH"
 
