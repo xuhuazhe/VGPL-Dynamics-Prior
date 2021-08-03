@@ -37,4 +37,4 @@ python train.py 		\
 	--eval 0            \
 	--losstype emd      \
 	--stdreg  1         \
-    --stdreg_weight 0.1
+        --stdreg_weight 0.001
