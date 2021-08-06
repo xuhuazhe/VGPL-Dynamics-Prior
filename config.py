@@ -140,8 +140,10 @@ def gen_args():
 
         args.mean_p = np.array([0.49868582, 0.11530433, 0.49752659])
         args.std_p = np.array([0.06167904, 0.05326168, 0.06180995])
-        args.mean_d = np.array([-1.62756886e-05, -1.10265409e-04, -1.71767924e-04])
-        args.std_d = np.array([0.08455442, 0.07277832, 0.08571255])
+        # args.mean_d = np.array([-1.62756886e-05, -1.10265409e-04, -1.71767924e-04])
+        # args.std_d = np.array([0.08455442, 0.07277832, 0.08571255])
+        args.mean_d = np.array([4.00109732e-04, 6.71352200e-05, -1.17460513e-04])
+        args.std_d = np.array([0.0166535,  0.01636565, 0.01657304])
 
     elif args.env == 'RigidFall':
         args.env_idx = 3
