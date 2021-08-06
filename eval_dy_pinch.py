@@ -43,7 +43,8 @@ if args.eval_epoch < 0:
 else:
     model_name = 'net_epoch_%d_iter_%d.pth' % (args.eval_epoch, args.eval_iter)
 
-model_path = os.path.join('dump/dump_Pinch/files_dy27-Jul-2021-01:01:14.690980_nHis4_aug0.05emd', model_name)    # args.outf
+model_dir = 'stdreg_weight0.01'
+model_path = os.path.join('dump/dump_Pinch/' + model_dir, model_name)    # args.outf
 print("Loading network from %s" % model_path)
 
 if args.stage == 'dy':
