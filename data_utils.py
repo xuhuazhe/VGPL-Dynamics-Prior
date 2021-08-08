@@ -499,7 +499,7 @@ def get_env_group(args, n_particles, scene_params, use_gpu=False):
     return [p_rigid, p_instance, physics_param]
 
 
-def prepare_input(positions, n_particle, n_shape, args, var=False):
+def prepare_input(positions, n_particle, n_shape, args, var=False, stdreg=0):
     # positions: (n_p + n_s) x 3
 
     verbose = args.verbose_data
@@ -543,10 +543,11 @@ def prepare_input(positions, n_particle, n_shape, args, var=False):
         rels += [np.stack([nodes, prim], axis=1)]
 
         """Start to do K-Means"""
-        kmeans = KMeans(n_clusters=10, random_state=0).fit(pos[:n_particle])
-        cluster_label = kmeans.labels_
-        cluster_onehot = np.zeros((cluster_label.size, cluster_label.max() + 1))
-        cluster_onehot[np.arange(cluster_label.size), cluster_label] = 1
+        if stdreg:
+            kmeans = KMeans(n_clusters=10, random_state=0).fit(pos[:n_particle])
+            cluster_label = kmeans.labels_
+            cluster_onehot = np.zeros((cluster_label.size, cluster_label.max() + 1))
+            cluster_onehot[np.arange(cluster_label.size), cluster_label] = 1
 
 
     elif args.env == 'RigidFall':
@@ -627,7 +628,10 @@ def prepare_input(positions, n_particle, n_shape, args, var=False):
                 print(i, attr[i], attr[i + 1])
 
     attr = torch.FloatTensor(attr)
-    cluster_onehot = torch.FloatTensor(cluster_onehot)
+    if stdreg:
+        cluster_onehot = torch.FloatTensor(cluster_onehot)
+    else:
+        cluster_onehot = None
     assert attr.size(0) == count_nodes
     assert attr.size(1) == args.attr_dim
 
@@ -753,14 +757,15 @@ class PhysicsFleXDataset(Dataset):
                 # attr: (n_p + n_s) x attr_dim
                 # particle (unnormalized): (n_p + n_s) x state_dim
                 # Rr, Rs: n_rel x (n_p + n_s)
-                attr, particle, Rr, Rs, cluster_onehot = prepare_input(data[0], n_particle, n_shape, self.args)
+                attr, particle, Rr, Rs, cluster_onehot = prepare_input(data[0], n_particle, n_shape, self.args, stdreg=self.args.stdreg)
                 max_n_rel = max(max_n_rel, Rr.size(0))
 
                 attrs.append(attr)
                 particles.append(particle.numpy())
                 Rrs.append(Rr)
                 Rss.append(Rs)
-                cluster_onehots.append(cluster_onehot)
+                if cluster_onehot is not None:
+                    cluster_onehots.append(cluster_onehot)
 
 
         '''
@@ -839,7 +844,10 @@ class PhysicsFleXDataset(Dataset):
                 Rrs[i], Rss[i] = Rr, Rs
             Rr = torch.FloatTensor(np.stack(Rrs))
             Rs = torch.FloatTensor(np.stack(Rss))
-            cluster_onehot = torch.FloatTensor(np.stack(cluster_onehots))
+            if cluster_onehots:
+                cluster_onehot = torch.FloatTensor(np.stack(cluster_onehots))
+            else:
+                cluster_onehot = None
         if args.stage in ['dy']:
             return attr, particles, n_particle, n_shape, scene_params, Rr, Rs, cluster_onehot
 

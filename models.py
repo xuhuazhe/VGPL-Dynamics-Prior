@@ -321,11 +321,15 @@ class DynamicsPredictor(nn.Module):
         # TODO： now it does not align with torch std, missing (n-1)/n
         # non_rigid_motion_dist = torch.norm(non_rigid_motion, 2, dim=2)
         # counter = torch.ones_like(non_rigid_motion)
-        X = non_rigid_motion.transpose(1,2).bmm(cluster)
-        X2 = torch.square(non_rigid_motion).transpose(1,2).bmm(cluster)
-        n_count = cluster.sum(1).unsqueeze(1).repeat(1,3,1)  #counter.transpose(1,2).bmm(cluster)
-        variance = (X2 / n_count)  - (X / n_count)**2
-        std = torch.sqrt(variance + 1e-6)
+        if cluster is not None:
+            X = non_rigid_motion.transpose(1,2).bmm(cluster)
+            X2 = torch.square(non_rigid_motion).transpose(1,2).bmm(cluster)
+            n_count = cluster.sum(1).unsqueeze(1).repeat(1,3,1)  #counter.transpose(1,2).bmm(cluster)
+            variance = (X2 / n_count)  - (X / n_count)**2
+            std = torch.sqrt(variance + 1e-6)
+            mean_std = torch.mean(std)
+        else:
+            mean_std = None
         # total_std = []
         # for j in range(cluster.shape[0]):
         #     for i in range(cluster.shape[2]):
@@ -342,13 +346,14 @@ class DynamicsPredictor(nn.Module):
         pred_motion += torch.sum(p_rigid[:, :, None, None] * p_instance.transpose(1, 2)[:, :, :, None] * rigid_motion, 1)
 
         pred_pos = state[:, -1, :n_p] + torch.clamp(pred_motion * std_d + mean_d, max=0.025, min=-0.025)
+        # print(pred_motion * std_d + mean_d)
         # print(torch.max(torch.norm(torch.clamp(pred_motion * std_d + mean_d, max=0.025, min=-0.025), dim=2)))
         if verbose:
             print('pred_pos', pred_pos.size())
 
         # pred_pos (unnormalized): B x n_p x state_dim
         # pred_motion_norm (normalized): B x n_p x state_dim
-        return pred_pos, pred_motion, torch.mean(std)    #, torch.sum(torch.mean(torch.stack(total_std, 0), 0))
+        return pred_pos, pred_motion, mean_std   #, torch.sum(torch.mean(torch.stack(total_std, 0), 0))
 
 
 

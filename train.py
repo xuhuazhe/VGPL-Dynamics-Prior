@@ -19,7 +19,7 @@ from data_utils import PhysicsFleXDataset
 from data_utils import prepare_input, get_scene_info, get_env_group
 from models import Model, ChamferLoss, HausdorfLoss, EarthMoverLoss
 from utils import make_graph, check_gradient, set_seed, AverageMeter, get_lr, Tee
-from utils import count_parameters, my_collate
+from utils import count_parameters, my_collate, matched_motion
 
 
 args = gen_args()
@@ -113,7 +113,7 @@ print(args)
 st_epoch = args.resume_epoch if args.resume_epoch > 0 else 0
 best_valid_loss = np.inf
 
-training_stats = {'loss':[], 'loss_raw':[], 'iters': []}
+training_stats = {'loss':[], 'loss_raw':[], 'iters': [], 'loss_emd': [], 'loss_motion': []}
 for epoch in range(st_epoch, args.n_epoch):
 
     for phase in phases:
@@ -169,7 +169,10 @@ for epoch in range(st_epoch, args.n_epoch):
                     # Rrs_cur, Rss_cur: B x n_rel x (n_p + n_s)
                     Rr_cur = Rrs[:, args.n_his - 1]
                     Rs_cur = Rss[:, args.n_his - 1]
-                    cluster_onehot = cluster_onehots[:, args.n_his - 1]
+                    if cluster_onehots is not None:
+                        cluster_onehot = cluster_onehots[:, args.n_his - 1]
+                    else:
+                        cluster_onehot = None
                     # predict the velocity at the next time step
                     inputs = [attrs, state_cur, Rr_cur, Rs_cur, memory_init, groups_gt, cluster_onehot]
 
@@ -184,7 +187,12 @@ for epoch in range(st_epoch, args.n_epoch):
 
                     # gt_motion_norm (normalized): B x (n_p + n_s) x state_dim
                     # pred_motion_norm (normalized): B x (n_p + n_s) x state_dim
-                    gt_motion = particles[:, args.n_his] - particles[:, args.n_his - 1]
+                    # gt_motion_norm should match then calculate if matched_motion enabled
+                    if args.matched_motion:
+                        gt_motion = matched_motion(particles[:, args.n_his], particles[:, args.n_his - 1], n_particles=n_particle)
+                    else:
+                        gt_motion = particles[:, args.n_his] - particles[:, args.n_his - 1]
+
                     mean_d, std_d = model.stat[2:]
                     gt_motion_norm = (gt_motion - mean_d) / std_d
                     pred_motion_norm = torch.cat([pred_motion_norm, gt_motion_norm[:, n_particle:]], 1)
@@ -196,8 +204,15 @@ for epoch in range(st_epoch, args.n_epoch):
                         loss = particle_dist_loss(pred_pos, gt_pos) + h_loss(pred_pos, gt_pos)
                     elif args.losstype == 'l1':
                         loss = F.l1_loss(pred_motion_norm[:, :n_particle], gt_motion_norm[:, :n_particle])
+                    elif args.losstype == 'emd_l1':
+                        loss_emd = emd_loss(pred_pos, gt_pos)
+                        loss_motion = F.l1_loss(pred_motion_norm[:, :n_particle], gt_motion_norm[:, :n_particle])
+                        # print('emd:', loss_emd.item())
+                        # print('l1:', args.matched_motion_weight * loss_motion.item())
+                        loss = loss_emd + args.matched_motion_weight * loss_motion
                     else:
                         raise NotImplementedError
+
                     if args.stdreg:
                         loss += args.stdreg_weight * std_cluster
                     loss_raw = F.l1_loss(pred_pos, gt_pos)
@@ -215,6 +230,9 @@ for epoch in range(st_epoch, args.n_epoch):
                         training_stats['loss'].append(loss.item())
                         training_stats['loss_raw'].append(loss_raw.item())
                         training_stats['iters'].append(epoch * len(dataloaders[phase]) + i)
+                        if args.losstype == 'emd_l1':
+                            training_stats['loss_emd'].append(loss_emd.item())
+                            training_stats['loss_motion'].append(loss_motion.item())
                     # with open(args.outf + '/train.npy', 'wb') as f:
                     #     np.save(f, training_stats)
 
