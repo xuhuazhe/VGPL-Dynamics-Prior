@@ -146,7 +146,8 @@ for epoch in range(st_epoch, args.n_epoch):
                     attrs = attrs.cuda()
                     particles = particles.cuda()
                     Rrs, Rss = Rrs.cuda(), Rss.cuda()
-                    cluster_onehots = cluster_onehots.cuda()
+                    if cluster_onehots is not None:
+                        cluster_onehots = cluster_onehots.cuda()
 
                 # statistics
                 B = attrs.size(0)
