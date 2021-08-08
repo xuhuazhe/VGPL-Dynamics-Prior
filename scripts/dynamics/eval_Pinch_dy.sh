@@ -1,3 +1,4 @@
+#!/usr/bin/env bash
 python eval_dy_pinch.py 		\
 	--env Pinch 		\
 	--stage dy 		\

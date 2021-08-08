@@ -43,7 +43,7 @@ if args.eval_epoch < 0:
 else:
     model_name = 'net_epoch_%d_iter_%d.pth' % (args.eval_epoch, args.eval_iter)
 
-model_dir = 'stdreg_weight0.001'
+model_dir = 'statsfix_stdreg0.0'
 model_path = os.path.join('dump/dump_Pinch/' + model_dir, model_name)    # args.outf
 print("Loading network from %s" % model_path)
 
@@ -133,7 +133,7 @@ for idx_episode in range(0, 50, 1): #range(len(infos)):
             # attr: (n_p + n_s) x attr_dim
             # Rr_cur, Rs_cur: n_rel x (n_p + n_s)
             # state_cur (unnormalized): n_his x (n_p + n_s) x state_dim
-            attr, _, Rr_cur, Rs_cur, cluster_onehot = prepare_input(state_cur[-1].cpu().numpy(), n_particle, n_shape, args)
+            attr, _, Rr_cur, Rs_cur, cluster_onehot = prepare_input(state_cur[-1].cpu().numpy(), n_particle, n_shape, args, stdreg=args.stdreg)
 
             if use_gpu:
                 attr = attr.cuda()

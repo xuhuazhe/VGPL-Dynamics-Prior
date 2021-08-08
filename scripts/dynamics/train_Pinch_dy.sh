@@ -20,5 +20,7 @@ python train.py 		\
 	--log_per_iter 100	\
 	--ckp_per_iter 5000	\
 	--eval 0            \
-	--losstype emd      \
-	--stdreg  1
+	--losstype emd_l1   \
+	--stdreg  0         \
+	--matched_motion 1  \
+	--matched_motion_weight 0.03
