@@ -464,7 +464,12 @@ def get_env_group(args, n_particles, scene_params, use_gpu=False):
         p_rigid[:] = 0
         for i in range(args.n_instance):
             p_instance[:, :, i] = 1
-
+    elif args.env == 'Gripper':
+        norm_g = normalize_scene_param(scene_params, 1, args.physics_param_range)
+        physics_param[:] = torch.FloatTensor(norm_g).view(B, 1)
+        p_rigid[:] = 0
+        for i in range(args.n_instance):
+            p_instance[:, :, i] = 1
 
     elif args.env == 'RigidFall':
         norm_g = normalize_scene_param(scene_params, 1, args.physics_param_range)
@@ -541,6 +546,48 @@ def prepare_input(positions, n_particle, n_shape, args, var=False, stdreg=0):
         # print(np.sort(dis)[:10])
         prim = np.ones(nodes.shape[0], dtype=np.int) * (n_particle+1)
         rels += [np.stack([nodes, prim], axis=1)]
+
+        """Start to do K-Means"""
+        if stdreg:
+            kmeans = KMeans(n_clusters=10, random_state=0).fit(pos[:n_particle])
+            cluster_label = kmeans.labels_
+            cluster_onehot = np.zeros((cluster_label.size, cluster_label.max() + 1))
+            cluster_onehot[np.arange(cluster_label.size), cluster_label] = 1
+    elif args.env == 'Gripper':
+        attr[n_particle, 1] = 1
+        attr[n_particle + 1, 2] = 1
+        attr[n_particle + 2, 2] = 1
+        pos = positions.data.cpu().numpy() if var else positions
+
+        # floor to points
+        dis = pos[:n_particle, 1] - pos[n_particle, 1]
+        nodes = np.nonzero(dis < args.neighbor_radius)[0]
+        # print('visualize floor neighbors')
+        # visualize_neighbors(pos, pos, 0, nodes)
+        # print(np.sort(dis)[:10])
+
+        floor = np.ones(nodes.shape[0], dtype=np.int) * n_particle
+        rels += [np.stack([nodes, floor], axis=1)]
+
+        # to primitive
+        disp1 = np.sqrt(np.sum((pos[:n_particle] - pos[n_particle + 1]) ** 2,
+                              1))  # np.sqrt(np.sum((pos[:n_particle, :] - pos[n_particle+1, :])**2, axis=1))
+        nodes1 = np.nonzero(disp1 < (args.neighbor_radius + 0.025))[0]
+        # print('visualize prim neighbors')
+        # visualize_neighbors(pos, pos, 0, nodes)
+        # print(np.sort(dis)[:10])
+        prim1 = np.ones(nodes1.shape[0], dtype=np.int) * (n_particle + 1)
+        rels += [np.stack([nodes1, prim1], axis=1)]
+
+        disp2 = np.sqrt(np.sum((pos[:n_particle] - pos[n_particle + 2]) ** 2,
+                              1))  # np.sqrt(np.sum((pos[:n_particle, :] - pos[n_particle+1, :])**2, axis=1))
+        nodes2 = np.nonzero(disp2 < (args.neighbor_radius + 0.025))[0]
+        # print('visualize prim neighbors')
+        # visualize_neighbors(pos, pos, 0, nodes)
+        # print(np.sort(dis)[:10])
+        prim2 = np.ones(nodes2.shape[0], dtype=np.int) * (n_particle + 2)
+        rels += [np.stack([nodes2, prim2], axis=1)]
+
 
         """Start to do K-Means"""
         if stdreg:
