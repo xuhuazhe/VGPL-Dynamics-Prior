@@ -633,7 +633,7 @@ def prepare_input(positions, n_particle, n_shape, args, var=False, stdreg=0):
 
     ##### add relations between leaf particles
 
-    if args.env in ['RigidFall', 'MassRope', 'Pinch']:
+    if args.env in ['RigidFall', 'MassRope', 'Pinch', 'Gripper']:
         queries = np.arange(n_particle)
         anchors = np.arange(n_particle)
 
