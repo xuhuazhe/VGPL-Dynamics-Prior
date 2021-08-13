@@ -553,6 +553,7 @@ def prepare_input(positions, n_particle, n_shape, args, var=False, stdreg=0):
             cluster_label = kmeans.labels_
             cluster_onehot = np.zeros((cluster_label.size, cluster_label.max() + 1))
             cluster_onehot[np.arange(cluster_label.size), cluster_label] = 1
+
     elif args.env == 'Gripper':
         attr[n_particle, 1] = 1
         attr[n_particle + 1, 2] = 1
@@ -702,7 +703,7 @@ class PhysicsFleXDataset(Dataset):
         if args.gen_vision:
             os.system('mkdir -p ' + self.vision_dir)
 
-        if args.env in ['RigidFall', 'MassRope', 'Pinch']:
+        if args.env in ['RigidFall', 'MassRope', 'Pinch', 'Gripper']:
             self.data_names = ['positions', 'shape_quats', 'scene_params']
         else:
             raise AssertionError("Unsupported env")
