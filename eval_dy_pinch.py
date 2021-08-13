@@ -339,6 +339,14 @@ for idx_episode in range(0, 50, 1): #range(len(infos)):
             # render floor
             add_floor(view)
 
+        if args.env == 'Gripper':
+            view.camera = vispy.scene.cameras.TurntableCamera(fov=50, azimuth=90, elevation=20, distance=2, up='+y')
+            # set instance colors
+            instance_colors = create_instance_colors(args.n_instance)
+
+            # render floor
+            add_floor(view)
+
         if args.env == 'RigidFall':
             view.camera = vispy.scene.cameras.TurntableCamera(fov=50, azimuth=45, elevation=20, distance=2, up='+y')
             # set instance colors

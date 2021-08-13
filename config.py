@@ -147,6 +147,42 @@ def gen_args():
         args.mean_d = np.array([4.00109732e-04, 6.71352200e-05, -1.17460513e-04])
         args.std_d = np.array([0.0166535,  0.01636565, 0.01657304])
 
+    elif args.env == 'Gripper':
+        args.env_idx = 1001
+
+        args.n_rollout = 50
+        args.time_step = 49
+
+        # object states:
+        # [x, y, z]
+        args.state_dim = 3
+
+        # object attr:
+        # [particle, floor, prim]
+        args.attr_dim = 3
+
+        args.neighbor_radius = 0.05
+        args.neighbor_k = 20
+
+        suffix = ''
+        if args.n_instance == -1:
+            args.n_instance = 1
+        else:
+            suffix += '_nIns_' + str(args.n_instance)
+
+        args.physics_param_range = (-5., -5.)
+
+        args.outf = 'dump/dump_Pinch/' + args.outf + '_' + args.stage + suffix + datetime.now().strftime(
+            "%d-%b-%Y-%H:%M:%S.%f")
+        args.evalf = 'dump/dump_Pinch/' + args.evalf + '_' + args.stage + suffix  # + datetime.now().strftime("%d-%b-%Y-%H:%M:%S.%f")
+
+        args.mean_p = np.array([0.49868582, 0.11530433, 0.49752659])
+        args.std_p = np.array([0.06167904, 0.05326168, 0.06180995])
+        # args.mean_d = np.array([-1.62756886e-05, -1.10265409e-04, -1.71767924e-04])
+        # args.std_d = np.array([0.08455442, 0.07277832, 0.08571255])
+        args.mean_d = np.array([4.00109732e-04, 6.71352200e-05, -1.17460513e-04])
+        args.std_d = np.array([0.0166535, 0.01636565, 0.01657304])
+
     elif args.env == 'RigidFall':
         args.env_idx = 3
 
