@@ -792,7 +792,7 @@ class PhysicsFleXDataset(Dataset):
             max_n_rel = 0
             for t in range(st_idx, ed_idx):
                 # load data
-                if self.args.env == 'Pinch':
+                if self.args.env == 'Pinch' or self.args.env == 'Gripper':
                     data_path = os.path.join(self.data_dir, str(idx_rollout).zfill(3), str(t) + '.h5')
                 else:
                     data_path = os.path.join(self.data_dir, str(idx_rollout), str(t) + '.h5')
