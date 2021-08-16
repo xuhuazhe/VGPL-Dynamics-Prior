@@ -43,7 +43,7 @@ if args.eval_epoch < 0:
 else:
     model_name = 'net_epoch_%d_iter_%d.pth' % (args.eval_epoch, args.eval_iter)
 
-model_dir = 'statsfix_stdreg0.0'
+model_dir = 'emd_l1'
 model_path = os.path.join('dump/dump_Pinch/' + model_dir, model_name)    # args.outf
 print("Loading network from %s" % model_path)
 
@@ -90,7 +90,6 @@ for idx_episode in range(0, 50, 1): #range(len(infos)):
         if args.verbose_data:
             print("n_particle", n_particle)
             print("n_shape", n_shape)
-
         datas.append(data)
 
         p_gt.append(data[0])
@@ -100,7 +99,6 @@ for idx_episode in range(0, 50, 1): #range(len(infos)):
     p_gt = torch.FloatTensor(np.stack(p_gt))
     s_gt = torch.FloatTensor(np.stack(s_gt))
     p_pred = torch.zeros(args.time_step, n_particle + n_shape, args.state_dim)
-
     # initialize particle grouping
     group_gt = get_env_group(args, n_particle, scene_params, use_gpu=use_gpu)
 
@@ -151,7 +149,8 @@ for idx_episode in range(0, 50, 1): #range(len(infos)):
             Rr_cur = Rr_cur.unsqueeze(0)
             Rs_cur = Rs_cur.unsqueeze(0)
             state_cur = state_cur.unsqueeze(0)
-            cluster_onehot = cluster_onehot.unsqueeze(0)
+            if cluster_onehot:
+                cluster_onehot = cluster_onehot.unsqueeze(0)
 
             if args.stage in ['dy']:
                 inputs = [attr, state_cur, Rr_cur, Rs_cur, memory_init, group_gt, cluster_onehot]
@@ -388,7 +387,6 @@ for idx_episode in range(0, 50, 1): #range(len(infos)):
         print('p_pred', p_pred.shape)
         print('p_gt', p_gt.shape)
         print('s_gt', s_gt.shape)
-
         # create directory to save images if not exist
         vispy_dir = args.evalf + "/vispy"
         os.system('mkdir -p ' + vispy_dir)
@@ -408,11 +406,14 @@ for idx_episode in range(0, 50, 1): #range(len(infos)):
                 colors = convert_groups_to_colors(
                     group_gt, n_particle, args.n_instance,
                     instance_colors=instance_colors, env=args.env)
-
                 colors = np.clip(colors, 0., 1.)
                 # import pdb; pdb.set_trace()
-                new_p = np.delete(copy.copy(p_gt), -2, axis=1)
-                colors = np.concatenate([colors, np.array([[0,1,0,1]])])
+                if args.env == "Gripper":
+                    new_p = np.delete(copy.copy(p_gt), -3, axis=1)
+                    colors = np.concatenate([colors, np.array([[0, 1, 0, 1], [0, 1, 0, 1]])])
+                else:
+                    new_p = np.delete(copy.copy(p_gt), -2, axis=1)
+                    colors = np.concatenate([colors, np.array([[0,1,0,1]])])
                 # print('color shape!!!', colors.shape)
                 p1.set_data(new_p[t_actual], edge_color='black', face_color=colors)
                 # p1.set_data(p_gt[t_actual, :n_particle], edge_color='black', face_color=colors)
@@ -435,8 +436,14 @@ for idx_episode in range(0, 50, 1): #range(len(infos)):
 
                 colors = np.clip(colors, 0., 1.)
 
-                new_p = np.delete(copy.copy(p_pred), -2, axis=1)
-                colors = np.concatenate([colors, np.array([[0, 1, 0, 1]])])
+                if args.env == "Gripper":
+                    new_p = np.delete(copy.copy(p_pred), -3, axis=1)
+                    colors = np.concatenate([colors, np.array([[0, 1, 0, 1], [0, 1, 0, 1]])])
+                else:
+                    new_p = np.delete(copy.copy(p_pred), -2, axis=1)
+                    colors = np.concatenate([colors, np.array([[0,1,0,1]])])
+                # new_p = np.delete(copy.copy(p_pred), -2, axis=1)
+                # colors = np.concatenate([colors, np.array([[0, 1, 0, 1]])])
                 p1.set_data(new_p[t_actual], edge_color='black', face_color=colors)
                 # p1.set_data(p_pred[t_actual, :n_particle], edge_color='black', face_color=colors)
 

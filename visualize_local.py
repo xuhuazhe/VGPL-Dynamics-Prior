@@ -55,7 +55,7 @@ def load_data(data_names, path):
 
 
 task_name = "Gripper"
-rollout_dir = f"./data/data_{task_name}/"
+rollout_dir = f"./data/data_{task_name}_bak/"
 n_vid = 1
 n_frame = 49
 data_names = ['positions', 'shape_quats', 'scene_params']
