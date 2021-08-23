@@ -18,7 +18,7 @@ def axisEqual3D(ax):
         getattr(ax, 'set_{}lim'.format(dim))(ctr - r, ctr + r)
 
 
-def visualize_points(points):
+def visualize_points(points, n_particles):
     fig = plt.figure()
     ax = fig.add_subplot(111, projection='3d')
     # import pdb; pdb.set_trace()
@@ -34,11 +34,11 @@ def visualize_points(points):
         #         import pdb; pdb.set_trace()
         ax.scatter(points[-1, 0], points[-1, 1], points[-1, 2], c='b', s=200)
         ax.scatter(points[-2, 0], points[-2, 1], points[-2, 2], c='b', s=200)
-        ax.scatter(points[:80, 0], points[:80, 1], points[:80, 2], alpha=0.5, s=200)
+        ax.scatter(points[:n_particles, 0], points[:n_particles, 1], points[:n_particles, 2], alpha=0.5, s=100)
         ax.scatter(points[-3, 0], points[-3, 1], points[-3, 2], c='g', s=200)
     else:
         ax.scatter(points[-1, 0], points[-1, 1], points[-1, 2], c='b', s=200)
-        ax.scatter(points[:80, 0], points[:80, 1], points[:80, 2], alpha=0.5, s=200)
+        ax.scatter(points[:n_particles, 0], points[:n_particles, 1], points[:n_particles, 2], alpha=0.5, s=100)
         ax.scatter(points[-2, 0], points[-2, 1], points[-2, 2], c='g', s=200)
     axisEqual3D(ax)
 
@@ -55,7 +55,7 @@ def load_data(data_names, path):
 
 
 task_name = "Gripper"
-rollout_dir = f"./data/data_{task_name}_bak/"
+rollout_dir = f"./data/data_{task_name}_bak/fps/"
 n_vid = 1
 n_frame = 49
 data_names = ['positions', 'shape_quats', 'scene_params']
@@ -63,18 +63,20 @@ counts = 0
 counts_d = 0
 sum_p = np.zeros(3)
 sum_d = np.zeros(3)
-for i in range(15, 16):
-    for t in range(n_frame):
-        try:
-            print("visualizing")
-            if task_name == "Gripper":
-                frame_path = os.path.join(rollout_dir, str(t) + '.h5')
-            else:
-                frame_path = os.path.join(rollout_dir, 'train', str(i).zfill(3), str(t) + '.h5')
-            this_data = load_data(data_names, frame_path)
-            states = this_data[0]
-    #         print(states[:80])
-            states[:,[1, 2]] = states[:,[2, 1]]
-            visualize_points(states)
-        except:
-            pass
+start_frame = 0
+for i in range(1):
+    for t in range(start_frame, start_frame+n_frame):
+        print(f"visualizing {t}")
+        if task_name == "Gripper":
+            frame_path = os.path.join(rollout_dir, str(t) + '.h5')
+        else:
+            frame_path = os.path.join(rollout_dir, 'train', str(i).zfill(3), str(t) + '.h5')
+        this_data = load_data(data_names, frame_path)
+        states = this_data[0]
+        print(states.shape)
+        states[:,[1, 2]] = states[:,[2, 1]]
+#         states_n = states[:,[2, 1]]
+        visualize_points(states, 300)
+        # import pdb; pdb.set_trace()
+
+
