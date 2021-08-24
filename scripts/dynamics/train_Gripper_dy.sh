@@ -1,7 +1,7 @@
 CUDA_VISIBLE_DEVICES=0		\
 python train.py 		\
 	--env Gripper 		\
-	--stage dy		    \
+	--stage dy		\
 	--gen_data 0 		\
 	--gen_stat 0		\
 	--gen_vision 0		\
