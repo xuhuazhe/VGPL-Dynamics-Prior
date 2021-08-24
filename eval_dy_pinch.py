@@ -43,7 +43,7 @@ if args.eval_epoch < 0:
 else:
     model_name = 'net_epoch_%d_iter_%d.pth' % (args.eval_epoch, args.eval_iter)
 
-model_dir = 'emd_l1'
+model_dir = 'files_dy23-Aug-2021-19:53:32.817456_nHis4_aug0.05emd'
 model_path = os.path.join('dump/dump_Pinch/' + model_dir, model_name)    # args.outf
 print("Loading network from %s" % model_path)
 
@@ -66,9 +66,9 @@ if use_gpu:
     model = model.cuda()
 
 
-infos = np.arange(10)
+infos = np.arange(50)
 
-for idx_episode in range(0, 50, 1): #range(len(infos)):
+for idx_episode in range(40, 50, 1): #range(len(infos)):
 
     print("Rollout %d / %d" % (idx_episode, len(infos)))
 
@@ -85,6 +85,7 @@ for idx_episode in range(0, 50, 1): #range(len(infos)):
         data = load_data(data_names, data_path)
         if n_particle == 0 and n_shape == 0:
             n_particle, n_shape, scene_params = get_scene_info(data)
+            # import pdb; pdb.set_trace()
             scene_params = torch.FloatTensor(scene_params).unsqueeze(0)
 
         if args.verbose_data:
@@ -158,7 +159,6 @@ for idx_episode in range(0, 50, 1): #range(len(infos)):
             # pred_pos (unnormalized): B x n_p x state_dim
             # pred_motion_norm (normalized): B x n_p x state_dim
             pred_pos, pred_motion_norm, std_cluster = model.predict_dynamics(inputs)
-
 
             # concatenate the state of the shapes
             # pred_pos (unnormalized): B x (n_p + n_s) x state_dim
@@ -339,7 +339,7 @@ for idx_episode in range(0, 50, 1): #range(len(infos)):
             add_floor(view)
 
         if args.env == 'Gripper':
-            view.camera = vispy.scene.cameras.TurntableCamera(fov=50, azimuth=90, elevation=20, distance=2, up='+y')
+            view.camera = vispy.scene.cameras.TurntableCamera(fov=50, azimuth=90, elevation=50, distance=2, up='+y')
             # set instance colors
             instance_colors = create_instance_colors(args.n_instance)
 

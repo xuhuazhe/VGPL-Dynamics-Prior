@@ -359,10 +359,12 @@ def visualize_neighbors(anchors, queries, idx, neighbors, leaf=False):
     # shaded is all the particles
     # blue is the ball
     if not leaf:
-        ax.scatter(queries[-1, 0], queries[-1, 1], queries[-1, 2], c='b', s=80)
+        ax.scatter(queries[-1, 0], queries[-1, 2], queries[-1, 1], c='b', s=80)
+        ax.scatter(queries[-2, 0], queries[-2, 2], queries[-2, 1], c='b', s=80)
+        ax.scatter(queries[-3, 0], queries[-3, 2], queries[-3, 1], c='g', s=80)
     # ax.scatter(queries[idx, 0], queries[idx, 1], queries[idx, 2], c='g', s=80)
-    ax.scatter(anchors[neighbors, 0], anchors[neighbors, 1], anchors[neighbors, 2], c='r', s=80)
-    ax.scatter(anchors[:, 0], anchors[:, 1], anchors[:, 2], alpha=0.2)
+    ax.scatter(anchors[neighbors, 0], anchors[neighbors, 2], anchors[neighbors, 1], c='r', s=80)
+    ax.scatter(anchors[:, 0], anchors[:, 2], anchors[:, 1], alpha=0.2)
     axisEqual3D(ax)
 
     plt.show()
@@ -574,8 +576,8 @@ def prepare_input(positions, n_particle, n_shape, args, var=False, stdreg=0):
         disp1 = np.sqrt(np.sum((pos[:n_particle] - pos[n_particle + 1]) ** 2,
                               1))  # np.sqrt(np.sum((pos[:n_particle, :] - pos[n_particle+1, :])**2, axis=1))
         nodes1 = np.nonzero(disp1 < (args.neighbor_radius + 0.025))[0]
-        # print('visualize prim neighbors')
-        # visualize_neighbors(pos, pos, 0, nodes)
+        print('visualize prim1 neighbors')
+        visualize_neighbors(pos, pos, 0, nodes1)
         # print(np.sort(dis)[:10])
         prim1 = np.ones(nodes1.shape[0], dtype=np.int) * (n_particle + 1)
         rels += [np.stack([nodes1, prim1], axis=1)]

@@ -86,7 +86,6 @@ class DynamicsPredictor(nn.Module):
         nf_particle = args.nf_particle
         nf_relation = args.nf_relation
         nf_effect = args.nf_effect
-
         self.nf_effect = nf_effect
 
         self.use_gpu = use_gpu
