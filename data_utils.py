@@ -573,18 +573,22 @@ def prepare_input(positions, n_particle, n_shape, args, var=False, stdreg=0):
         rels += [np.stack([nodes, floor], axis=1)]
 
         # to primitive
-        disp1 = np.sqrt(np.sum((pos[:n_particle] - pos[n_particle + 1]) ** 2,
-                              1))  # np.sqrt(np.sum((pos[:n_particle, :] - pos[n_particle+1, :])**2, axis=1))
-        nodes1 = np.nonzero(disp1 < (args.neighbor_radius + 0.025))[0]
-        print('visualize prim1 neighbors')
-        visualize_neighbors(pos, pos, 0, nodes1)
+        disp1 = np.sqrt(np.sum((pos[:n_particle, [0,2]] - pos[n_particle + 1, [0,2]]) ** 2, 1))
+        # np.sqrt(np.sum((pos[:n_particle] - pos[n_particle + 1]) ** 2,1))
+        # np.sqrt(np.sum((pos[:n_particle, :] - pos[n_particle+1, :])**2, axis=1))
+        nodes1 = np.nonzero(disp1 < (args.neighbor_radius + 0.015))[0]
+        # print('visualize prim1 neighbors')
+
+        # print(args.neighbor_radius); import pdb; pdb.set_trace()
+        # visualize_neighbors(pos, pos, 0, nodes1)
         # print(np.sort(dis)[:10])
         prim1 = np.ones(nodes1.shape[0], dtype=np.int) * (n_particle + 1)
         rels += [np.stack([nodes1, prim1], axis=1)]
 
-        disp2 = np.sqrt(np.sum((pos[:n_particle] - pos[n_particle + 2]) ** 2,
-                              1))  # np.sqrt(np.sum((pos[:n_particle, :] - pos[n_particle+1, :])**2, axis=1))
-        nodes2 = np.nonzero(disp2 < (args.neighbor_radius + 0.025))[0]
+        disp2 = np.sqrt(np.sum((pos[:n_particle, [0,2]] - pos[n_particle + 2, [0,2]]) ** 2, 1))
+        # disp2 = np.sqrt(np.sum((pos[:n_particle] - pos[n_particle + 2]) ** 2, 1))
+        # np.sqrt(np.sum((pos[:n_particle, :] - pos[n_particle+1, :])**2, axis=1))
+        nodes2 = np.nonzero(disp2 < (args.neighbor_radius + 0.015))[0]
         # print('visualize prim neighbors')
         # visualize_neighbors(pos, pos, 0, nodes)
         # print(np.sort(dis)[:10])

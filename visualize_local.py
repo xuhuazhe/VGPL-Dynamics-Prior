@@ -44,6 +44,25 @@ def visualize_points(points, n_particles):
 
     plt.show()
 
+def visualize_neighbors(anchors, queries, neighbors, leaf=False):
+    fig = plt.figure()
+    ax = fig.add_subplot(111, projection='3d')
+    # import pdb; pdb.set_trace()
+    # green is the first thing in positions
+    # red is all the neighbors
+    # shaded is all the particles
+    # blue is the ball
+    if not leaf:
+        ax.scatter(queries[-1, 0], queries[-1, 2], queries[-1, 1], c='b', s=80)
+        ax.scatter(queries[-2, 0], queries[-2, 2], queries[-2, 1], c='b', s=80)
+        ax.scatter(queries[-3, 0], queries[-3, 2], queries[-3, 1], c='g', s=80)
+    # ax.scatter(queries[idx, 0], queries[idx, 1], queries[idx, 2], c='g', s=80)
+    ax.scatter(anchors[neighbors, 0], anchors[neighbors, 2], anchors[neighbors, 1], c='r', s=80)
+    ax.scatter(anchors[:, 0], anchors[:, 2], anchors[:, 1], alpha=0.2)
+    axisEqual3D(ax)
+
+    plt.show()
+
 def load_data(data_names, path):
     hf = h5py.File(path, 'r')
     data = []
@@ -55,7 +74,7 @@ def load_data(data_names, path):
 
 
 task_name = "Gripper"
-rollout_dir = f"./data/data_{task_name}_bak/fps/"
+rollout_dir = f"./data/data_{task_name}/train/"
 n_vid = 1
 n_frame = 49
 data_names = ['positions', 'shape_quats', 'scene_params']
@@ -64,19 +83,29 @@ counts_d = 0
 sum_p = np.zeros(3)
 sum_d = np.zeros(3)
 start_frame = 0
+visualize_neighbors_flag = True
+visualize_points_flag = False
+n_particle = 300
+neighbor_radius = 0.05
+
 for i in range(1):
     for t in range(start_frame, start_frame+n_frame):
         print(f"visualizing {t}")
         if task_name == "Gripper":
-            frame_path = os.path.join(rollout_dir, str(t) + '.h5')
+            frame_path = os.path.join(rollout_dir, str(i).zfill(3), str(t) + '.h5')
         else:
             frame_path = os.path.join(rollout_dir, 'train', str(i).zfill(3), str(t) + '.h5')
         this_data = load_data(data_names, frame_path)
         states = this_data[0]
         print(states.shape)
         states[:,[1, 2]] = states[:,[2, 1]]
-#         states_n = states[:,[2, 1]]
-        visualize_points(states, 300)
-        # import pdb; pdb.set_trace()
-
+        if visualize_points_flag:
+            visualize_points(states, 300)
+        if visualize_neighbors_flag:
+            states[:, [1, 2]] = states[:, [2, 1]]
+            # disp1 = np.sqrt(np.sum((states[:n_particle] - states[n_particle + 1]) ** 2, 1))
+            disp1 = np.sqrt(np.sum((states[:n_particle, [0,2]] - states[n_particle + 1, [0,2]]) ** 2, 1))   # make it column
+            nodes1 = np.nonzero(disp1 < (neighbor_radius + 0.015))[0]
+            print('visualize prim1 neighbors')
+            visualize_neighbors(states, states, nodes1)
 
