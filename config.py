@@ -268,7 +268,7 @@ def gen_args():
         args.evalf += '_aug%.2f' % args.augment_ratio
 
     args.outf += args.losstype
-
+    args.outf += f'_seqlen{args.sequence_length}'
 
     # evaluation checkpoints
     if args.stage in ['dy']:

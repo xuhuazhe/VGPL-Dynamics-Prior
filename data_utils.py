@@ -582,6 +582,7 @@ def prepare_input(positions, n_particle, n_shape, args, var=False, stdreg=0):
         # print(args.neighbor_radius); import pdb; pdb.set_trace()
         # visualize_neighbors(pos, pos, 0, nodes1)
         # print(np.sort(dis)[:10])
+        # print(np.sort(dis)[:10])
         prim1 = np.ones(nodes1.shape[0], dtype=np.int) * (n_particle + 1)
         rels += [np.stack([nodes1, prim1], axis=1)]
 

@@ -43,7 +43,7 @@ if args.eval_epoch < 0:
 else:
     model_name = 'net_epoch_%d_iter_%d.pth' % (args.eval_epoch, args.eval_iter)
 
-model_dir = 'files_dy23-Aug-2021-19:53:32.817456_nHis4_aug0.05emd'
+model_dir = 'gripper_nb'
 model_path = os.path.join('dump/dump_Pinch/' + model_dir, model_name)    # args.outf
 print("Loading network from %s" % model_path)
 
@@ -68,7 +68,7 @@ if use_gpu:
 
 infos = np.arange(50)
 
-for idx_episode in range(40, 50, 1): #range(len(infos)):
+for idx_episode in range(0, 50, 1): #range(len(infos)):
 
     print("Rollout %d / %d" % (idx_episode, len(infos)))
 
