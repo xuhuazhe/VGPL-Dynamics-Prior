@@ -13,14 +13,14 @@ python train.py 		\
 	--optimizer Adam	\
 	--batch_size 4		\
 	--n_his 4		\
-	--sequence_length 5	\
+	--sequence_length $2	\
 	--augment 0.05		\
 	--verbose_data 0 	\
 	--verbose_model 0	\
 	--log_per_iter 100	\
 	--ckp_per_iter 5000	\
 	--eval 0            \
-	--losstype emd   \
+	--losstype $1      \
 	--stdreg  0         \
 	--matched_motion 0  \
 	--matched_motion_weight 0.0
