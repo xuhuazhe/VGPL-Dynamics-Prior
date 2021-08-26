@@ -13,14 +13,5 @@ export PYTHONPATH="/viscam/u/hxu/projects/deformable/baselines:/viscam/u/hxu/pro
 cd /viscam/u/hxu/projects/deformable/VGPL-Dynamics-Prior
 export LD_LIBRARY_PATH="/sailhome/hxu/my_lib/:$LD_LIBRARY_PATH"
 
-declare -a arr=("emd")
-declare -a arr2=("10" "15" "20")
-for i in "${arr[@]}"
-do
-    for j in "${arr2[@]}"
-    do
-        echo "$i"
-	echo "$j"
-        bash scripts/dynamics/train_Gripper_dy.sh $i $j
-    done
-done
+
+bash scripts/dynamics/train_Gripper_dy.sh $1 $2
