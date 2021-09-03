@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-python eval_dy_pinch.py 		\
+python control.py 		\
 	--env Gripper 		\
 	--stage dy 		\
 	--eval_epoch 517    \
@@ -8,5 +8,4 @@ python eval_dy_pinch.py 		\
 	--verbose_data 0	\
 	--sequence_length 49	\
 	--n_his 4		\
-	--augment 0.05		\
-	--vispy 1
+	--augment 0.05

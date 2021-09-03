@@ -5,7 +5,7 @@ python train.py 		\
 	--gen_data 0 		\
 	--gen_stat 0		\
 	--gen_vision 0		\
-	--num_workers 10 	\
+	--num_workers 1 	\
 	--resume 0		\
 	--resume_epoch 0	\
 	--resume_iter 0		\
@@ -23,4 +23,5 @@ python train.py 		\
 	--losstype $1      \
 	--stdreg  0         \
 	--matched_motion 0  \
-	--matched_motion_weight 0.0
+	--matched_motion_weight 0.0 \
+	--uh_weight 0.15

@@ -43,7 +43,7 @@ if args.eval_epoch < 0:
 else:
     model_name = 'net_epoch_%d_iter_%d.pth' % (args.eval_epoch, args.eval_iter)
 
-model_dir = 'gripper_nb'
+model_dir = 'gripper_seqlen20'
 model_path = os.path.join('dump/dump_Pinch/' + model_dir, model_name)    # args.outf
 print("Loading network from %s" % model_path)
 
@@ -133,7 +133,6 @@ for idx_episode in range(0, 50, 1): #range(len(infos)):
             # Rr_cur, Rs_cur: n_rel x (n_p + n_s)
             # state_cur (unnormalized): n_his x (n_p + n_s) x state_dim
             attr, _, Rr_cur, Rs_cur, cluster_onehot = prepare_input(state_cur[-1].cpu().numpy(), n_particle, n_shape, args, stdreg=args.stdreg)
-
             if use_gpu:
                 attr = attr.cuda()
                 Rr_cur = Rr_cur.cuda()
@@ -155,7 +154,6 @@ for idx_episode in range(0, 50, 1): #range(len(infos)):
 
             if args.stage in ['dy']:
                 inputs = [attr, state_cur, Rr_cur, Rs_cur, memory_init, group_gt, cluster_onehot]
-
             # pred_pos (unnormalized): B x n_p x state_dim
             # pred_motion_norm (normalized): B x n_p x state_dim
             pred_pos, pred_motion_norm, std_cluster = model.predict_dynamics(inputs)

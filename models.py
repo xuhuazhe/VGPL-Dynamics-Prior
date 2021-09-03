@@ -157,7 +157,6 @@ class DynamicsPredictor(nn.Module):
         # cluster: num_of_particles (N) x num_of_clusters (k)
         attrs, state, Rr_cur, Rs_cur, memory, group, cluster = inputs
         p_rigid, p_instance, physics_param = group
-
         # Rr_cur_t, Rs_cur_t: B x N x n_rel
         Rr_cur_t = Rr_cur.transpose(1, 2).contiguous()
         Rs_cur_t = Rs_cur.transpose(1, 2).contiguous()
@@ -420,6 +419,27 @@ class ChamferLoss(torch.nn.Module):
         # pred: [B, N, D]
         # label: [B, M, D]
         return self.chamfer_distance(pred, label)
+
+
+class UpdatedHausdorffLoss(torch.nn.Module):
+    def __init__(self):
+        super(UpdatedHausdorffLoss, self).__init__()
+
+    def hausdorff_distance(self, x, y):
+        # x: [B, N, D]
+        # y: [B, M, D]
+        x = x[:, :, None, :].repeat(1, 1, y.size(1), 1) # x: [B, N, M, D]
+        y = y[:, None, :, :].repeat(1, x.size(1), 1, 1) # y: [B, N, M, D]
+        dis = torch.norm(torch.add(x, -y), 2, dim=3)    # dis: [B, N, M]
+        dis_xy = torch.max(torch.min(dis, dim=2)[0])   # dis_xy: mean over N
+        dis_yx = torch.max(torch.min(dis, dim=1)[0])   # dis_yx: mean over M
+
+        return dis_xy + dis_yx
+
+    def __call__(self, pred, label):
+        # pred: [B, N, D]
+        # label: [B, M, D]
+        return self.hausdorff_distance(pred, label)
 
 class HausdorfLoss(torch.nn.Module):
     def __init__(self):

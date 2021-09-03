@@ -17,7 +17,7 @@ from torch.utils.data import DataLoader
 from config import gen_args
 from data_utils import PhysicsFleXDataset
 from data_utils import prepare_input, get_scene_info, get_env_group
-from models import Model, ChamferLoss, HausdorfLoss, EarthMoverLoss
+from models import Model, ChamferLoss, HausdorfLoss, EarthMoverLoss, UpdatedHausdorffLoss
 from utils import make_graph, check_gradient, set_seed, AverageMeter, get_lr, Tee
 from utils import count_parameters, my_collate, matched_motion
 
@@ -103,6 +103,7 @@ scheduler = ReduceLROnPlateau(optimizer, 'min', factor=0.8, patience=3, verbose=
 particle_dist_loss = ChamferLoss()   #torch.nn.L1Loss()
 h_loss = HausdorfLoss()
 emd_loss = EarthMoverLoss()
+uh_loss = UpdatedHausdorffLoss()
 if use_gpu:
     model = model.cuda()
 
@@ -205,6 +206,11 @@ for epoch in range(st_epoch, args.n_epoch):
                         loss = particle_dist_loss(pred_pos, gt_pos) + h_loss(pred_pos, gt_pos)
                     elif args.losstype == 'l1':
                         loss = F.l1_loss(pred_motion_norm[:, :n_particle], gt_motion_norm[:, :n_particle])
+                    elif args.losstype == 'emd_uh':
+                        loss_emd = emd_loss(pred_pos, gt_pos)
+                        loss_uh = uh_loss(pred_pos, gt_pos)
+                        print(loss_emd, loss_uh)
+                        loss = loss_emd + args.uh_weight * loss_uh
                     elif args.losstype == 'emd_l1':
                         loss_emd = emd_loss(pred_pos, gt_pos)
                         loss_motion = F.l1_loss(pred_motion_norm[:, :n_particle], gt_motion_norm[:, :n_particle])

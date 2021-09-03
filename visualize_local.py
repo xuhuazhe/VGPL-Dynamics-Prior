@@ -82,9 +82,9 @@ counts = 0
 counts_d = 0
 sum_p = np.zeros(3)
 sum_d = np.zeros(3)
-start_frame = 0
-visualize_neighbors_flag = True
-visualize_points_flag = False
+start_frame = 40
+visualize_neighbors_flag = False
+visualize_points_flag = True
 n_particle = 300
 neighbor_radius = 0.05
 
