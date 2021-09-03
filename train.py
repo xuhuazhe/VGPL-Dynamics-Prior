@@ -209,7 +209,7 @@ for epoch in range(st_epoch, args.n_epoch):
                     elif args.losstype == 'emd_uh':
                         loss_emd = emd_loss(pred_pos, gt_pos)
                         loss_uh = uh_loss(pred_pos, gt_pos)
-                        print(loss_emd, loss_uh)
+                        # print(loss_emd, loss_uh)
                         loss = loss_emd + args.uh_weight * loss_uh
                     elif args.losstype == 'emd_l1':
                         loss_emd = emd_loss(pred_pos, gt_pos)
