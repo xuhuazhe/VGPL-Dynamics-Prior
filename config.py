@@ -270,6 +270,8 @@ def gen_args():
 
     args.outf += args.losstype
     args.outf += f'_seqlen{args.sequence_length}'
+    args.outf += f'_uhw{args.uh_weight}'
+
 
     # evaluation checkpoints
     if args.stage in ['dy']:
