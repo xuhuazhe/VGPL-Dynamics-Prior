@@ -441,6 +441,21 @@ class UpdatedHausdorffLoss(torch.nn.Module):
         # label: [B, M, D]
         return self.hausdorff_distance(pred, label)
 
+class ClipLoss(torch.nn.Module):
+    def __init__(self):
+        super(ClipLoss, self).__init__()
+
+    def clip_loss(self, x, y):
+        x = x[:, :, None, :].repeat(1, 1, y.size(1), 1)  # x: [B, N, M, D]
+        y = y[:, None, :, :].repeat(1, x.size(1), 1, 1)  # y: [B, N, M, D]
+        dis = torch.norm(torch.add(x, -y), 2, dim=3)  # dis: [B, N, M]
+
+        dxy = torch.min(torch.topk(dis, k=2, dim=2, largest=False)[0][:, :, 1])  # dxy [B, M, 1]
+        return dxy
+
+    def __call__(self, array1, array2):
+        return self.clip_loss(array1, array2)
+
 class HausdorfLoss(torch.nn.Module):
     def __init__(self):
         super(HausdorfLoss, self).__init__()
@@ -494,6 +509,8 @@ class EarthMoverLoss(torch.nn.Module):
         # pred: [B, N, D]
         # label: [B, M, D]
         return self.em_distance(pred, label)
+
+
 
 if __name__ == "__main__":
     x = torch.tensor(np.array([[[1.,2.,3.],[4.,5.,6.]]]), requires_grad=True)

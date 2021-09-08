@@ -17,7 +17,7 @@ from torch.utils.data import DataLoader
 from config import gen_args
 from data_utils import PhysicsFleXDataset
 from data_utils import prepare_input, get_scene_info, get_env_group
-from models import Model, ChamferLoss, HausdorfLoss, EarthMoverLoss, UpdatedHausdorffLoss
+from models import Model, ChamferLoss, HausdorfLoss, EarthMoverLoss, UpdatedHausdorffLoss, ClipLoss
 from utils import make_graph, check_gradient, set_seed, AverageMeter, get_lr, Tee
 from utils import count_parameters, my_collate, matched_motion
 
@@ -104,6 +104,7 @@ particle_dist_loss = ChamferLoss()   #torch.nn.L1Loss()
 h_loss = HausdorfLoss()
 emd_loss = EarthMoverLoss()
 uh_loss = UpdatedHausdorffLoss()
+clip_loss = ClipLoss()
 if use_gpu:
     model = model.cuda()
 
@@ -217,6 +218,12 @@ for epoch in range(st_epoch, args.n_epoch):
                         # print('emd:', loss_emd.item())
                         # print('l1:', args.matched_motion_weight * loss_motion.item())
                         loss = loss_emd + args.matched_motion_weight * loss_motion
+                    elif args.losstype == 'emd_uh_clip':
+                        loss_emd = emd_loss(pred_pos, gt_pos)
+                        loss_uh = uh_loss(pred_pos, gt_pos)
+                        loss_clip = clip_loss(pred_pos, pred_pos) # self dist
+                        print(loss_emd.item(), loss_uh.item(), loss_clip.item())
+                        loss = loss_emd + args.uh_weight * loss_uh + args.clip_weight * loss_clip
                     else:
                         raise NotImplementedError
 

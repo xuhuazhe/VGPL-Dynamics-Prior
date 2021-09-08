@@ -27,6 +27,8 @@ parser.add_argument('--stdreg_weight', type=float, default=0.0)
 parser.add_argument('--matched_motion', type=int, default=0)
 parser.add_argument('--matched_motion_weight', type=float, default=0.0)
 parser.add_argument('--uh_weight', type=float, default=0.0)
+parser.add_argument('--clip_weight', type=float, default=0.0)
+
 
 parser.add_argument('--outf', default='files')
 parser.add_argument('--evalf', default='eval')
@@ -271,6 +273,7 @@ def gen_args():
     args.outf += args.losstype
     args.outf += f'_seqlen{args.sequence_length}'
     args.outf += f'_uhw{args.uh_weight}'
+    args.outf += f'_clipw{args.clip_weight}'
 
 
     # evaluation checkpoints
