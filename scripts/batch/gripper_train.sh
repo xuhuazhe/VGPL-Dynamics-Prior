@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 #SBATCH --job-name=VGPL-Gripper
 #SBATCH --partition=viscam
-#SBATCH --nodelist=viscam2
+#SBATCH --nodelist=viscam1
 #SBATCH --gres=gpu:1
 #SBATCH --mem=20G
 #SBATCH --output=/sailhome/hxu/VGPL/%A.out
@@ -14,4 +14,4 @@ cd /viscam/u/hxu/projects/deformable/VGPL-Dynamics-Prior
 export LD_LIBRARY_PATH="/sailhome/hxu/my_lib/:$LD_LIBRARY_PATH"
 
 
-bash scripts/dynamics/train_Gripper_dy.sh $1 $2 $3
+bash scripts/dynamics/train_Gripper_dy.sh $1 $2 $3 $4
