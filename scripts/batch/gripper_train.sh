@@ -6,7 +6,7 @@
 #SBATCH --mem=20G
 #SBATCH --output=/sailhome/hxu/VGPL/%A.out
 #SBATCH --time=1-00:00:00
-#SBATCH --cpus-per-task=20
+#SBATCH --cpus-per-task=10
 source ~/.bashrc
 conda activate deformable
 export PYTHONPATH="/viscam/u/hxu/projects/deformable/baselines:/viscam/u/hxu/projects/deformable/PlasticineLab"
