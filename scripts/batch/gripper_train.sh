@@ -14,4 +14,4 @@ cd /viscam/u/hxu/projects/deformable/VGPL-Dynamics-Prior
 export LD_LIBRARY_PATH="/sailhome/hxu/my_lib/:$LD_LIBRARY_PATH"
 
 
-bash scripts/dynamics/train_Gripper_dy.sh $1 $2
+bash scripts/dynamics/train_Gripper_dy.sh $1 $2 $3

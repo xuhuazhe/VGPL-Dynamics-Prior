@@ -24,4 +24,4 @@ python train.py 		\
 	--stdreg  0         \
 	--matched_motion 0  \
 	--matched_motion_weight 0.0 \
-	--uh_weight 0.15
+	--uh_weight $3

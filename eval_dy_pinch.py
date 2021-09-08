@@ -14,8 +14,9 @@ from config import gen_args
 from data_utils import load_data, get_scene_info, normalize_scene_param
 from data_utils import get_env_group, prepare_input, denormalize
 from models import Model
-from utils import add_log, convert_groups_to_colors
+from utils import add_log, convert_groups_to_colors, plot_curves
 from utils import create_instance_colors, set_seed, Tee, count_parameters
+from models import EarthMoverLoss, UpdatedHausdorffLoss
 
 import matplotlib.pyplot as plt
 
@@ -67,9 +68,10 @@ if use_gpu:
 
 
 infos = np.arange(50)
-
+emd_loss = EarthMoverLoss()
+uh_loss = UpdatedHausdorffLoss()
 for idx_episode in range(0, 50, 1): #range(len(infos)):
-
+    emd_list = []
     print("Rollout %d / %d" % (idx_episode, len(infos)))
 
     B = 1
@@ -176,11 +178,13 @@ for idx_episode in range(0, 50, 1): #range(len(infos)):
 
             loss_cur = F.l1_loss(pred_motion_norm[:, :n_particle], gt_motion_norm[:, :n_particle])
             loss_cur_raw = F.l1_loss(pred_pos, gt_pos)
+            loss_emd = emd_loss(pred_pos, gt_pos)
+            loss_uh = uh_loss(pred_pos, gt_pos)
 
             loss += loss_cur
             loss_raw += loss_cur_raw
             loss_counter += 1
-
+            emd_list.append((step_id, loss_emd.item(), loss_uh.item()))
             # state_cur (unnormalized): B x n_his x (n_p + n_s) x state_dim
             state_cur = torch.cat([state_cur[:, 1:], pred_pos.unsqueeze(1)], 1)
             state_cur = state_cur.detach()[0]
@@ -196,7 +200,8 @@ for idx_episode in range(0, 50, 1): #range(len(infos)):
     loss_raw /= loss_counter
     print("loss: %.6f, loss_raw: %.10f" % (loss.item(), loss_raw.item()))
 
-
+    plot_curves(emd_list)
+    # import pdb; pdb.set_trace()
     '''
     visualization
     '''
