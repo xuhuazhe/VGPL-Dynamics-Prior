@@ -14,6 +14,25 @@ import scipy
 from scipy import optimize
 
 
+def plot_curves(loss_list, mode='eval'):
+    iters, loss_emd, loss_uh = map(list, zip(*loss_list))
+    plt.figure(figsize=[16, 9])
+    plt.plot(iters, loss_emd, linewidth=6, label='EMD')
+    plt.plot(iters, loss_uh, linewidth=6, color='r', label='Hausdorff')
+    plt.xlabel('iterations', fontsize=30)
+    plt.ylabel('emd loss', fontsize=30)
+    if mode == 'eval':
+        plt.title('Test Loss', fontsize=35)
+    else:
+        plt.title('Train Loss', fontsize=35)
+    plt.legend(fontsize=30)
+    plt.xticks(fontsize=25)
+    plt.yticks(fontsize=25)
+    plt.show()
+
+    # plt.plot(loss)
+
+
 def em_distance(self, x, y):
     x_ = x[:, :, None, :].repeat(1, 1, y.size(1), 1)  # x: [B, N, M, D]
     y_ = y[:, None, :, :].repeat(1, x.size(1), 1, 1)  # y: [B, N, M, D]
