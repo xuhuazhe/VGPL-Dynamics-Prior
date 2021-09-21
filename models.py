@@ -168,14 +168,13 @@ class DynamicsPredictor(nn.Module):
 
         n_his = args.n_his
         state_dim = args.state_dim
-
         # state_norm (normalized): B x n_his x N x state_dim
         # [0, n_his - 1): state_residual
         # [n_his - 1, n_his): the current position
         state_res_norm = (state[:, 1:] - state[:, :-1] - mean_d) / std_d
+        state_res_norm[:, :, :301, :] = 0
         state_cur_norm = (state[:, -1:] - mean_p) / std_p
         state_norm = torch.cat([state_res_norm, state_cur_norm], 1)
-
         # state_norm_t (normalized): B x N x (n_his * state_dim)
         state_norm_t = state_norm.transpose(1, 2).contiguous().view(B, N, n_his * state_dim)
 
