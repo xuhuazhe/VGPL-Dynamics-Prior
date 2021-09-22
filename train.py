@@ -164,91 +164,111 @@ for epoch in range(st_epoch, args.n_epoch):
                 # memory: B x mem_nlayer x (n_particle + n_shape) x nf_memory
                 # for now, only used as a placeholder
                 memory_init = model.init_memory(B, n_particle + n_shape)
+                loss = 0
+                for j in range(args.sequence_length - args.n_his):
+                    with torch.set_grad_enabled(phase == 'train'):
+                        # state_cur (unnormalized): B x n_his x (n_p + n_s) x state_dim
+                        if j == 0:
+                            state_cur = particles[:, :args.n_his]
+                            # Rrs_cur, Rss_cur: B x n_rel x (n_p + n_s)
+                            Rr_cur = Rrs[:, args.n_his - 1]
+                            Rs_cur = Rss[:, args.n_his - 1]
+                        else:
+                            Rr_cur = []
+                            Rs_cur = []
+                            max_n_rel = 0
+                            for k in range(args.batch_size):
+                                _, _, Rr_cur_k, Rs_cur_k, _ = prepare_input(pred_pos[k].detach().cpu().numpy(), n_particle, n_shape, args, stdreg=args.stdreg)
+                                Rr_cur.append(Rr_cur_k)
+                                Rs_cur.append(Rs_cur_k)
+                                max_n_rel = max(max_n_rel, Rr_cur_k.size(0))
+                            for w in range(args.batch_size):
+                                Rr_cur_k, Rs_cur_k = Rr_cur[w], Rs_cur[w]
+                                Rr_cur_k = torch.cat([Rr_cur_k, torch.zeros(max_n_rel - Rr_cur_k.size(0), n_particle + n_shape)], 0)
+                                Rs_cur_k = torch.cat([Rs_cur_k, torch.zeros(max_n_rel - Rs_cur_k.size(0), n_particle + n_shape)], 0)
+                                Rr_cur[w], Rs_cur[w] = Rr_cur_k, Rs_cur_k
+                            Rr_cur = torch.FloatTensor(np.stack(Rr_cur))
+                            Rs_cur = torch.FloatTensor(np.stack(Rs_cur))
+                            state_cur = torch.cat([state_cur[:,-3:], pred_pos.unsqueeze(1)], dim=1)
 
-                with torch.set_grad_enabled(phase == 'train'):
-                    # state_cur (unnormalized): B x n_his x (n_p + n_s) x state_dim
-                    state_cur = particles[:, :args.n_his]
 
-                    # Rrs_cur, Rss_cur: B x n_rel x (n_p + n_s)
-                    Rr_cur = Rrs[:, args.n_his - 1]
-                    Rs_cur = Rss[:, args.n_his - 1]
-                    if cluster_onehots is not None:
-                        cluster_onehot = cluster_onehots[:, args.n_his - 1]
-                    else:
-                        cluster_onehot = None
-                    # predict the velocity at the next time step
-                    inputs = [attrs, state_cur, Rr_cur, Rs_cur, memory_init, groups_gt, cluster_onehot]
+                        if cluster_onehots is not None:
+                            cluster_onehot = cluster_onehots[:, args.n_his - 1]
+                        else:
+                            cluster_onehot = None
+                        # predict the velocity at the next time step
+                        inputs = [attrs, state_cur, Rr_cur, Rs_cur, memory_init, groups_gt, cluster_onehot]
 
-                    # pred_pos (unnormalized): B x n_p x state_dim
-                    # pred_motion_norm (normalized): B x n_p x state_dim
-                    pred_pos, pred_motion_norm, std_cluster = model.predict_dynamics(inputs)
+                        # pred_pos (unnormalized): B x n_p x state_dim
+                        # pred_motion_norm (normalized): B x n_p x state_dim
+                        pred_pos, pred_motion_norm, std_cluster = model.predict_dynamics(inputs)
 
-                    # concatenate the state of the shapes
-                    # pred_pos (unnormalized): B x (n_p + n_s) x state_dim
-                    gt_pos = particles[:, args.n_his]
-                    pred_pos = torch.cat([pred_pos, gt_pos[:, n_particle:]], 1)
+                        # concatenate the state of the shapes
+                        # pred_pos (unnormalized): B x (n_p + n_s) x state_dim
+                        gt_pos = particles[:, args.n_his]
+                        pred_pos = torch.cat([pred_pos, gt_pos[:, n_particle:]], 1)
 
-                    # gt_motion_norm (normalized): B x (n_p + n_s) x state_dim
-                    # pred_motion_norm (normalized): B x (n_p + n_s) x state_dim
-                    # gt_motion_norm should match then calculate if matched_motion enabled
-                    if args.matched_motion:
-                        gt_motion = matched_motion(particles[:, args.n_his], particles[:, args.n_his - 1], n_particles=n_particle)
-                    else:
-                        gt_motion = particles[:, args.n_his] - particles[:, args.n_his - 1]
+                        # gt_motion_norm (normalized): B x (n_p + n_s) x state_dim
+                        # pred_motion_norm (normalized): B x (n_p + n_s) x state_dim
+                        # gt_motion_norm should match then calculate if matched_motion enabled
+                        if args.matched_motion:
+                            gt_motion = matched_motion(particles[:, args.n_his], particles[:, args.n_his - 1], n_particles=n_particle)
+                        else:
+                            gt_motion = particles[:, args.n_his] - particles[:, args.n_his - 1]
 
-                    mean_d, std_d = model.stat[2:]
-                    gt_motion_norm = (gt_motion - mean_d) / std_d
-                    pred_motion_norm = torch.cat([pred_motion_norm, gt_motion_norm[:, n_particle:]], 1)
-                    if args.losstype == 'emd':
-                        loss = emd_loss(pred_pos, gt_pos)  #particle_dist_loss(pred_pos, gt_pos) + h_loss(pred_pos, gt_pos) #F.l1_loss(pred_motion_norm[:, :n_particle], gt_motion_norm[:, :n_particle])
-                    elif args.losstype == 'chamfer':
-                        loss = particle_dist_loss(pred_pos, gt_pos)
-                    elif args.losstype == 'hausdorff':
-                        loss = particle_dist_loss(pred_pos, gt_pos) + h_loss(pred_pos, gt_pos)
-                    elif args.losstype == 'l1':
-                        loss = F.l1_loss(pred_motion_norm[:, :n_particle], gt_motion_norm[:, :n_particle])
-                    elif args.losstype == 'emd_uh':
-                        loss_emd = emd_loss(pred_pos, gt_pos)
-                        loss_uh = uh_loss(pred_pos, gt_pos)
-                        # print(loss_emd, loss_uh)
-                        loss = loss_emd + args.uh_weight * loss_uh
-                    elif args.losstype == 'emd_l1':
-                        loss_emd = emd_loss(pred_pos, gt_pos)
-                        loss_motion = F.l1_loss(pred_motion_norm[:, :n_particle], gt_motion_norm[:, :n_particle])
-                        # print('emd:', loss_emd.item())
-                        # print('l1:', args.matched_motion_weight * loss_motion.item())
-                        loss = loss_emd + args.matched_motion_weight * loss_motion
-                    elif args.losstype == 'emd_uh_clip':
-                        loss_emd = emd_loss(pred_pos, gt_pos)
-                        loss_uh = uh_loss(pred_pos, gt_pos)
-                        loss_clip = clip_loss(pred_pos, pred_pos) # self dist
-                        print(loss_emd.item(), loss_uh.item(), loss_clip.item())
-                        loss = loss_emd + args.uh_weight * loss_uh + args.clip_weight * loss_clip
-                    else:
-                        raise NotImplementedError
+                        mean_d, std_d = model.stat[2:]
+                        gt_motion_norm = (gt_motion - mean_d) / std_d
+                        pred_motion_norm = torch.cat([pred_motion_norm, gt_motion_norm[:, n_particle:]], 1)
+                        if args.losstype == 'emd':
+                            loss += emd_loss(pred_pos, gt_pos)  #particle_dist_loss(pred_pos, gt_pos) + h_loss(pred_pos, gt_pos) #F.l1_loss(pred_motion_norm[:, :n_particle], gt_motion_norm[:, :n_particle])
+                        elif args.losstype == 'chamfer':
+                            loss += particle_dist_loss(pred_pos, gt_pos)
+                        elif args.losstype == 'hausdorff':
+                            loss += particle_dist_loss(pred_pos, gt_pos) + h_loss(pred_pos, gt_pos)
+                        elif args.losstype == 'l1':
+                            loss += F.l1_loss(pred_motion_norm[:, :n_particle], gt_motion_norm[:, :n_particle])
+                        elif args.losstype == 'emd_uh':
+                            loss_emd = emd_loss(pred_pos, gt_pos)
+                            loss_uh = uh_loss(pred_pos, gt_pos)
+                            # print(loss_emd, loss_uh)
+                            loss += loss_emd + args.uh_weight * loss_uh
+                        elif args.losstype == 'emd_l1':
+                            loss_emd = emd_loss(pred_pos, gt_pos)
+                            loss_motion = F.l1_loss(pred_motion_norm[:, :n_particle], gt_motion_norm[:, :n_particle])
+                            # print('emd:', loss_emd.item())
+                            # print('l1:', args.matched_motion_weight * loss_motion.item())
+                            loss += loss_emd + args.matched_motion_weight * loss_motion
+                        elif args.losstype == 'emd_uh_clip':
+                            loss_emd = emd_loss(pred_pos, gt_pos)
+                            loss_uh = uh_loss(pred_pos, gt_pos)
+                            loss_clip = clip_loss(pred_pos, pred_pos) # self dist
+                            print(loss_emd.item(), loss_uh.item(), loss_clip.item())
+                            loss += loss_emd + args.uh_weight * loss_uh + args.clip_weight * loss_clip
+                        else:
+                            raise NotImplementedError
 
-                    if args.stdreg:
-                        loss += args.stdreg_weight * std_cluster
-                    loss_raw = F.l1_loss(pred_pos, gt_pos)
+                        if args.stdreg:
+                            loss += args.stdreg_weight * std_cluster
+                        loss_raw = F.l1_loss(pred_pos, gt_pos)
 
-                    meter_loss.update(loss.item(), B)
-                    meter_loss_raw.update(loss_raw.item(), B)
+                        meter_loss.update(loss.item(), B)
+                        meter_loss_raw.update(loss_raw.item(), B)
 
-                if i % args.log_per_iter == 0:
-                    print()
-                    print('%s epoch[%d/%d] iter[%d/%d] LR: %.6f, loss: %.6f (%.6f), loss_raw: %.8f (%.8f)' % (
-                        phase, epoch, args.n_epoch, i, len(dataloaders[phase]), get_lr(optimizer),
-                        loss.item(), meter_loss.avg, loss_raw.item(), meter_loss_raw.avg))
-                    print('std_cluster', std_cluster)
-                    if phase == 'train':
-                        training_stats['loss'].append(loss.item())
-                        training_stats['loss_raw'].append(loss_raw.item())
-                        training_stats['iters'].append(epoch * len(dataloaders[phase]) + i)
-                        if args.losstype == 'emd_l1':
-                            training_stats['loss_emd'].append(loss_emd.item())
-                            training_stats['loss_motion'].append(loss_motion.item())
-                    # with open(args.outf + '/train.npy', 'wb') as f:
-                    #     np.save(f, training_stats)
+            if i % args.log_per_iter == 0:
+                print()
+                print('%s epoch[%d/%d] iter[%d/%d] LR: %.6f, loss: %.6f (%.6f), loss_raw: %.8f (%.8f)' % (
+                    phase, epoch, args.n_epoch, i, len(dataloaders[phase]), get_lr(optimizer),
+                    loss.item(), meter_loss.avg, loss_raw.item(), meter_loss_raw.avg))
+                print('std_cluster', std_cluster)
+                if phase == 'train':
+                    training_stats['loss'].append(loss.item())
+                    training_stats['loss_raw'].append(loss_raw.item())
+                    training_stats['iters'].append(epoch * len(dataloaders[phase]) + i)
+                    if args.losstype == 'emd_l1':
+                        training_stats['loss_emd'].append(loss_emd.item())
+                        training_stats['loss_motion'].append(loss_motion.item())
+                # with open(args.outf + '/train.npy', 'wb') as f:
+                #     np.save(f, training_stats)
 
             # update model parameters
             if phase == 'train':
