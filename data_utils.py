@@ -793,6 +793,8 @@ class PhysicsFleXDataset(Dataset):
         st_idx = idx % offset
         ed_idx = st_idx + args.sequence_length
 
+        # print(f"idx: {idx}, offset: {offset}, st_idx: {st_idx}, ed_idx: {ed_idx}")
+
         if args.stage in ['dy']:
             # load ground truth data
             attrs, particles, Rrs, Rss, cluster_onehots= [], [], [], [], []
@@ -803,7 +805,11 @@ class PhysicsFleXDataset(Dataset):
                     data_path = os.path.join(self.data_dir, str(idx_rollout).zfill(3), str(t) + '.h5')
                 else:
                     data_path = os.path.join(self.data_dir, str(idx_rollout), str(t) + '.h5')
-                data = load_data(self.data_names, data_path)
+                
+                try:
+                    data = load_data(self.data_names, data_path)
+                except OSError:
+                    break
 
                 # load scene param
                 if t == st_idx:

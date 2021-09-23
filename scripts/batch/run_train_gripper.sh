@@ -1,5 +1,6 @@
 #!/usr/bin/env bash
-cd /viscam/u/hxu/projects/deformable/VGPL-Dynamics-Prior
+# cd /viscam/u/hxu/projects/deformable/VGPL-Dynamics-Prior
+cd /home/haochen/projects/deformable/VGPL-Dynamics-Prior
 
 declare -a arr=("emd_uh_clip")
 declare -a arr2=("10")

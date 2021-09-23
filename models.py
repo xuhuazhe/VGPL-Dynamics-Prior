@@ -501,6 +501,7 @@ class EarthMoverLoss(torch.nn.Module):
             # y[i] = y[i, ind2]
         new_x = torch.stack(x_list)
         new_y = torch.stack(y_list)
+        # print(f"EMD New_x shape: {new_x.shape}")
         emd = torch.mean(torch.norm(torch.add(new_x, -new_y), 2, dim=2))
         return emd
 

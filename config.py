@@ -175,9 +175,9 @@ def gen_args():
 
         args.physics_param_range = (-5., -5.)
 
-        args.outf = 'dump/dump_Pinch/' + args.outf + '_' + args.stage + suffix + datetime.now().strftime(
+        args.outf = 'dump/dump_Gripper/' + args.outf + '_' + args.stage + suffix + datetime.now().strftime(
             "%d-%b-%Y-%H:%M:%S.%f")
-        args.evalf = 'dump/dump_Pinch/' + args.evalf + '_' + args.stage + suffix  # + datetime.now().strftime("%d-%b-%Y-%H:%M:%S.%f")
+        args.evalf = 'dump/dump_Gripper/' + args.evalf + '_' + args.stage + suffix  # + datetime.now().strftime("%d-%b-%Y-%H:%M:%S.%f")
 
         args.mean_p = np.array([0.50932539, 0.11348496, 0.49837578])
         args.std_p = np.array([0.06474939, 0.04888084, 0.05906044])
