@@ -44,8 +44,8 @@ if args.eval_epoch < 0:
 else:
     model_name = 'net_epoch_%d_iter_%d.pth' % (args.eval_epoch, args.eval_iter)
 
-model_dir = 'files_dy08-Sep-2021-16:43:05.861197_nHis4_aug0.05emd_uh_clip_seqlen10_uhw0.1_clipw0.5'
-model_path = os.path.join('dump/dump_Pinch/' + model_dir, model_name)    # args.outf
+model_dir = 'files_dy24-Sep-2021-11:06:41.989613_nHis4_aug0.05emd_seqlen5_uhw0.0_clipw0.0'
+model_path = os.path.join('dump/dump_Gripper/' + model_dir, model_name)    # args.outf
 print("Loading network from %s" % model_path)
 
 if args.stage == 'dy':
@@ -210,6 +210,7 @@ for idx_episode in range(0, 50, 1): #range(len(infos)):
     p_gt = p_gt.numpy()[st_idx:ed_idx]
     s_gt = s_gt.numpy()[st_idx:ed_idx]
     vis_length = ed_idx - st_idx
+    # print(vis_length)
 
     if args.vispy:
 

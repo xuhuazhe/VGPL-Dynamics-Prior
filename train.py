@@ -189,6 +189,9 @@ for epoch in range(st_epoch, args.n_epoch):
                                 Rr_cur[w], Rs_cur[w] = Rr_cur_k, Rs_cur_k
                             Rr_cur = torch.FloatTensor(np.stack(Rr_cur))
                             Rs_cur = torch.FloatTensor(np.stack(Rs_cur))
+                            if use_gpu:
+                                Rr_cur = Rr_cur.cuda()
+                                Rs_cur = Rs_cur.cuda()
                             state_cur = torch.cat([state_cur[:,-3:], pred_pos.unsqueeze(1)], dim=1)
 
 
