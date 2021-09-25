@@ -1,11 +1,11 @@
 #!/usr/bin/env bash
 # cd /viscam/u/hxu/projects/deformable/VGPL-Dynamics-Prior
-cd /home/haochen/projects/deformable/VGPL-Dynamics-Prior
+cd /viscam/u/hshi74/projects/deformable/VGPL-Dynamics-Prior
 
 declare -a arr=("emd_uh_clip")
-declare -a arr2=("10")
-declare -a arr3=("0.1")
-declare -a arr4=("0.1" "0.5")
+declare -a arr2=("5" "7" "9" "11")
+declare -a arr3=("0.0")
+declare -a arr4=("0.0")
 for i in "${arr[@]}"
 do
     for j in "${arr2[@]}"

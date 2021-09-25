@@ -78,7 +78,7 @@ parser.add_argument('--num_workers', type=int, default=10)
 parser.add_argument('--log_per_iter', type=int, default=50)
 parser.add_argument('--ckp_per_iter', type=int, default=1000)
 
-parser.add_argument('--n_epoch', type=int, default=1000)
+parser.add_argument('--n_epoch', type=int, default=100) # 100 FOR TEST, *1000* 
 parser.add_argument('--beta1', type=float, default=0.9)
 parser.add_argument('--lr', type=float, default=0.0001)
 parser.add_argument('--optimizer', default='Adam', help='Adam|SGD')
