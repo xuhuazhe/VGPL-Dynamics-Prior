@@ -14,10 +14,9 @@ do
         do
             for w in "${arr4[@]}"
             do
-                echo "$i"
-                echo "$j"
-                echo "$k"
+                echo "$i $j $k $w"
                 sbatch ./scripts/batch/gripper_train.sh $i $j $k $w
+                # bash scripts/dynamics/train_Gripper_dy.sh $i $j $k $w
             done
 	    done
     done

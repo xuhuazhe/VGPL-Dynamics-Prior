@@ -175,9 +175,10 @@ def gen_args():
 
         args.physics_param_range = (-5., -5.)
 
-        args.outf = 'dump/dump_Gripper/' + args.outf + '_' + args.stage + suffix + datetime.now().strftime(
+        args.outf = 'dump/dump_Gripper/' + args.outf + '_' + args.stage + suffix + '_' + datetime.now().strftime(
             "%d-%b-%Y-%H:%M:%S.%f")
-        args.evalf = 'dump/dump_Gripper/' + args.evalf + '_' + args.stage + suffix  # + datetime.now().strftime("%d-%b-%Y-%H:%M:%S.%f")
+        # unused in eval.py
+        args.evalf = 'dump/dump_Gripper/' + args.evalf + '_' + args.stage + suffix # + '_' + datetime.now().strftime("%d-%b-%Y-%H:%M:%S.%f")
 
         args.mean_p = np.array([0.50932539, 0.11348496, 0.49837578])
         args.std_p = np.array([0.06474939, 0.04888084, 0.05906044])
@@ -262,27 +263,26 @@ def gen_args():
 
     # n_his
     args.outf += '_nHis%d' % args.n_his
-    args.evalf += '_nHis%d' % args.n_his
+    # args.evalf += '_nHis%d' % args.n_his
 
 
     # data augmentation
     if args.augment_ratio > 0:
         args.outf += '_aug%.2f' % args.augment_ratio
-        args.evalf += '_aug%.2f' % args.augment_ratio
+        # args.evalf += '_aug%.2f' % args.augment_ratio
 
-    args.outf += args.losstype
+    args.outf += f'_{args.losstype}'
     args.outf += f'_seqlen{args.sequence_length}'
     args.outf += f'_uhw{args.uh_weight}'
     args.outf += f'_clipw{args.clip_weight}'
 
-
     # evaluation checkpoints
     if args.stage in ['dy']:
         if args.eval_epoch > -1:
-            args.evalf += '_dyEpoch_' + str(args.eval_epoch)
-            args.evalf += '_dyIter_' + str(args.eval_iter)
+            args.evalf += '_Epoch_' + str(args.eval_epoch)
+            args.evalf += '_Iter_' + str(args.eval_iter)
         else:
-            args.evalf += '_dyEpoch_best'
+            args.evalf += '_Epoch_best'
 
         args.evalf += '_%s' % args.eval_set
 
