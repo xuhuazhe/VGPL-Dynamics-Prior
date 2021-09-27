@@ -343,7 +343,9 @@ class DynamicsPredictor(nn.Module):
         pred_motion += torch.sum(p_rigid[:, :, None, None] * p_instance.transpose(1, 2)[:, :, :, None] * rigid_motion, 1)
 
         pred_pos = state[:, -1, :n_p] + torch.clamp(pred_motion * std_d + mean_d, max=0.025, min=-0.025)
-        # print(pred_motion * std_d + mean_d)
+        # pred_pos = state[:, -1, :n_p] + torch.tanh(pred_motion * std_d + mean_d) * 0.025
+        # print(f"Normalized pred motion: {pred_motion * std_d + mean_d}")
+
         # print(torch.max(torch.norm(torch.clamp(pred_motion * std_d + mean_d, max=0.025, min=-0.025), dim=2)))
         if verbose:
             print('pred_pos', pred_pos.size())

@@ -104,6 +104,7 @@ eval
 parser.add_argument('--eval_epoch', type=int, default=-1, help='pretrained model')
 parser.add_argument('--eval_iter', type=int, default=-1, help='pretrained model')
 parser.add_argument('--eval_set', default='demo')
+parser.add_argument('--n_frames', type=int, default=49)
 
 # visualization flog
 parser.add_argument('--pyflex', type=int, default=1)

@@ -30,7 +30,7 @@ set_seed(args.random_seed)
 #     if d.is_dir() and base.split('_')[0] == 'files':
 #         model_dir_list.append(base)
 
-model_dir = "files_dy_26-Sep-2021-00:03:15.057566_nHis4_aug0.05_emd_uh_clip_seqlen9_uhw0.0_clipw0.0"
+model_dir = "files_dy27-Sep-2021-01:00:57.990173_nHis4_aug0.05emd_uh_clip_seqlen7_uhw0.0_clipw0.5"
 # args.evalf = os.path.join(rootdir, 'eval_' + '_'.join(model_dir.split('_')[1:], ))
 args.evalf += '_' + '_'.join(model_dir.split('_')[2:])
 
@@ -95,7 +95,7 @@ for idx_episode in range(0, n_episodes, 1): #range(len(infos)):
     datas = []
     p_gt = []
     s_gt = []
-    for step in range(args.time_step):
+    for step in range(args.n_frames):
         data_path = os.path.join(args.dataf, 'train', str(idx_episode).zfill(3), str(step) + '.h5')
 
         data = load_data(data_names, data_path)
@@ -115,7 +115,7 @@ for idx_episode in range(0, n_episodes, 1): #range(len(infos)):
     # s_gt: time_step x n_s x 4
     p_gt = torch.FloatTensor(np.stack(p_gt))
     s_gt = torch.FloatTensor(np.stack(s_gt))
-    p_pred = torch.zeros(args.time_step, n_particle + n_shape, args.state_dim)
+    p_pred = torch.zeros(args.n_frames, n_particle + n_shape, args.state_dim)
     # initialize particle grouping
     group_gt = get_env_group(args, n_particle, scene_params, use_gpu=use_gpu)
 

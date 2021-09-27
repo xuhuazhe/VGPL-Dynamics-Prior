@@ -20,6 +20,10 @@ from models import EarthMoverLoss, UpdatedHausdorffLoss
 
 import matplotlib.pyplot as plt
 
+import vispy.scene
+from vispy import app
+from vispy.visuals import transforms
+
 # args = gen_args()
 # set_seed(args.random_seed)
 
@@ -79,8 +83,14 @@ class Evaluator():
         self.n_episodes = 50
         self.vispy = 1
 
+        # set animation
+        self.t_step = 0
+
     # evaluating
     def evaluate(self):
+        global p1
+        # global colors
+
         emd_for_episodes = []
         for idx_episode in range(0, self.n_episodes, 1): 
             emd_list = []
@@ -191,7 +201,7 @@ class Evaluator():
                     loss_cur = F.l1_loss(pred_motion_norm[:, :n_particle], gt_motion_norm[:, :n_particle])
                     loss_cur_raw = F.l1_loss(pred_pos, gt_pos)
                     loss_emd = self.emd_loss(pred_pos, gt_pos)
-                    loss_uh = self.uhloss(pred_pos, gt_pos)
+                    loss_uh = self.uh_loss(pred_pos, gt_pos)
 
                     loss += loss_cur
                     loss_raw += loss_cur_raw
@@ -226,10 +236,6 @@ class Evaluator():
 
             if self.vispy:
                 ### render in VisPy
-                import vispy.scene
-                from vispy import app
-                from vispy.visuals import transforms
-
                 particle_size = 0.01
                 border = 0.025
                 height = 1.3
@@ -389,10 +395,6 @@ class Evaluator():
 
                 view.add(p1)
 
-                # set animation
-                t_step = 0
-
-
                 '''
                 set up data for rendering
                 '''
@@ -408,15 +410,11 @@ class Evaluator():
 
 
                 def update(event):
-                    global p1
-                    global t_step
-                    global colors
-
-                    if t_step < vis_length:
-                        if t_step == 0:
+                    if self.t_step < vis_length:
+                        if self.t_step == 0:
                             print("Rendering ground truth")
 
-                        t_actual = t_step
+                        t_actual = self.t_step
 
                         colors = convert_groups_to_colors(
                             group_gt, n_particle, self.args.n_instance,
@@ -439,11 +437,11 @@ class Evaluator():
                         vispy.io.write_png(img_path, img)
 
 
-                    elif vis_length <= t_step < vis_length * 2:
-                        if t_step == vis_length:
+                    elif vis_length <= self.t_step < vis_length * 2:
+                        if self.t_step == vis_length:
                             print("Rendering prediction result")
 
-                        t_actual = t_step - vis_length
+                        t_actual = self.t_step - vis_length
 
                         colors = convert_groups_to_colors(
                             group_gt, n_particle, self.args.n_instance,
@@ -467,14 +465,14 @@ class Evaluator():
                         img_path = os.path.join(vispy_dir, "pred_{}_{}.png".format(str(idx_episode), str(t_actual)))
                         vispy.io.write_png(img_path, img)
 
-                        if t_step == vis_length * 2 - 1:
+                        if self.t_step == vis_length * 2 - 1:
                             c.close()
                     else:
                         # discarded frames
                         pass
 
                     # time forward
-                    t_step += 1
+                    self.t_step += 1
 
                 # start animation
                 timer = app.Timer()

@@ -2,8 +2,8 @@
 python eval_dy_gripper.py 		\
 	--env Gripper 		\
 	--stage dy 		\
-	--eval_epoch 97    \
-	--eval_iter 186      \
+	--eval_epoch 92    \
+	--eval_iter 472      \
 	--eval_set train 	\
 	--verbose_data 0	\
 	--n_frames 49	\
