@@ -21,7 +21,7 @@ from models import Model, ChamferLoss, HausdorfLoss, EarthMoverLoss, UpdatedHaus
 from utils import make_graph, check_gradient, set_seed, AverageMeter, get_lr, Tee
 from utils import count_parameters, my_collate, matched_motion
 
-from eval import Evaluator
+from eval import evaluate
 
 args = gen_args()
 set_seed(args.random_seed)
@@ -284,8 +284,7 @@ for epoch in range(st_epoch, args.n_epoch):
                 model_path = '%s/net_epoch_%d_iter_%d.pth' % (args.outf, epoch, i)
                 torch.save(model.state_dict(), model_path)
 
-                evaluator = Evaluator(args, epoch, i)
-                evaluator.evaluate()
+                evaluate(args, epoch, i)
 
         print('%s epoch[%d/%d] Loss: %.6f, Best valid: %.6f' % (
             phase, epoch, args.n_epoch, meter_loss.avg, best_valid_loss))
