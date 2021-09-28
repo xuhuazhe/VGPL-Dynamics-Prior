@@ -3,7 +3,7 @@
 cd /viscam/u/hshi74/projects/deformable/VGPL-Dynamics-Prior
 
 declare -a arr=("emd_uh_clip")
-declare -a arr2=("6" "8")
+declare -a arr2=("7")
 declare -a arr3=("0.0")
 declare -a arr4=("0.0")
 for i in "${arr[@]}"
