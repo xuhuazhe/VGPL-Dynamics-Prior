@@ -177,12 +177,12 @@ for epoch in range(st_epoch, args.n_epoch):
                             Rr_cur = []
                             Rs_cur = []
                             max_n_rel = 0
-                            for k in range(args.batch_size):
+                            for k in range(pred_pos.shape[0]):
                                 _, _, Rr_cur_k, Rs_cur_k, _ = prepare_input(pred_pos[k].detach().cpu().numpy(), n_particle, n_shape, args, stdreg=args.stdreg)
                                 Rr_cur.append(Rr_cur_k)
                                 Rs_cur.append(Rs_cur_k)
                                 max_n_rel = max(max_n_rel, Rr_cur_k.size(0))
-                            for w in range(args.batch_size):
+                            for w in range(pred_pos.shape[0]):
                                 Rr_cur_k, Rs_cur_k = Rr_cur[w], Rs_cur[w]
                                 Rr_cur_k = torch.cat([Rr_cur_k, torch.zeros(max_n_rel - Rr_cur_k.size(0), n_particle + n_shape)], 0)
                                 Rs_cur_k = torch.cat([Rs_cur_k, torch.zeros(max_n_rel - Rs_cur_k.size(0), n_particle + n_shape)], 0)
