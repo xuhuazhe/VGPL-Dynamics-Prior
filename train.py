@@ -244,7 +244,6 @@ for epoch in range(st_epoch, args.n_epoch):
                             loss_emd = emd_loss(pred_pos, gt_pos)
                             loss_uh = uh_loss(pred_pos, gt_pos)
                             loss_clip = clip_loss(pred_pos, pred_pos) # self dist
-                            print(loss_emd.item(), loss_uh.item(), loss_clip.item())
                             loss += loss_emd + args.uh_weight * loss_uh + args.clip_weight * loss_clip
                         else:
                             raise NotImplementedError
