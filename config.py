@@ -155,7 +155,10 @@ def gen_args():
         args.env_idx = 1001
 
         args.n_rollout = 50
-        args.time_step = 49
+        if args.data_type == 'ngrip':
+            args.time_step = 59
+        else:
+            args.time_step = 49
 
         # object states:
         # [x, y, z]
