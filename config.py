@@ -281,6 +281,7 @@ def gen_args():
     args.outf += f'_seqlen{args.sequence_length}'
     args.outf += f'_uhw{args.uh_weight}'
     args.outf += f'_clipw{args.clip_weight}'
+    args.outf += f'_gt{args.gt_particles}'
 
 
     # evaluation checkpoints
