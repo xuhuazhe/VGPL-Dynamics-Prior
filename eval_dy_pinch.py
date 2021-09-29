@@ -44,7 +44,7 @@ if args.eval_epoch < 0:
 else:
     model_name = 'net_epoch_%d_iter_%d.pth' % (args.eval_epoch, args.eval_iter)
 
-model_dir = 'files_dy08-Sep-2021-16:43:05.861197_nHis4_aug0.05emd_uh_clip_seqlen10_uhw0.1_clipw0.5'
+model_dir = 'files_dy21-Sep-2021-23:50:41.836469_nHis4_aug0.05emd_seqlen10_uhw0.0_clipw0.0'
 model_path = os.path.join('dump/dump_Pinch/' + model_dir, model_name)    # args.outf
 print("Loading network from %s" % model_path)
 

@@ -33,6 +33,7 @@ parser.add_argument('--clip_weight', type=float, default=0.0)
 parser.add_argument('--outf', default='files')
 parser.add_argument('--evalf', default='eval')
 parser.add_argument('--dataf', default='data')
+parser.add_argument('--data_type', type=str, default='none')
 
 parser.add_argument('--eval', type=int, default=0)
 parser.add_argument('--verbose_data', type=int, default=0)
@@ -257,8 +258,10 @@ def gen_args():
 
 
     # path to data
-    args.dataf = 'data/' + args.dataf + '_' + args.env
-
+    if args.data_type != 'none':
+        args.dataf = 'data/' + args.dataf + '_' + args.data_type    #+ '_' + args.env
+    else:
+        args.dataf = 'data/' + args.dataf + '_' + args.env
 
     # n_his
     args.outf += '_nHis%d' % args.n_his

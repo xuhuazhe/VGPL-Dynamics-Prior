@@ -2,8 +2,8 @@
 python eval_dy_pinch.py 		\
 	--env Gripper 		\
 	--stage dy 		\
-	--eval_epoch 122    \
-	--eval_iter 100      \
+	--eval_epoch 88    \
+	--eval_iter 400      \
 	--eval_set train 	\
 	--verbose_data 0	\
 	--sequence_length 49	\
