@@ -34,6 +34,7 @@ parser.add_argument('--outf', default='files')
 parser.add_argument('--evalf', default='eval')
 parser.add_argument('--dataf', default='data')
 parser.add_argument('--data_type', type=str, default='none')
+parser.add_argument('--gt_particles', type=int, default=0)
 
 parser.add_argument('--eval', type=int, default=0)
 parser.add_argument('--verbose_data', type=int, default=0)
