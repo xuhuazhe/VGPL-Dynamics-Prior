@@ -20,6 +20,8 @@ from models import EarthMoverLoss, UpdatedHausdorffLoss
 
 import matplotlib.pyplot as plt
 
+import vispy
+vispy.use('osmesa')
 import vispy.scene
 from vispy import app
 from vispy.visuals import transforms
@@ -351,7 +353,7 @@ def evaluate(args, eval_epoch, eval_iter):
                 return visuals
 
 
-            c = vispy.scene.SceneCanvas(keys='interactive', show=True, bgcolor='white')
+            c = vispy.scene.SceneCanvas(show=True, bgcolor='white')
             view = c.central_widget.add_view()
 
 
