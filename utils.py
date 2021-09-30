@@ -14,12 +14,12 @@ import scipy
 from scipy import optimize
 
 
-def plot_curves(loss_list, mode='eval', path=''):
+def plot_curves(loss_list, mode='eval'):
     iters, loss_emd, loss_uh = map(list, zip(*loss_list))
     plt.figure(figsize=[16, 9])
     plt.plot(iters, loss_emd, linewidth=6, label='EMD')
     plt.plot(iters, loss_uh, linewidth=6, color='r', label='Hausdorff')
-    plt.xlabel('frames', fontsize=30)
+    plt.xlabel('iterations', fontsize=30)
     plt.ylabel('emd loss', fontsize=30)
     if mode == 'eval':
         plt.title('Test Loss', fontsize=35)
@@ -28,11 +28,7 @@ def plot_curves(loss_list, mode='eval', path=''):
     plt.legend(fontsize=30)
     plt.xticks(fontsize=25)
     plt.yticks(fontsize=25)
-
-    if len(path) > 0:
-        plt.savefig(path)
-    else:
-        plt.show()
+    plt.show()
 
     # plt.plot(loss)
 

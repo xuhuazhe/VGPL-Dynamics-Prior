@@ -173,25 +173,22 @@ for epoch in range(st_epoch, args.n_epoch):
                             # Rrs_cur, Rss_cur: B x n_rel x (n_p + n_s)
                             Rr_cur = Rrs[:, args.n_his - 1]
                             Rs_cur = Rss[:, args.n_his - 1]
-                        else: # elif pred_pos.size(0) >= args.batch_size:
+                        else:
                             Rr_cur = []
                             Rs_cur = []
                             max_n_rel = 0
-                            for k in range(pred_pos.size(0)):
+                            for k in range(pred_pos.shape[0]):
                                 _, _, Rr_cur_k, Rs_cur_k, _ = prepare_input(pred_pos[k].detach().cpu().numpy(), n_particle, n_shape, args, stdreg=args.stdreg)
                                 Rr_cur.append(Rr_cur_k)
                                 Rs_cur.append(Rs_cur_k)
                                 max_n_rel = max(max_n_rel, Rr_cur_k.size(0))
-                            for w in range(pred_pos.size(0)):
+                            for w in range(pred_pos.shape[0]):
                                 Rr_cur_k, Rs_cur_k = Rr_cur[w], Rs_cur[w]
                                 Rr_cur_k = torch.cat([Rr_cur_k, torch.zeros(max_n_rel - Rr_cur_k.size(0), n_particle + n_shape)], 0)
                                 Rs_cur_k = torch.cat([Rs_cur_k, torch.zeros(max_n_rel - Rs_cur_k.size(0), n_particle + n_shape)], 0)
                                 Rr_cur[w], Rs_cur[w] = Rr_cur_k, Rs_cur_k
                             Rr_cur = torch.FloatTensor(np.stack(Rr_cur))
                             Rs_cur = torch.FloatTensor(np.stack(Rs_cur))
-                            if use_gpu:
-                                Rr_cur = Rr_cur.cuda()
-                                Rs_cur = Rs_cur.cuda()
                             state_cur = torch.cat([state_cur[:,-3:], pred_pos.unsqueeze(1)], dim=1)
                             if use_gpu:
                                 Rr_cur, Rs_cur = Rr_cur.cuda(), Rs_cur.cuda()

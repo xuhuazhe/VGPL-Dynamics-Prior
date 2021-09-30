@@ -23,22 +23,11 @@ import matplotlib.pyplot as plt
 args = gen_args()
 set_seed(args.random_seed)
 
-# rootdir = 'dump/dump_Gripper/'
-# model_dir_list = []
-# for d in os.scandir(rootdir):
-#     _, base = os.path.split(d.path)
-#     if d.is_dir() and base.split('_')[0] == 'files':
-#         model_dir_list.append(base)
-
-model_dir = "files_dy27-Sep-2021-01:00:57.990173_nHis4_aug0.05emd_uh_clip_seqlen7_uhw0.0_clipw0.5"
-# args.evalf = os.path.join(rootdir, 'eval_' + '_'.join(model_dir.split('_')[1:], ))
-args.evalf += '_' + '_'.join(model_dir.split('_')[2:])
-
 os.system('mkdir -p ' + args.evalf)
 os.system('mkdir -p ' + os.path.join(args.evalf, 'render'))
-os.system('mkdir -p ' + os.path.join(args.evalf, 'plot'))
 
 tee = Tee(os.path.join(args.evalf, 'eval.log'), 'w')
+
 
 ### evaluating
 
@@ -55,7 +44,8 @@ if args.eval_epoch < 0:
 else:
     model_name = 'net_epoch_%d_iter_%d.pth' % (args.eval_epoch, args.eval_iter)
 
-model_path = os.path.join('dump/dump_Gripper/' + model_dir, model_name)    # args.outf
+model_dir = 'files_dy21-Sep-2021-23:50:41.836469_nHis4_aug0.05emd_seqlen10_uhw0.0_clipw0.0'
+model_path = os.path.join('dump/dump_Pinch/' + model_dir, model_name)    # args.outf
 print("Loading network from %s" % model_path)
 
 if args.stage == 'dy':
@@ -80,11 +70,7 @@ if use_gpu:
 infos = np.arange(50)
 emd_loss = EarthMoverLoss()
 uh_loss = UpdatedHausdorffLoss()
-
-emd_for_episodes = []
-
-n_episodes = 50
-for idx_episode in range(0, n_episodes, 1): #range(len(infos)):
+for idx_episode in range(0, 50, 1): #range(len(infos)):
     emd_list = []
     print("Rollout %d / %d" % (idx_episode, len(infos)))
 
@@ -95,7 +81,7 @@ for idx_episode in range(0, n_episodes, 1): #range(len(infos)):
     datas = []
     p_gt = []
     s_gt = []
-    for step in range(args.n_frames):
+    for step in range(args.time_step):
         data_path = os.path.join(args.dataf, 'train', str(idx_episode).zfill(3), str(step) + '.h5')
 
         data = load_data(data_names, data_path)
@@ -115,7 +101,7 @@ for idx_episode in range(0, n_episodes, 1): #range(len(infos)):
     # s_gt: time_step x n_s x 4
     p_gt = torch.FloatTensor(np.stack(p_gt))
     s_gt = torch.FloatTensor(np.stack(s_gt))
-    p_pred = torch.zeros(args.n_frames, n_particle + n_shape, args.state_dim)
+    p_pred = torch.zeros(args.time_step, n_particle + n_shape, args.state_dim)
     # initialize particle grouping
     group_gt = get_env_group(args, n_particle, scene_params, use_gpu=use_gpu)
 
@@ -130,7 +116,7 @@ for idx_episode in range(0, n_episodes, 1): #range(len(infos)):
     loss_raw = 0.
     loss_counter = 0.
     st_idx = args.n_his
-    ed_idx = args.n_frames
+    ed_idx = args.sequence_length
 
     with torch.set_grad_enabled(False):
 
@@ -214,8 +200,7 @@ for idx_episode in range(0, n_episodes, 1): #range(len(infos)):
     loss_raw /= loss_counter
     print("loss: %.6f, loss_raw: %.10f" % (loss.item(), loss_raw.item()))
 
-    emd_for_episodes.append(np.mean([x[1] for x in emd_list]))
-    plot_curves(emd_list, path=os.path.join(args.evalf, 'plot', 'loss_curves_%d.png' % (idx_episode)))
+    plot_curves(emd_list)
     # import pdb; pdb.set_trace()
     '''
     visualization
@@ -225,7 +210,6 @@ for idx_episode in range(0, n_episodes, 1): #range(len(infos)):
     p_gt = p_gt.numpy()[st_idx:ed_idx]
     s_gt = s_gt.numpy()[st_idx:ed_idx]
     vis_length = ed_idx - st_idx
-    # print(vis_length)
 
     if args.vispy:
 
@@ -471,14 +455,13 @@ for idx_episode in range(0, n_episodes, 1): #range(len(infos)):
                 img_path = os.path.join(vispy_dir, "pred_{}_{}.png".format(str(idx_episode), str(t_actual)))
                 vispy.io.write_png(img_path, img)
 
-                if t_step == vis_length * 2 - 1:
-                    c.close()
             else:
                 # discarded frames
                 pass
 
             # time forward
             t_step += 1
+
 
         # start animation
         timer = app.Timer()
@@ -494,7 +477,7 @@ for idx_episode in range(0, n_episodes, 1): #range(len(infos)):
 
             fourcc = cv2.VideoWriter_fourcc(*'MJPG')
             out = cv2.VideoWriter(
-                os.path.join(args.evalf, 'render', 'vid_%d_vispy.avi' % (idx_episode)),
+                os.path.join(args.evalf, 'vid_%d_vispy.avi' % (idx_episode)),
                 fourcc, 20, (800 * 2, 600))
 
             for step in range(vis_length):
@@ -512,7 +495,3 @@ for idx_episode in range(0, n_episodes, 1): #range(len(infos)):
 
             out.release()
 
-with open(os.path.join(args.evalf, "stats.txt"), 'w') as file:
-    info = f"Average (+- std) emd loss over episodes: {np.mean(emd_for_episodes)} (+- {np.std(emd_for_episodes)})"
-    print('\n' + info)
-    file.write(info)
