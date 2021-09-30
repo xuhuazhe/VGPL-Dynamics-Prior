@@ -80,7 +80,7 @@ parser.add_argument('--num_workers', type=int, default=10)
 parser.add_argument('--log_per_iter', type=int, default=50)
 parser.add_argument('--ckp_per_iter', type=int, default=1000)
 
-parser.add_argument('--n_epoch', type=int, default=1000)
+parser.add_argument('--n_epoch', type=int, default=1000) # 100 FOR TEST, *1000* 
 parser.add_argument('--beta1', type=float, default=0.9)
 parser.add_argument('--lr', type=float, default=0.0001)
 parser.add_argument('--optimizer', default='Adam', help='Adam|SGD')
@@ -106,6 +106,7 @@ eval
 parser.add_argument('--eval_epoch', type=int, default=-1, help='pretrained model')
 parser.add_argument('--eval_iter', type=int, default=-1, help='pretrained model')
 parser.add_argument('--eval_set', default='demo')
+parser.add_argument('--n_frames', type=int, default=49)
 
 # visualization flog
 parser.add_argument('--pyflex', type=int, default=1)
@@ -180,9 +181,10 @@ def gen_args():
 
         args.physics_param_range = (-5., -5.)
 
-        args.outf = 'dump/dump_Pinch/' + args.outf + '_' + args.stage + suffix + datetime.now().strftime(
+        args.outf = 'dump/dump_Gripper/' + args.outf + '_' + args.stage + suffix + '_' + datetime.now().strftime(
             "%d-%b-%Y-%H:%M:%S.%f")
-        args.evalf = 'dump/dump_Pinch/' + args.evalf + '_' + args.stage + suffix  # + datetime.now().strftime("%d-%b-%Y-%H:%M:%S.%f")
+        # unused in eval.py
+        args.evalf = 'dump/dump_Gripper/' + args.evalf + '_' + args.stage + suffix # + '_' + datetime.now().strftime("%d-%b-%Y-%H:%M:%S.%f")
 
         args.mean_p = np.array([0.50932539, 0.11348496, 0.49837578])
         args.std_p = np.array([0.06474939, 0.04888084, 0.05906044])
@@ -269,28 +271,27 @@ def gen_args():
 
     # n_his
     args.outf += '_nHis%d' % args.n_his
-    args.evalf += '_nHis%d' % args.n_his
+    # args.evalf += '_nHis%d' % args.n_his
 
 
     # data augmentation
     if args.augment_ratio > 0:
         args.outf += '_aug%.2f' % args.augment_ratio
-        args.evalf += '_aug%.2f' % args.augment_ratio
+        # args.evalf += '_aug%.2f' % args.augment_ratio
 
-    args.outf += args.losstype
+    args.outf += f'_{args.losstype}'
     args.outf += f'_seqlen{args.sequence_length}'
     args.outf += f'_uhw{args.uh_weight}'
     args.outf += f'_clipw{args.clip_weight}'
     args.outf += f'_gt{args.gt_particles}'
 
-
     # evaluation checkpoints
     if args.stage in ['dy']:
         if args.eval_epoch > -1:
-            args.evalf += '_dyEpoch_' + str(args.eval_epoch)
-            args.evalf += '_dyIter_' + str(args.eval_iter)
+            args.evalf += '_Epoch_' + str(args.eval_epoch)
+            args.evalf += '_Iter_' + str(args.eval_iter)
         else:
-            args.evalf += '_dyEpoch_best'
+            args.evalf += '_Epoch_best'
 
         args.evalf += '_%s' % args.eval_set
 

@@ -21,6 +21,7 @@ from models import Model, ChamferLoss, HausdorfLoss, EarthMoverLoss, UpdatedHaus
 from utils import make_graph, check_gradient, set_seed, AverageMeter, get_lr, Tee
 from utils import count_parameters, my_collate, matched_motion
 
+from eval import evaluate
 
 args = gen_args()
 set_seed(args.random_seed)
@@ -193,8 +194,6 @@ for epoch in range(st_epoch, args.n_epoch):
                                 Rr_cur = Rr_cur.cuda()
                                 Rs_cur = Rs_cur.cuda()
                             state_cur = torch.cat([state_cur[:,-3:], pred_pos.unsqueeze(1)], dim=1)
-                            if use_gpu:
-                                Rr_cur, Rs_cur = Rr_cur.cuda(), Rs_cur.cuda()
 
 
                         if cluster_onehots is not None:
@@ -247,6 +246,7 @@ for epoch in range(st_epoch, args.n_epoch):
                             loss_emd = emd_loss(pred_pos, gt_pos)
                             loss_uh = uh_loss(pred_pos, gt_pos)
                             loss_clip = clip_loss(pred_pos, pred_pos) # self dist
+                            print(loss_emd.item(), loss_uh.item(), loss_clip.item())
                             loss += loss_emd + args.uh_weight * loss_uh + args.clip_weight * loss_clip
                         else:
                             raise NotImplementedError
@@ -284,7 +284,7 @@ for epoch in range(st_epoch, args.n_epoch):
                 model_path = '%s/net_epoch_%d_iter_%d.pth' % (args.outf, epoch, i)
                 torch.save(model.state_dict(), model_path)
 
-
+                evaluate(args, epoch, i)
 
         print('%s epoch[%d/%d] Loss: %.6f, Best valid: %.6f' % (
             phase, epoch, args.n_epoch, meter_loss.avg, best_valid_loss))
