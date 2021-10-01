@@ -14,7 +14,6 @@ import copy
 import scipy
 from scipy import optimize
 
-
 import matplotlib.pyplot as plt
 import pdb
 from progressbar import ProgressBar
@@ -35,6 +34,8 @@ from tqdm.notebook import tqdm
 from yacs.config import CfgNode
 from plb.config import load
 
+import glob
+
 class Planner(object):
 
     def __init__(self, args, n_his, n_particle, n_shape, scene_params, model, dist_func, use_gpu, beta_filter=1, env="gripper"):
@@ -48,7 +49,7 @@ class Planner(object):
         self.model = model
         self.dist_func = dist_func
         self.use_gpu = use_gpu
-        self.n_sample = 100
+        self.n_sample = 2
         self.reward_weight = 1
     
     def trajectory_optimization(
@@ -176,11 +177,10 @@ class Planner(object):
         if self.env == "gripper":
             shapes = state[:, :, self.n_particle+1:, :] ### TODO: This is for gripper
         else:
-             raise NotImplementedError
+            raise NotImplementedError
         shapes_diff = shapes[:, 1:, :, :] - shapes[:, :-1, :, :]
         shapes_diff_act = act_cur * 0.02
         pdb.set_trace()
-
 
     def prepare_rollout(self):
         B = self.n_sample
@@ -210,9 +210,6 @@ class Planner(object):
         n_look_ahead,
         use_gpu):
 
-
-
-
         act_seqs = torch.FloatTensor(act_seqs_np).float()
         if use_gpu:
             act_seqs = act_seqs.cuda()
@@ -220,13 +217,13 @@ class Planner(object):
 
         # states_cur: [n_sample, n_his, state_dim]
 
-
         states_pred_list = []
         assert n_look_ahead == act_seqs.shape[1] - n_his + 1
         if self.use_gpu:
             state_cur = self.expand(state_cur.unsqueeze(0), n_sample).cuda()
         else:
             state_cur = self.expand(state_cur.unsqueeze(0), n_sample)
+
         for i in range(min(n_look_ahead, act_seqs.shape[1] - n_his + 1)):
             # state_cur = torch.tensor(state_cur_np, device=device).float()
             print(f"{i}/{min(n_look_ahead, act_seqs.shape[1] - n_his + 1)}")
@@ -237,7 +234,7 @@ class Planner(object):
             for j in range(n_sample):
                 # pdb.set_trace()
                 attr, _, Rr_cur, Rs_cur, cluster_onehot = prepare_input(state_cur[j][-1].cpu().numpy(), self.n_particle,
-                                                                    self.n_shape, self.args, stdreg=self.args.stdreg)
+                                                                        self.n_shape, self.args, stdreg=self.args.stdreg)
                 if use_gpu:
                     attr = attr.cuda()
                     Rr_cur = Rr_cur.cuda()
@@ -280,8 +277,13 @@ class Planner(object):
                 new_shape2 = inputs[1][:, -1, self.n_particle+2, :] + act_cur[:, -1, :] * 0.02 * torch.FloatTensor([-1, 1, 1])
 
             pred_pos = torch.cat([pred_pos, state_cur[:, -1, -3, :].unsqueeze(1), new_shape1.unsqueeze(1), new_shape2.unsqueeze(1)], 1)
+            # print(f"pred_pos shape: {pred_pos.shape}")
 
             state_cur = torch.cat([state_cur[:, 1:], pred_pos.unsqueeze(1)], 1)
+            # print(f"state_cur shape: {state_cur.shape}")
+
+            # print(torch.cuda.memory_summary())
+            
             states_pred_list.append(pred_pos[:, :self.n_particle, :])
         # states_pred_tensor: [n_sample, n_look_ahead, state_dim]
         states_pred_tensor = torch.stack(states_pred_list, dim=1)
@@ -386,15 +388,15 @@ def set_action_limit(all_actions, ctrl_init_idx):
 
     return action_lower_lim, action_upper_lim, action_lower_delta_lim, action_upper_delta_lim
 
-sys.argv = ['foo', '--env', 'Gripper', 
-            '--stage', 'dy', 
-            '--eval_epoch', '92', 
-            '--eval_iter', '472', 
-            '--eval_set', 'train', 
-            '--verbose_data', '0', 
-            '--n_frames', '49', 
-            '--n_his', '4', 
-            '--augment', '0.05']
+# sys.argv = ['foo', '--env', 'Gripper', 
+#             '--stage', 'dy', 
+#             '--eval_epoch', '92', 
+#             '--eval_iter', '472', 
+#             '--eval_set', 'train', 
+#             '--verbose_data', '0', 
+#             '--n_frames', '49', 
+#             '--n_his', '4', 
+#             '--augment', '0.05']
 
 args = gen_args()
 cfg = load("/home/haochen/projects/deformable/PlasticineLab/plb/envs/gripper.yml")
@@ -414,13 +416,12 @@ def set_parameters(env: TaichiEnv, yield_stress, E, nu):
     env.simulator.mu.fill(_mu)
     env.simulator.lam.fill(_lam)
     
-import glob
 i = 0
 task_name = 'gripper'
     
 env.set_state(**state)
 taichi_env = env
-env.renderer.camera_pos[0] = 0.5#np.array([float(i) for i in (0.5, 2.5, 0.5)]) #(0.5, 2.5, 0.5)  #.from_numpy(np.array([[0.5, 2.5, 0.5]]))
+env.renderer.camera_pos[0] = 0.5 #np.array([float(i) for i in (0.5, 2.5, 0.5)]) #(0.5, 2.5, 0.5)  #.from_numpy(np.array([[0.5, 2.5, 0.5]]))
 env.renderer.camera_pos[1] = 2.5
 env.renderer.camera_pos[2] = 0.5
 env.renderer.camera_rot = (1.57, 0.0)
@@ -429,7 +430,7 @@ env.primitives.primitives[0].set_state(0, [0.3, 0.4, 0.5, 1, 0, 0, 0])
 env.primitives.primitives[1].set_state(0, [0.7, 0.4, 0.5, 1, 0, 0, 0])
 set_parameters(env, yield_stress=300, E=800, nu=0.2) # 200， 5e3, 0.2
 
-env.render('plt')
+# env.render('plt')
 
 action_dim = taichi_env.primitives.action_dim
 horizon = 20
@@ -439,9 +440,9 @@ count = i / 50
 count = 2 * count - 1
 updown = count * 0.12
 grip_motion = np.random.uniform(0.20, 0.24)
-action[:20, 2] = updown#0.1
+action[:20, 2] = updown #0.1
 action[:20, 1] = -0.7
-action[:20, 8] = updown#0.1
+action[:20, 8] = updown #0.1
 action[:20, 7] = -0.7
 
 from tqdm.notebook import tqdm
@@ -456,13 +457,11 @@ for idx, act in enumerate(tqdm(action, total=horizon)):
     else:
         primitive_state = [env.primitives.primitives[0].get_state(0)]
 
-    if (idx+1) % 5 == 0:
-        env.render(mode='plt')
+    # if (idx+1) % 5 == 0:
+    #     env.render(mode='plt')
 
 set_seed(args.random_seed)
 use_gpu = True
-
-
 
 # load dynamics model
 model = Model(args, use_gpu)
@@ -520,7 +519,7 @@ ctrl_init_idx = 4
 n_look_ahead = 20
 n_update_delta = 1
 n_his = 4
-n_sample = 100
+n_sample = 2
 n_update_iter_init = 1
 n_update_iter = 1
 emd = EarthMoverLoss()
@@ -538,7 +537,7 @@ action_lower_lim, action_upper_lim, action_lower_delta_lim, action_upper_delta_l
 
 
 st_idx = ctrl_init_idx
-ed_idx = ctrl_init_idx +1#+ n_look_ahead
+ed_idx = ctrl_init_idx +1 #+ n_look_ahead
 
 p_list = copy.copy(all_p[:n_his])
 s_list = copy.copy(all_s[:n_his])
@@ -549,15 +548,12 @@ else:
 ### we note, we now have n_his states, n_his - 1 actions
 for i in range(st_idx, ed_idx):
     print("\n### Step %d/%d" % (i, ed_idx))
-
-
     
     if i == st_idx or i % n_update_delta == 0:
         # update the action sequence every n_update_delta iterations
         with torch.set_grad_enabled(False):
             state_cur = torch.FloatTensor(np.stack(p_list[-n_his:]))
             # s_cur = torch.FloatTensor(np.stack(s_list[-n_his:]))
-
 
             action = planner.trajectory_optimization(
                                         state_cur=state_cur,
@@ -572,10 +568,11 @@ for i in range(st_idx, ed_idx):
                                         action_upper_delta_lim=action_upper_delta_lim,
                                         use_gpu=use_gpu)
             print(action.shape)
-#             obs = env.step(act)
-env_act = np.zeros([action.shape[0], 12])
-env_act[:, :3] = action
-env_act[:, 6:9] = action * np.array([-1, 1, 1])
-for i in range(action.shape[0]):
-    env.step(env_act[i])
-    env.render('plt')
+
+# obs = env.step(act)
+# env_act = np.zeros([action.shape[0], 12])
+# env_act[:, :3] = action
+# env_act[:, 6:9] = action * np.array([-1, 1, 1])
+# for i in range(action.shape[0]):
+#     env.step(env_act[i])
+#     env.render('plt')

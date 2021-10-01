@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-python control.py 		\
+python control_gripper.py 		\
 	--env Gripper 		\
 	--stage dy 		\
 	--eval_epoch 92    \
