@@ -49,7 +49,7 @@ class Planner(object):
         self.model = model
         self.dist_func = dist_func
         self.use_gpu = use_gpu
-        self.n_sample = 2
+        self.n_sample = 100
         self.reward_weight = 1
     
     def trajectory_optimization(
@@ -399,7 +399,7 @@ def set_action_limit(all_actions, ctrl_init_idx):
 #             '--augment', '0.05']
 
 args = gen_args()
-cfg = load("/home/haochen/projects/deformable/PlasticineLab/plb/envs/gripper.yml")
+cfg = load("/viscam/u/hshi74/projects/deformable/PlasticineLab/plb/envs/gripper.yml")
 print(cfg)
 
 env = TaichiEnv(cfg, nn=False, loss=False)
@@ -519,7 +519,7 @@ ctrl_init_idx = 4
 n_look_ahead = 20
 n_update_delta = 1
 n_his = 4
-n_sample = 2
+n_sample = 100
 n_update_iter_init = 1
 n_update_iter = 1
 emd = EarthMoverLoss()
@@ -569,10 +569,10 @@ for i in range(st_idx, ed_idx):
                                         use_gpu=use_gpu)
             print(action.shape)
 
-# obs = env.step(act)
-# env_act = np.zeros([action.shape[0], 12])
-# env_act[:, :3] = action
-# env_act[:, 6:9] = action * np.array([-1, 1, 1])
-# for i in range(action.shape[0]):
-#     env.step(env_act[i])
-#     env.render('plt')
+obs = env.step(act)
+env_act = np.zeros([action.shape[0], 12])
+env_act[:, :3] = action
+env_act[:, 6:9] = action * np.array([-1, 1, 1])
+for i in range(action.shape[0]):
+    env.step(env_act[i])
+    env.render(mode='plt', write=True, idx=i)
