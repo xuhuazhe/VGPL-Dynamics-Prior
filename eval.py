@@ -107,7 +107,7 @@ def evaluate(args, eval_epoch, eval_iter):
         datas = []
         p_gt = []
         s_gt = []
-        for step in range(args.n_frames):
+        for step in range(args.time_step):
             data_path = os.path.join(args.dataf, 'train', str(idx_episode).zfill(3), str(step) + '.h5')
 
             data = load_data(data_names, data_path)
@@ -127,7 +127,7 @@ def evaluate(args, eval_epoch, eval_iter):
         # s_gt: time_step x n_s x 4
         p_gt = torch.FloatTensor(np.stack(p_gt))
         s_gt = torch.FloatTensor(np.stack(s_gt))
-        p_pred = torch.zeros(args.n_frames, n_particle + n_shape, args.state_dim)
+        p_pred = torch.zeros(args.time_step, n_particle + n_shape, args.state_dim)
         # initialize particle grouping
         group_gt = get_env_group(args, n_particle, scene_params, use_gpu=use_gpu)
 
@@ -142,7 +142,7 @@ def evaluate(args, eval_epoch, eval_iter):
         loss_raw = 0.
         loss_counter = 0.
         st_idx = args.n_his
-        ed_idx = args.n_frames
+        ed_idx = args.time_step
 
         with torch.set_grad_enabled(False):
 

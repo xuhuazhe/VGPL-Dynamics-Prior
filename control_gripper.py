@@ -393,8 +393,7 @@ def set_action_limit(all_actions, ctrl_init_idx):
 #             '--eval_epoch', '92', 
 #             '--eval_iter', '472', 
 #             '--eval_set', 'train', 
-#             '--verbose_data', '0', 
-#             '--n_frames', '49', 
+#             '--verbose_data', '0',
 #             '--n_his', '4', 
 #             '--augment', '0.05']
 
@@ -496,7 +495,7 @@ for i in range(n_vid):
     all_p = []
     all_actions = []
     all_s = []
-    for t in range(args.n_frames):
+    for t in range(args.time_step):
         if task_name == "gripper":
             frame_path = os.path.join(rollout_dir, str(i).zfill(3), str(t) + '.h5')
         else:
