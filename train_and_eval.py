@@ -121,6 +121,9 @@ def main():
     best_valid_loss = np.inf
 
     training_stats = {'loss':[], 'loss_raw':[], 'iters': [], 'loss_emd': [], 'loss_motion': []}
+
+    rollout_epoch = -1
+    rollout_iter = -1
     for epoch in range(st_epoch, args.n_epoch):
 
         for phase in phases:
@@ -287,8 +290,8 @@ def main():
                 if phase == 'train' and i > 0 and ((epoch * len(dataloaders[phase])) + i) % args.ckp_per_iter == 0:
                     model_path = '%s/net_epoch_%d_iter_%d.pth' % (args.outf, epoch, i)
                     torch.save(model.state_dict(), model_path)
-
-                    # evaluate(args, epoch, i)
+                    rollout_epoch = epoch
+                    rollout_iter = i
 
             print('%s epoch[%d/%d] Loss: %.6f, Best valid: %.6f' % (
                 phase, epoch, args.n_epoch, meter_loss.avg, best_valid_loss))
@@ -301,6 +304,9 @@ def main():
                 if meter_loss.avg < best_valid_loss:
                     best_valid_loss = meter_loss.avg
                     torch.save(model.state_dict(), '%s/net_best.pth' % (args.outf))
+    
+    if rollout_epoch != -1 and rollout_iter != -1:
+        evaluate(args, rollout_epoch, rollout_iter)
 
 if __name__ == '__main__':
     # pr = cProfile.Profile()

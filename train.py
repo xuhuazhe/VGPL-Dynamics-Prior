@@ -193,8 +193,6 @@ for epoch in range(st_epoch, args.n_epoch):
                                 Rr_cur = Rr_cur.cuda()
                                 Rs_cur = Rs_cur.cuda()
                             state_cur = torch.cat([state_cur[:,-3:], pred_pos.unsqueeze(1)], dim=1)
-                            if use_gpu:
-                                Rr_cur, Rs_cur = Rr_cur.cuda(), Rs_cur.cuda()
 
 
                         if cluster_onehots is not None:

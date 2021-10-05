@@ -73,7 +73,7 @@ def load_data(data_names, path):
     return data
 
 
-task_name = "Gripper"
+task_name = "ngrip"
 rollout_dir = f"./data/data_{task_name}/train/"
 n_vid = 1
 n_frame = 49
@@ -82,7 +82,7 @@ counts = 0
 counts_d = 0
 sum_p = np.zeros(3)
 sum_d = np.zeros(3)
-start_frame = 40
+start_frame = 0
 visualize_neighbors_flag = False
 visualize_points_flag = True
 n_particle = 300
@@ -91,7 +91,7 @@ neighbor_radius = 0.05
 for i in range(1):
     for t in range(start_frame, start_frame+n_frame):
         print(f"visualizing {t}")
-        if task_name == "Gripper":
+        if task_name == "Gripper" or task_name == "ngrip":
             frame_path = os.path.join(rollout_dir, str(i).zfill(3), str(t) + '.h5')
         else:
             frame_path = os.path.join(rollout_dir, 'train', str(i).zfill(3), str(t) + '.h5')

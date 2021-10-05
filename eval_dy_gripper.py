@@ -30,9 +30,9 @@ set_seed(args.random_seed)
 #     if d.is_dir() and base.split('_')[0] == 'files':
 #         model_dir_list.append(base)
 
-model_dir = "files_dy27-Sep-2021-01:00:57.990173_nHis4_aug0.05emd_uh_clip_seqlen7_uhw0.0_clipw0.5"
+model_dir = "files_dy_03-Oct-2021-11:26:03.795915_nHis4_aug0.05_emd_uh_clip_seqlen7_uhw0.02_clipw0.0_gt0"
 # args.evalf = os.path.join(rootdir, 'eval_' + '_'.join(model_dir.split('_')[1:], ))
-args.evalf += '_' + '_'.join(model_dir.split('_')[2:])
+args.evalf = 'dump/dump_ngrip/' + model_dir + '/eval'
 
 os.system('mkdir -p ' + args.evalf)
 os.system('mkdir -p ' + os.path.join(args.evalf, 'render'))
@@ -55,7 +55,7 @@ if args.eval_epoch < 0:
 else:
     model_name = 'net_epoch_%d_iter_%d.pth' % (args.eval_epoch, args.eval_iter)
 
-model_path = os.path.join('dump/dump_Gripper/' + model_dir, model_name)    # args.outf
+model_path = os.path.join('dump/dump_ngrip/' + model_dir, model_name)    # args.outf
 print("Loading network from %s" % model_path)
 
 if args.stage == 'dy':
@@ -95,7 +95,7 @@ for idx_episode in range(0, n_episodes, 1): #range(len(infos)):
     datas = []
     p_gt = []
     s_gt = []
-    for step in range(args.n_frames):
+    for step in range(args.time_step):
         data_path = os.path.join(args.dataf, 'train', str(idx_episode).zfill(3), str(step) + '.h5')
 
         data = load_data(data_names, data_path)
@@ -115,7 +115,7 @@ for idx_episode in range(0, n_episodes, 1): #range(len(infos)):
     # s_gt: time_step x n_s x 4
     p_gt = torch.FloatTensor(np.stack(p_gt))
     s_gt = torch.FloatTensor(np.stack(s_gt))
-    p_pred = torch.zeros(args.n_frames, n_particle + n_shape, args.state_dim)
+    p_pred = torch.zeros(args.time_step, n_particle + n_shape, args.state_dim)
     # initialize particle grouping
     group_gt = get_env_group(args, n_particle, scene_params, use_gpu=use_gpu)
 
@@ -130,7 +130,7 @@ for idx_episode in range(0, n_episodes, 1): #range(len(infos)):
     loss_raw = 0.
     loss_counter = 0.
     st_idx = args.n_his
-    ed_idx = args.n_frames
+    ed_idx = args.time_step
 
     with torch.set_grad_enabled(False):
 
@@ -512,7 +512,7 @@ for idx_episode in range(0, n_episodes, 1): #range(len(infos)):
 
             out.release()
 
-with open(os.path.join(args.evalf, "stats.txt"), 'w') as file:
-    info = f"Average (+- std) emd loss over episodes: {np.mean(emd_for_episodes)} (+- {np.std(emd_for_episodes)})"
-    print('\n' + info)
-    file.write(info)
+# with open(os.path.join(args.evalf, "stats.txt"), 'w') as file:
+#     info = f"Average (+- std) emd loss over episodes: {np.mean(emd_for_episodes)} (+- {np.std(emd_for_episodes)})"
+#     print('\n' + info)
+#     file.write(info)
