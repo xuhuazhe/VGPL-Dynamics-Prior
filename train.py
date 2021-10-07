@@ -234,10 +234,11 @@ def main():
                                 loss += emd_loss(pred_pos, gt_pos)  #particle_dist_loss(pred_pos, gt_pos) + h_loss(pred_pos, gt_pos) #F.l1_loss(pred_motion_norm[:, :n_particle], gt_motion_norm[:, :n_particle])
                             elif args.losstype == 'chamfer':
                                 loss += particle_dist_loss(pred_pos, gt_pos)
-                            elif args.losstype == 'chamfer_uh':
+                            elif args.losstype == 'chamfer_uh_clip':
                                 loss_chamfer = particle_dist_loss(pred_pos, gt_pos)
                                 loss_uh = uh_loss(pred_pos, gt_pos)
-                                loss += loss_chamfer + args.uh_weight * loss_uh
+                                loss_clip = clip_loss(pred_pos, pred_pos) # self dist
+                                loss += loss_chamfer + args.uh_weight * loss_uh + args.clip_weight * loss_clip
                             elif args.losstype == 'hausdorff':
                                 loss += particle_dist_loss(pred_pos, gt_pos) + h_loss(pred_pos, gt_pos)
                             elif args.losstype == 'l1':
