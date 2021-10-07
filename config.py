@@ -31,11 +31,13 @@ parser.add_argument('--clip_weight', type=float, default=0.0)
 
 
 parser.add_argument('--outf', default='files')
+parser.add_argument('--outf_eval', default='')
 parser.add_argument('--evalf', default='eval')
 parser.add_argument('--dataf', default='data')
 parser.add_argument('--data_type', type=str, default='none')
 parser.add_argument('--gt_particles', type=int, default=0)
 
+parser.add_argument('--valid', type=int, default=0)
 parser.add_argument('--eval', type=int, default=0)
 parser.add_argument('--verbose_data', type=int, default=0)
 parser.add_argument('--verbose_model', type=int, default=0)
@@ -105,7 +107,7 @@ eval
 '''
 parser.add_argument('--eval_epoch', type=int, default=-1, help='pretrained model')
 parser.add_argument('--eval_iter', type=int, default=-1, help='pretrained model')
-parser.add_argument('--eval_set', default='demo')
+parser.add_argument('--eval_set', default='train')
 
 # visualization flog
 parser.add_argument('--pyflex', type=int, default=1)
@@ -155,7 +157,7 @@ def gen_args():
     elif args.env == 'Gripper':
         args.env_idx = 1001
 
-        args.n_rollout = 50
+        # args.n_rollout = 50
         if args.data_type == 'ngrip':
             args.time_step = 89
         else:
@@ -283,11 +285,11 @@ def gen_args():
         args.outf += '_aug%.2f' % args.augment_ratio
         # args.evalf += '_aug%.2f' % args.augment_ratio
 
+    args.outf += f'_gt{args.gt_particles}'
     args.outf += f'_{args.losstype}'
     args.outf += f'_seqlen{args.sequence_length}'
     args.outf += f'_uhw{args.uh_weight}'
     args.outf += f'_clipw{args.clip_weight}'
-    args.outf += f'_gt{args.gt_particles}'
 
     # evaluation checkpoints
     if args.stage in ['dy']:

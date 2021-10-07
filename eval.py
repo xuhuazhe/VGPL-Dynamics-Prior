@@ -26,15 +26,9 @@ import vispy.scene
 from vispy import app
 from vispy.visuals import transforms
 
-# args = gen_args()
-# set_seed(args.random_seed)
-
-# rootdir = 'dump/dump_Gripper/'
-# model_dir_list = []
-# for d in os.scandir(rootdir):
-#     _, base = os.path.split(d.path)
-#     if d.is_dir() and base.split('_')[0] == 'files':
-#         model_dir_list.append(base)
+import cProfile
+import pstats
+import io
 
 # render particles
 p1 = vispy.scene.visuals.Markers()
@@ -48,6 +42,9 @@ def evaluate(args, eval_epoch, eval_iter):
     global p1
     global t_step
     global colors
+
+    if len(args.outf_eval) > 0:
+        args.outf = args.outf_eval
     
     args.evalf = os.path.join(args.outf, 'eval')
 
@@ -70,7 +67,7 @@ def evaluate(args, eval_epoch, eval_iter):
     else:
         model_name = 'net_epoch_%d_iter_%d.pth' % (eval_epoch, eval_iter)
 
-    model_path = os.path.join(args.outf, model_name)    # args.outf
+    model_path = os.path.join(args.outf, model_name)
     print("Loading network from %s" % model_path)
 
     if args.stage == 'dy':
@@ -92,25 +89,28 @@ def evaluate(args, eval_epoch, eval_iter):
     emd_loss = EarthMoverLoss()
     uh_loss = UpdatedHausdorffLoss()
 
-
     emd_for_episodes = []
 
-    n_episodes = 50
-    for idx_episode in range(0, n_episodes, 1): #range(n_episodes):
+    for idx_episode in range(0, args.n_rollout, 1): #range(args.n_rollout):
         emd_list = []
-        print("Rollout %d / %d" % (idx_episode, n_episodes))
+        print("Rollout %d / %d" % (idx_episode, args.n_rollout))
 
         B = 1
         n_particle, n_shape = 0, 0
 
-        # ground truth
+        # sampled particles
         datas = []
+        gt_datas = []
+        p_sample = [] 
         p_gt = []
-        s_gt = []
+        # s_gt = []
         for step in range(args.time_step):
             data_path = os.path.join(args.dataf, 'train', str(idx_episode).zfill(3), str(step) + '.h5')
-
+            gt_data_path = os.path.join(args.dataf, 'train', str(idx_episode).zfill(3), 'gt_' + str(step) + '.h5')
+            
             data = load_data(data_names, data_path)
+            gt_data = load_data(data_names, gt_data_path)
+            
             if n_particle == 0 and n_shape == 0:
                 n_particle, n_shape, scene_params = get_scene_info(data)
                 # import pdb; pdb.set_trace()
@@ -119,19 +119,23 @@ def evaluate(args, eval_epoch, eval_iter):
             if args.verbose_data:
                 print("n_particle", n_particle)
                 print("n_shape", n_shape)
+            
             datas.append(data)
+            gt_datas.append(gt_data)
 
-            p_gt.append(data[0])
-            s_gt.append(data[1])
-        # p_gt: time_step x N x state_dim
+            p_sample.append(data[0])
+            p_gt.append(gt_data[0])
+            # s_gt.append(data[1])
+        # p_sample: time_step x N x state_dim
         # s_gt: time_step x n_s x 4
+        p_sample = torch.FloatTensor(np.stack(p_sample))
         p_gt = torch.FloatTensor(np.stack(p_gt))
-        s_gt = torch.FloatTensor(np.stack(s_gt))
+        # s_gt = torch.FloatTensor(np.stack(s_gt))
         p_pred = torch.zeros(args.time_step, n_particle + n_shape, args.state_dim)
         # initialize particle grouping
-        group_gt = get_env_group(args, n_particle, scene_params, use_gpu=use_gpu)
+        group_info = get_env_group(args, n_particle, scene_params, use_gpu=use_gpu)
 
-        print('scene_params:', group_gt[-1][0, 0].item())
+        print('scene_params:', group_info[-1][0, 0].item())
 
         # memory: B x mem_nlayer x (n_particle + n_shape) x nf_memory
         # for now, only used as a placeholder
@@ -150,7 +154,7 @@ def evaluate(args, eval_epoch, eval_iter):
 
                 if step_id == st_idx:
                     # state_cur (unnormalized): n_his x (n_p + n_s) x state_dim
-                    state_cur = p_gt[step_id - args.n_his:step_id]
+                    state_cur = p_sample[step_id - args.n_his:step_id]
                     if use_gpu:
                         state_cur = state_cur.cuda()
 
@@ -181,31 +185,31 @@ def evaluate(args, eval_epoch, eval_iter):
                     cluster_onehot = cluster_onehot.unsqueeze(0)
 
                 if args.stage in ['dy']:
-                    inputs = [attr, state_cur, Rr_cur, Rs_cur, memory_init, group_gt, cluster_onehot]
+                    inputs = [attr, state_cur, Rr_cur, Rs_cur, memory_init, group_info, cluster_onehot]
                 # pred_pos (unnormalized): B x n_p x state_dim
                 # pred_motion_norm (normalized): B x n_p x state_dim
                 pred_pos, pred_motion_norm, std_cluster = model.predict_dynamics(inputs)
 
                 # concatenate the state of the shapes
                 # pred_pos (unnormalized): B x (n_p + n_s) x state_dim
-                gt_pos = p_gt[step_id].unsqueeze(0)
+                sample_pos = p_sample[step_id].unsqueeze(0)
                 if use_gpu:
-                    gt_pos = gt_pos.cuda()
-                pred_pos = torch.cat([pred_pos, gt_pos[:, n_particle:]], 1)
+                    sample_pos = sample_pos.cuda()
+                pred_pos = torch.cat([pred_pos, sample_pos[:, n_particle:]], 1)
 
-                # gt_motion_norm (normalized): B x (n_p + n_s) x state_dim
+                # sample_motion_norm (normalized): B x (n_p + n_s) x state_dim
                 # pred_motion_norm (normalized): B x (n_p + n_s) x state_dim
-                gt_motion = (p_gt[step_id] - p_gt[step_id - 1]).unsqueeze(0)
+                sample_motion = (p_sample[step_id] - p_sample[step_id - 1]).unsqueeze(0)
                 if use_gpu:
-                    gt_motion = gt_motion.cuda()
+                    sample_motion = sample_motion.cuda()
                 mean_d, std_d = model.stat[2:]
-                gt_motion_norm = (gt_motion - mean_d) / std_d
-                pred_motion_norm = torch.cat([pred_motion_norm, gt_motion_norm[:, n_particle:]], 1)
+                sample_motion_norm = (sample_motion - mean_d) / std_d
+                pred_motion_norm = torch.cat([pred_motion_norm, sample_motion_norm[:, n_particle:]], 1)
 
-                loss_cur = F.l1_loss(pred_motion_norm[:, :n_particle], gt_motion_norm[:, :n_particle])
-                loss_cur_raw = F.l1_loss(pred_pos, gt_pos)
-                loss_emd = emd_loss(pred_pos, gt_pos)
-                loss_uh = uh_loss(pred_pos, gt_pos)
+                loss_cur = F.l1_loss(pred_motion_norm[:, :n_particle], sample_motion_norm[:, :n_particle])
+                loss_cur_raw = F.l1_loss(pred_pos, sample_pos)
+                loss_emd = emd_loss(pred_pos, sample_pos)
+                loss_uh = uh_loss(pred_pos, sample_pos)
 
                 loss += loss_cur
                 loss_raw += loss_cur_raw
@@ -231,22 +235,21 @@ def evaluate(args, eval_epoch, eval_iter):
         '''
         visualization
         '''
-        group_gt = [d.data.cpu().numpy()[0, ...] for d in group_gt]
+        group_info = [d.data.cpu().numpy()[0, ...] for d in group_info]
         p_pred = p_pred.numpy()[st_idx:ed_idx]
+        p_sample = p_sample.numpy()[st_idx:ed_idx]
         p_gt = p_gt.numpy()[st_idx:ed_idx]
-        s_gt = s_gt.numpy()[st_idx:ed_idx]
+        # s_gt = s_gt.numpy()[st_idx:ed_idx]
         vis_length = ed_idx - st_idx
         # print(vis_length)
 
         if args.vispy:
 
             ### render in VisPy
-
             particle_size = 0.01
             border = 0.025
             height = 1.3
             y_rotate_deg = -45.0
-
 
             def y_rotate(obj, deg=y_rotate_deg):
                 tr = vispy.visuals.transforms.MatrixTransform()
@@ -353,7 +356,7 @@ def evaluate(args, eval_epoch, eval_iter):
                 return visuals
 
 
-            c = vispy.scene.SceneCanvas(show=True, bgcolor='white')
+            c = vispy.scene.SceneCanvas(show=True, size=(512, 512), bgcolor='white')
             view = c.central_widget.add_view()
 
 
@@ -407,11 +410,12 @@ def evaluate(args, eval_epoch, eval_iter):
             set up data for rendering
             '''
             #0 - p_pred: seq_length x n_p x 3
-            #1 - p_gt: seq_length x n_p x 3
+            #1 - p_sample: seq_length x n_p x 3
             #2 - s_gt: seq_length x n_s x 3
-            print('p_pred', p_pred.shape)
             print('p_gt', p_gt.shape)
-            print('s_gt', s_gt.shape)
+            print('p_sample', p_sample.shape)
+            print('p_pred', p_pred.shape)
+            # print('s_gt', s_gt.shape)
             # create directory to save images if not exist
             vispy_dir = args.evalf + "/vispy"
             os.system('mkdir -p ' + vispy_dir)
@@ -423,12 +427,12 @@ def evaluate(args, eval_epoch, eval_iter):
 
                 if t_step < vis_length:
                     if t_step == 0:
-                        print("Rendering ground truth")
+                        print("Rendering ground truth particles")
 
                     t_actual = t_step
 
                     colors = convert_groups_to_colors(
-                        group_gt, n_particle, args.n_instance,
+                        group_info, n_particle, args.n_instance,
                         instance_colors=instance_colors, env=args.env)
                     colors = np.clip(colors, 0., 1.)
                     # import pdb; pdb.set_trace()
@@ -447,15 +451,40 @@ def evaluate(args, eval_epoch, eval_iter):
                     img_path = os.path.join(vispy_dir, "gt_{}_{}.png".format(str(idx_episode), str(t_actual)))
                     vispy.io.write_png(img_path, img)
 
-
-                elif vis_length <= t_step < vis_length * 2:
+                elif t_step < 2 * vis_length:
                     if t_step == vis_length:
-                        print("Rendering prediction result")
+                        print("Rendering sampled particles")
 
                     t_actual = t_step - vis_length
 
                     colors = convert_groups_to_colors(
-                        group_gt, n_particle, args.n_instance,
+                        group_info, n_particle, args.n_instance,
+                        instance_colors=instance_colors, env=args.env)
+                    colors = np.clip(colors, 0., 1.)
+                    # import pdb; pdb.set_trace()
+                    if args.env == "Gripper":
+                        new_p = np.delete(copy.copy(p_sample), -3, axis=1)
+                        colors = np.concatenate([colors, np.array([[0, 1, 0, 1], [0, 1, 0, 1]])])
+                    else:
+                        new_p = np.delete(copy.copy(p_sample), -2, axis=1)
+                        colors = np.concatenate([colors, np.array([[0,1,0,1]])])
+                    # print('color shape!!!', colors.shape)
+                    p1.set_data(new_p[t_actual], edge_color='black', face_color=colors)
+                    # p1.set_data(p_sample[t_actual, :n_particle], edge_color='black', face_color=colors)
+                    # p1.set_data(p_sample[t_actual, -1], edge_color='k', face_color='b')
+                    # render for ground truth
+                    img = c.render()
+                    img_path = os.path.join(vispy_dir, "sample_{}_{}.png".format(str(idx_episode), str(t_actual)))
+                    vispy.io.write_png(img_path, img)
+
+                elif t_step < 3 * vis_length:
+                    if t_step == 2 * vis_length:
+                        print("Rendering prediction result")
+
+                    t_actual = t_step - 2 * vis_length
+
+                    colors = convert_groups_to_colors(
+                        group_info, n_particle, args.n_instance,
                         instance_colors=instance_colors, env=args.env)
 
                     colors = np.clip(colors, 0., 1.)
@@ -476,7 +505,7 @@ def evaluate(args, eval_epoch, eval_iter):
                     img_path = os.path.join(vispy_dir, "pred_{}_{}.png".format(str(idx_episode), str(t_actual)))
                     vispy.io.write_png(img_path, img)
 
-                    if t_step == vis_length * 2 - 1:
+                    if t_step == vis_length * 3 - 1:
                         c.close()
                 else:
                     # discarded frames
@@ -488,7 +517,7 @@ def evaluate(args, eval_epoch, eval_iter):
             # start animation
             timer = app.Timer()
             timer.connect(update)
-            timer.start(interval=1. / 60., iterations=vis_length * 2)
+            timer.start(interval=1. / 60., iterations=vis_length * 3)
 
             c.show()
             app.run()
@@ -500,18 +529,24 @@ def evaluate(args, eval_epoch, eval_iter):
                 fourcc = cv2.VideoWriter_fourcc(*'MJPG')
                 out = cv2.VideoWriter(
                     os.path.join(args.evalf, 'render', 'vid_%d_vispy.avi' % (idx_episode)),
-                    fourcc, 20, (800 * 2, 600))
+                    fourcc, 20, (1024, 1024))
 
                 for step in range(vis_length):
+                    vid_path = os.path.join(args.dataf, 'vid', str(idx_episode).zfill(3), str(step).zfill(3) + '_rgb_0.png')
                     gt_path = os.path.join(args.evalf, 'vispy', 'gt_%d_%d.png' % (idx_episode, step))
+                    sample_path = os.path.join(args.evalf, 'vispy', 'sample_%d_%d.png' % (idx_episode, step))
                     pred_path = os.path.join(args.evalf, 'vispy', 'pred_%d_%d.png' % (idx_episode, step))
 
+                    vid = cv2.imread(vid_path)
                     gt = cv2.imread(gt_path)
+                    sample = cv2.imread(sample_path)
                     pred = cv2.imread(pred_path)
 
-                    frame = np.zeros((600, 800 * 2, 3), dtype=np.uint8)
-                    frame[:, :800] = gt
-                    frame[:, 800:] = pred
+                    frame = np.zeros((1024, 1024, 3), dtype=np.uint8)
+                    frame[:512, :512] = vid
+                    frame[:512, 512:] = gt
+                    frame[512:, :512] = sample
+                    frame[512:, 512:] = pred
 
                     out.write(frame)
 
@@ -520,5 +555,19 @@ def evaluate(args, eval_epoch, eval_iter):
     info = f"Average (+- std) emd loss over episodes: {np.mean(emd_for_episodes)} (+- {np.std(emd_for_episodes)})"
     print('\n' + info)
 
-    # with open(os.path.join(args.evalf, "stats.txt"), 'w') as file:
-    #     file.write(info)
+if __name__ == '__main__':
+    args = gen_args()
+    set_seed(args.random_seed)
+
+    pr = cProfile.Profile()
+    pr.enable()
+    
+    evaluate(args, args.eval_epoch, args.eval_iter)
+
+    pr.disable()
+    s = io.StringIO()
+    ps = pstats.Stats(pr, stream=s).sort_stats('tottime')
+    ps.print_stats()
+
+    with open(os.path.join(args.evalf, 'train_and_eval_profile.txt'), 'w+') as f:
+        f.write(s.getvalue())
