@@ -35,6 +35,7 @@ os.system('mkdir -p ' + args.outf)
 
 tee = Tee(os.path.join(args.outf, 'train.log'), 'w')
 
+@profile
 def main():
     ### training
 
@@ -230,36 +231,19 @@ def main():
                             mean_d, std_d = model.stat[2:]
                             gt_motion_norm = (gt_motion - mean_d) / std_d
                             pred_motion_norm = torch.cat([pred_motion_norm, gt_motion_norm[:, n_particle:]], 1)
-                            if args.losstype == 'emd':
-                                loss += emd_loss(pred_pos, gt_pos)  #particle_dist_loss(pred_pos, gt_pos) + h_loss(pred_pos, gt_pos) #F.l1_loss(pred_motion_norm[:, :n_particle], gt_motion_norm[:, :n_particle])
-                            elif args.losstype == 'chamfer':
+                            if args.losstype == 'chamfer_uh_clip':
                                 loss += particle_dist_loss(pred_pos, gt_pos)
-                            elif args.losstype == 'chamfer_uh_clip':
-                                loss_chamfer = particle_dist_loss(pred_pos, gt_pos)
-                                loss_uh = uh_loss(pred_pos, gt_pos)
-                                loss_clip = clip_loss(pred_pos, pred_pos) # self dist
-                                loss += loss_chamfer + args.uh_weight * loss_uh + args.clip_weight * loss_clip
-                            elif args.losstype == 'hausdorff':
-                                loss += particle_dist_loss(pred_pos, gt_pos) + h_loss(pred_pos, gt_pos)
-                            elif args.losstype == 'l1':
-                                loss += F.l1_loss(pred_motion_norm[:, :n_particle], gt_motion_norm[:, :n_particle])
-                            elif args.losstype == 'emd_uh':
-                                loss_emd = emd_loss(pred_pos, gt_pos)
-                                loss_uh = uh_loss(pred_pos, gt_pos)
-                                # print(loss_emd, loss_uh)
-                                loss += loss_emd + args.uh_weight * loss_uh
-                            elif args.losstype == 'emd_l1':
-                                loss_emd = emd_loss(pred_pos, gt_pos)
-                                loss_motion = F.l1_loss(pred_motion_norm[:, :n_particle], gt_motion_norm[:, :n_particle])
-                                # print('emd:', loss_emd.item())
-                                # print('l1:', args.matched_motion_weight * loss_motion.item())
-                                loss += loss_emd + args.matched_motion_weight * loss_motion
+                                if args.uh_weight > 0:
+                                    loss += args.uh_weight * uh_loss(pred_pos, gt_pos)
+                                if args.clip_weight > 0:
+                                    loss += args.clip_weight * clip_loss(pred_pos, pred_pos) # self dist
                             elif args.losstype == 'emd_uh_clip':
-                                loss_emd = emd_loss(pred_pos, gt_pos)
-                                loss_uh = uh_loss(pred_pos, gt_pos)
-                                loss_clip = clip_loss(pred_pos, pred_pos) # self dist
-                                print(loss_emd.item(), loss_uh.item(), loss_clip.item())
-                                loss += loss_emd + args.uh_weight * loss_uh + args.clip_weight * loss_clip
+                                loss += emd_loss(pred_pos, gt_pos)
+                                if args.uh_weight > 0:
+                                    loss += args.uh_weight * uh_loss(pred_pos, gt_pos)
+                                if args.clip_weight > 0:
+                                    loss += args.clip_weight * clip_loss(pred_pos, pred_pos) # self dist
+                                # print(loss_emd.item(), loss_uh.item(), loss_clip.item())
                             else:
                                 raise NotImplementedError
 
@@ -314,15 +298,15 @@ def main():
         evaluate(args, rollout_epoch, rollout_iter)
 
 if __name__ == '__main__':
-    pr = cProfile.Profile()
-    pr.enable()
+    # pr = cProfile.Profile()
+    # pr.enable()
     
     main()
 
-    pr.disable()
-    s = io.StringIO()
-    ps = pstats.Stats(pr, stream=s).sort_stats('tottime')
-    ps.print_stats()
+    # pr.disable()
+    # s = io.StringIO()
+    # ps = pstats.Stats(pr, stream=s).sort_stats('tottime')
+    # ps.print_stats()
 
-    with open(os.path.join(args.outf, 'train_and_eval_profile.txt'), 'w+') as f:
-        f.write(s.getvalue())
+    # with open(os.path.join(args.outf, 'train_and_eval_profile.txt'), 'w+') as f:
+    #     f.write(s.getvalue())

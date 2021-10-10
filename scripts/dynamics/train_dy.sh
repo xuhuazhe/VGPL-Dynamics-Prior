@@ -18,7 +18,7 @@
 # export LD_LIBRARY_PATH="/sailhome/hshi74/my_lib/:$LD_LIBRARY_PATH"
 
 CUDA_VISIBLE_DEVICES=0 \
-python train.py \
+kernprof -l train.py \
 	--env Gripper \
 	--data_type ngrip \
 	--stage dy \

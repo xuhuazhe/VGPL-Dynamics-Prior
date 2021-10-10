@@ -9,6 +9,6 @@ python eval.py \
 	--vispy 1 \
 	--data_type ngrip \
 	--n_rollout 50 \
-	--outf_eval dump/dump_ngrip/files_dy_06-Oct-2021-00:34:48.734371_nHis4_aug0.05_gt0_chamfer_uh_seqlen5_uhw0.02_clipw0.0 \
-	--eval_epoch 94 \
-	--eval_iter 42
+	--outf_eval dump/dump_ngrip/files_dy_06-Oct-2021-19:18:45.700479_nHis4_aug0.05_gt1_chamfer_uh_clip_seqlen7_uhw0.05_clipw0.0 \
+	--eval_epoch 96 \
+	--eval_iter 336
