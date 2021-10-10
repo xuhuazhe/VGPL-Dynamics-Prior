@@ -5,6 +5,7 @@
 #SBATCH --mem=32G
 #SBATCH --time=3-00:00:00
 #SBATCH --cpus-per-task=16
+#SBATCH --output=/sailhome/hshi74/output/deformable/%A.out
 
 # source ~/.bashrc
 # conda activate deformable

@@ -14,9 +14,9 @@ from config import gen_args
 from data_utils import load_data, get_scene_info, normalize_scene_param
 from data_utils import get_env_group, prepare_input, denormalize
 from models import Model
-from utils import add_log, convert_groups_to_colors, plot_curves
+from utils import add_log, convert_groups_to_colors, train_plot_curves, eval_plot_curves
 from utils import create_instance_colors, set_seed, Tee, count_parameters
-from models import EarthMoverLoss, UpdatedHausdorffLoss
+from models import EarthMoverLoss, ChamferLoss, UpdatedHausdorffLoss
 
 import matplotlib.pyplot as plt
 
@@ -87,12 +87,14 @@ def evaluate(args, eval_epoch, eval_iter):
         model = model.cuda()
 
     emd_loss = EarthMoverLoss()
+    chamfer_loss = ChamferLoss()
     uh_loss = UpdatedHausdorffLoss()
 
-    emd_for_episodes = []
+    loss_list_over_episodes = []
 
     for idx_episode in range(0, args.n_rollout, 1): #range(args.n_rollout):
-        emd_list = []
+        loss_list = []
+        
         print("Rollout %d / %d" % (idx_episode, args.n_rollout))
 
         B = 1
@@ -209,12 +211,13 @@ def evaluate(args, eval_epoch, eval_iter):
                 loss_cur = F.l1_loss(pred_motion_norm[:, :n_particle], sample_motion_norm[:, :n_particle])
                 loss_cur_raw = F.l1_loss(pred_pos, sample_pos)
                 loss_emd = emd_loss(pred_pos, sample_pos)
+                loss_chamfer = chamfer_loss(pred_pos, sample_pos)
                 loss_uh = uh_loss(pred_pos, sample_pos)
 
                 loss += loss_cur
                 loss_raw += loss_cur_raw
                 loss_counter += 1
-                emd_list.append((step_id, loss_emd.item(), loss_uh.item()))
+                loss_list.append([step_id, loss_emd.item(), loss_chamfer.item(), loss_uh.item()])
                 # state_cur (unnormalized): B x n_his x (n_p + n_s) x state_dim
                 state_cur = torch.cat([state_cur[:, 1:], pred_pos.unsqueeze(1)], 1)
                 state_cur = state_cur.detach()[0]
@@ -229,8 +232,7 @@ def evaluate(args, eval_epoch, eval_iter):
         loss_raw /= loss_counter
         print("loss: %.6f, loss_raw: %.10f" % (loss.item(), loss_raw.item()))
 
-        emd_for_episodes.append(np.mean([x[1] for x in emd_list]))
-        plot_curves(emd_list, path=os.path.join(args.evalf, 'plot', 'loss_curves_%d.png' % (idx_episode)))
+        loss_list_over_episodes.append(loss_list)
         # import pdb; pdb.set_trace()
         '''
         visualization
@@ -551,9 +553,21 @@ def evaluate(args, eval_epoch, eval_iter):
                     out.write(frame)
 
                 out.release()
-        
-    info = f"Average (+- std) emd loss over episodes: {np.mean(emd_for_episodes)} (+- {np.std(emd_for_episodes)})"
-    print('\n' + info)
+
+    # plot the loss curves for training and evaluating
+    with open(os.path.join(args.outf, 'train.npy'), 'rb') as f:
+        train_log = np.load(f, allow_pickle=True)
+        train_log = train_log[None][0]
+        train_plot_curves(train_log['iters'], train_log['loss'], path=os.path.join(args.evalf, 'plot', 'train_loss_curves.png'))
+
+    loss_list_over_episodes = np.array(loss_list_over_episodes)
+
+    eval_plot_curves(np.mean(loss_list_over_episodes, axis=0), path=os.path.join(args.evalf, 'plot', 'eval_loss_curves.png'))
+
+    info = f"\nAverage (+- std) emd loss over episodes: {np.mean(loss_list_over_episodes[:, :, 1])} (+- {np.std(loss_list_over_episodes[:, :, 1])})"
+    info += f"\nAverage (+- std) chamfer loss over episodes: {np.mean(loss_list_over_episodes[:, :, 2])} (+- {np.std(loss_list_over_episodes[:, :, 2])})"
+    info += f"\nAverage (+- std) hausdorff loss over episodes: {np.mean(loss_list_over_episodes[:, :, 3])} (+- {np.std(loss_list_over_episodes[:, :, 3])})"
+    print(info)
 
 if __name__ == '__main__':
     args = gen_args()

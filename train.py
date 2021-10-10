@@ -264,9 +264,6 @@ def main():
                         training_stats['loss'].append(loss.item())
                         training_stats['loss_raw'].append(loss_raw.item())
                         training_stats['iters'].append(epoch * len(dataloaders[phase]) + i)
-                        if args.losstype == 'emd_l1':
-                            training_stats['loss_emd'].append(loss_emd.item())
-                            training_stats['loss_motion'].append(loss_motion.item())
                     # with open(args.outf + '/train.npy', 'wb') as f:
                     #     np.save(f, training_stats)
 
