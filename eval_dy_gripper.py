@@ -30,7 +30,7 @@ set_seed(args.random_seed)
 #     if d.is_dir() and base.split('_')[0] == 'files':
 #         model_dir_list.append(base)
 
-model_dir = "files_dy27-Sep-2021-01:00:57.990173_nHis4_aug0.05emd_uh_clip_seqlen7_uhw0.0_clipw0.5"
+model_dir = "files_dy29-Sep-2021-16:42:48.549442_nHis4_aug0.05emd_uh_clip_seqlen7_uhw0.02_clipw0.0_gt1"
 # args.evalf = os.path.join(rootdir, 'eval_' + '_'.join(model_dir.split('_')[1:], ))
 args.evalf += '_' + '_'.join(model_dir.split('_')[2:])
 
@@ -55,7 +55,7 @@ if args.eval_epoch < 0:
 else:
     model_name = 'net_epoch_%d_iter_%d.pth' % (args.eval_epoch, args.eval_iter)
 
-model_path = os.path.join('dump/dump_Gripper/' + model_dir, model_name)    # args.outf
+model_path = os.path.join('dump/dump_Pinch/' + model_dir, model_name)    # args.outf
 print("Loading network from %s" % model_path)
 
 if args.stage == 'dy':
@@ -96,7 +96,10 @@ for idx_episode in range(0, n_episodes, 1): #range(len(infos)):
     p_gt = []
     s_gt = []
     for step in range(args.n_frames):
-        data_path = os.path.join(args.dataf, 'train', str(idx_episode).zfill(3), str(step) + '.h5')
+        if args.gt_particles:
+            data_path = os.path.join(args.dataf, 'train', str(idx_episode).zfill(3), 'gt_' + str(step) + '.h5')
+        else:
+            data_path = os.path.join(args.dataf, 'train', str(idx_episode).zfill(3), str(step) + '.h5')
 
         data = load_data(data_names, data_path)
         if n_particle == 0 and n_shape == 0:
