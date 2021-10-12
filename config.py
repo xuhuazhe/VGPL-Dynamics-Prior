@@ -151,8 +151,8 @@ def gen_args():
         args.std_p = np.array([0.06167904, 0.05326168, 0.06180995])
         # args.mean_d = np.array([-1.62756886e-05, -1.10265409e-04, -1.71767924e-04])
         # args.std_d = np.array([0.08455442, 0.07277832, 0.08571255])
-        args.mean_d = np.array([4.00109732e-04, 6.71352200e-05, -1.17460513e-04])
-        args.std_d = np.array([0.0166535,  0.01636565, 0.01657304])
+        args.mean_d = np.array([0.0, 0.0, 0.0])
+        args.std_d = np.array([1.0, 1.0, 1.0])
 
     elif args.env == 'Gripper':
         args.env_idx = 1001
@@ -194,8 +194,9 @@ def gen_args():
 
         args.mean_p = np.array([0.50932539, 0.11348496, 0.49837578])
         args.std_p = np.array([0.06474939, 0.04888084, 0.05906044])
-        # args.mean_d = np.array([-1.62756886e-05, -1.10265409e-04, -1.71767924e-04])
-        # args.std_d = np.array([0.08455442, 0.07277832, 0.08571255])
+        
+        # args.mean_d = np.array([-0.00284736, 0.00286124, -0.00130389])
+        # args.std_d = np.array([0.00001755744, 0.00001663332, 0.00001677678])
         args.mean_d = np.array([-0.00284736, 0.00286124, -0.00130389])
         args.std_d = np.array([0.01755744, 0.01663332, 0.01677678])
 
