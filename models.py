@@ -141,6 +141,7 @@ class DynamicsPredictor(nn.Module):
         # rot: (B * n_instance) x 3 x 3
         return rot
 
+    # @profile
     def forward(self, inputs, stat, verbose=0):
         args = self.args
         verbose = args.verbose_model
