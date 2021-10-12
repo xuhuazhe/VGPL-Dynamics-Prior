@@ -5,7 +5,7 @@
 #SBATCH --mem=64G
 #SBATCH --time=3-00:00:00
 #SBATCH --cpus-per-task=16
-#SBATCH --output=/sailhome/hxu/output/deformable/%A.out
+#SBATCH --output=/sailhome/hxu/output/VGPL/%A.out
 
 source ~/.bashrc
 conda activate deformable2
