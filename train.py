@@ -115,13 +115,13 @@ def main():
         model = model.cuda()
 
     # log args
-    print(args)
+    print(vars(args))
 
     # start training
     st_epoch = args.resume_epoch if args.resume_epoch > 0 else 0
     best_valid_loss = np.inf
 
-    training_stats = {'loss':[], 'loss_raw':[], 'iters': [], 'loss_emd': [], 'loss_motion': []}
+    training_stats = {'args':vars(args), 'loss':[], 'loss_raw':[], 'iters': [], 'loss_emd': [], 'loss_motion': []}
 
     rollout_epoch = -1
     rollout_iter = -1

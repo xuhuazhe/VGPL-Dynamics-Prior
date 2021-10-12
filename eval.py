@@ -42,9 +42,6 @@ def evaluate(args, eval_epoch, eval_iter):
     global p1
     global t_step
     global colors
-
-    if len(args.outf_eval) > 0:
-        args.outf = args.outf_eval
     
     args.evalf = os.path.join(args.outf, 'eval')
 
@@ -238,9 +235,12 @@ def evaluate(args, eval_epoch, eval_iter):
         visualization
         '''
         group_info = [d.data.cpu().numpy()[0, ...] for d in group_info]
-        p_pred = p_pred.numpy()[st_idx:ed_idx]
-        p_sample = p_sample.numpy()[st_idx:ed_idx]
-        p_gt = p_gt.numpy()[st_idx:ed_idx]
+        if args.gt_particles:
+            p_pred = np.concatenate((p_gt.numpy()[:st_idx], p_pred.numpy()[st_idx:ed_idx]))
+        else:
+            p_pred = np.concatenate((p_sample.numpy()[:st_idx], p_pred.numpy()[st_idx:ed_idx]))
+        p_sample = p_sample.numpy()[:ed_idx]
+        p_gt = p_gt.numpy()[:ed_idx]
         # s_gt = s_gt.numpy()[st_idx:ed_idx]
         vis_length = ed_idx - st_idx
         # print(vis_length)
@@ -573,15 +573,14 @@ if __name__ == '__main__':
     args = gen_args()
     set_seed(args.random_seed)
 
-    pr = cProfile.Profile()
-    pr.enable()
-    
+    if len(args.outf_eval) > 0:
+        args.outf = args.outf_eval
+
+    with open(os.path.join(args.outf, 'train.npy'), 'rb') as f:
+        train_log = np.load(f, allow_pickle=True)
+        train_log = train_log[None][0]
+        if 'args' in train_log:
+            args = argparse.Namespace(**train_log['args'])
+            print(args)
+
     evaluate(args, args.eval_epoch, args.eval_iter)
-
-    pr.disable()
-    s = io.StringIO()
-    ps = pstats.Stats(pr, stream=s).sort_stats('tottime')
-    ps.print_stats()
-
-    with open(os.path.join(args.evalf, 'train_and_eval_profile.txt'), 'w+') as f:
-        f.write(s.getvalue())
