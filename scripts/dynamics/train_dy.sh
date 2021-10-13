@@ -34,7 +34,6 @@ kernprof -l train.py \
 	--optimizer Adam \
 	--batch_size 4 \
 	--n_his 4 \
-	--augment 0.05 \
 	--verbose_data 0 \
 	--verbose_model 0 \
 	--log_per_iter 100 \
@@ -50,4 +49,5 @@ kernprof -l train.py \
 	--losstype $1 \
 	--sequence_length $2 \
 	--uh_weight $3 \
-	--clip_weight $4
+	--clip_weight $4 \
+	--augment_ratio $5

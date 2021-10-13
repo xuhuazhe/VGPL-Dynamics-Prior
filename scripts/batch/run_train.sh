@@ -6,17 +6,21 @@ declare -a arr=("emd_uh_clip")
 declare -a arr2=("5")
 declare -a arr3=("0.05")
 declare -a arr4=("0.0")
+declare -a arr5=("0.05")
 for i in "${arr[@]}"
 do
     for j in "${arr2[@]}"
     do
         for k in "${arr3[@]}"
         do
-            for w in "${arr4[@]}"
+            for l in "${arr4[@]}"
             do
-                echo "$i $j $k $w"
-                sbatch ./scripts/dynamics/train_dy.sh $i $j $k $w
-                # bash ./scripts/dynamics/train_dy.sh $i $j $k $w
+                for m in "${arr5[@]}"
+                do
+                    echo "$i $j $k $l $m"
+                    sbatch ./scripts/dynamics/train_dy.sh $i $j $k $l $m
+                    # bash ./scripts/dynamics/train_dy.sh $i $j $k $l $m
+                done
             done
 	    done
     done
