@@ -580,7 +580,7 @@ if __name__ == '__main__':
         train_log = np.load(f, allow_pickle=True)
         train_log = train_log[None][0]
         if 'args' in train_log:
-            args = argparse.Namespace(**train_log['args'])
-            print(args)
+            train_args = argparse.Namespace(**train_log['args'])
+            args.gt_particles = train_args.gt_particles
 
     evaluate(args, args.eval_epoch, args.eval_iter)

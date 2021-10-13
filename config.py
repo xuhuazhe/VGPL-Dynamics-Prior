@@ -197,10 +197,10 @@ def gen_args():
         
         # args.mean_d = np.array([-0.00284736, 0.00286124, -0.00130389])
         # args.std_d = np.array([0.001755744, 0.001663332, 0.001677678])
-        args.mean_d = np.array([0.0, 0.0, 0.0])
-        args.std_d = np.array([1.0, 1.0, 1.0])
-        # args.mean_d = np.array([-0.00284736, 0.00286124, -0.00130389])
-        # args.std_d = np.array([0.01755744, 0.01663332, 0.01677678])
+        # args.mean_d = np.array([0.0, 0.0, 0.0])
+        # args.std_d = np.array([1.0, 1.0, 1.0])
+        args.mean_d = np.array([-0.00284736, 0.00286124, -0.00130389])
+        args.std_d = np.array([0.01755744, 0.01663332, 0.01677678])
 
     elif args.env == 'RigidFall':
         args.env_idx = 3
