@@ -580,7 +580,7 @@ def prepare_input(positions, n_particle, n_shape, args, var=False, stdreg=0):
                 # print(nodes1)
                 # if ind == 15:
                     # import pdb; pdb.set_trace()
-                visualize_neighbors(pos, pos, 0, nodes1)
+                # visualize_neighbors(pos, pos, 0, nodes1)
                 prim1 = np.ones(nodes1.shape[0], dtype=np.int) * (n_particle + 9 + ind)
                 rels += [np.stack([nodes1, prim1], axis=1)]
 
