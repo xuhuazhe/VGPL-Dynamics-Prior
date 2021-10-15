@@ -21,7 +21,9 @@ from models import EarthMoverLoss, ChamferLoss, UpdatedHausdorffLoss
 import matplotlib.pyplot as plt
 
 import vispy
-# vispy.use('osmesa')
+from sys import platform
+if platform != 'darwin':
+    vispy.use('osmesa')
 import vispy.scene
 from vispy import app
 from vispy.visuals import transforms
@@ -463,6 +465,7 @@ def evaluate(args, eval_epoch, eval_iter):
                     vispy.io.write_png(img_path, img)
 
                 elif t_step < 2 * vis_length:
+                    # import pdb; pdb.set_trace()
                     if t_step == vis_length:
                         print("Rendering sampled particles")
 
@@ -474,8 +477,12 @@ def evaluate(args, eval_epoch, eval_iter):
                     colors = np.clip(colors, 0., 1.)
                     # import pdb; pdb.set_trace()
                     if args.env == "Gripper":
-                        new_p = np.delete(copy.copy(p_sample), -3, axis=1)
-                        colors = np.concatenate([colors, np.array([[0, 1, 0, 1], [0, 1, 0, 1]])])
+                        if args.shape_aug:
+                            new_p = copy.copy(p_sample)
+                            colors = np.concatenate([colors, np.array([[0, 1, 0, 1]]).repeat(31, axis=0) ] )
+                        else:
+                            new_p = np.delete(copy.copy(p_sample), -3, axis=1)
+                            colors = np.concatenate([colors, np.array([[0, 1, 0, 1], [0, 1, 0, 1]])])
                     else:
                         new_p = np.delete(copy.copy(p_sample), -2, axis=1)
                         colors = np.concatenate([colors, np.array([[0,1,0,1]])])
@@ -501,8 +508,12 @@ def evaluate(args, eval_epoch, eval_iter):
                     colors = np.clip(colors, 0., 1.)
 
                     if args.env == "Gripper":
-                        new_p = np.delete(copy.copy(p_pred), -3, axis=1)
-                        colors = np.concatenate([colors, np.array([[0, 1, 0, 1], [0, 1, 0, 1]])])
+                        if args.shape_aug:
+                            new_p = copy.copy(p_pred)
+                            colors = np.concatenate([colors, np.array([[0, 1, 0, 1]]).repeat(31, axis=0) ] )
+                        else:
+                            new_p = np.delete(copy.copy(p_pred), -3, axis=1)
+                            colors = np.concatenate([colors, np.array([[0, 1, 0, 1], [0, 1, 0, 1]])])
                     else:
                         new_p = np.delete(copy.copy(p_pred), -2, axis=1)
                         colors = np.concatenate([colors, np.array([[0,1,0,1]])])
@@ -554,7 +565,10 @@ def evaluate(args, eval_epoch, eval_iter):
                     pred = cv2.imread(pred_path)
 
                     frame = np.zeros((1024, 1024, 3), dtype=np.uint8)
-                    frame[:512, :512] = vid
+                    try:
+                        frame[:512, :512] = vid
+                    except:
+                        pass
                     frame[:512, 512:] = gt
                     frame[512:, :512] = sample
                     frame[512:, 512:] = pred
