@@ -21,7 +21,7 @@ from models import EarthMoverLoss, ChamferLoss, UpdatedHausdorffLoss
 import matplotlib.pyplot as plt
 
 import vispy
-vispy.use('osmesa')
+# vispy.use('osmesa')
 import vispy.scene
 from vispy import app
 from vispy.visuals import transforms
@@ -107,7 +107,13 @@ def evaluate(args, eval_epoch, eval_iter):
         p_gt = []
         # s_gt = []
         for step in range(args.time_step):
-            data_path = os.path.join(args.dataf, 'train', str(idx_episode).zfill(3), str(step) + '.h5')
+            frame_name = str(step) + '.h5'
+            shape_frame_name = 'shape_gt_' + frame_name
+            if args.shape_aug:
+                data_path = os.path.join(args.dataf, 'train', str(idx_episode).zfill(3), shape_frame_name)
+            else:
+                data_path = os.path.join(args.dataf, 'train', str(idx_episode).zfill(3), frame_name)
+
             gt_data_path = os.path.join(args.dataf, 'train', str(idx_episode).zfill(3), 'gt_' + str(step) + '.h5')
             
             data = load_data(data_names, data_path)
