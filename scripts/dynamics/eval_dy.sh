@@ -12,4 +12,5 @@ python eval.py \
 	--outf_eval dump/dump_ngrip/files_dy_12-Oct-2021-00:00:48.023560_nHis4_aug0.05_gt1_emd_uh_clip_seqlen5_uhw0.05_clipw0.0 \
 	--eval_epoch 94 \
 	--eval_iter 42 \
-	--shape_aug 1
+	--sequence_length 5 \
+	--shape_aug 0

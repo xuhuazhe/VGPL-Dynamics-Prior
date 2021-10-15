@@ -196,8 +196,11 @@ def evaluate(args, eval_epoch, eval_iter):
                     inputs = [attr, state_cur, Rr_cur, Rs_cur, memory_init, group_info, cluster_onehot]
                 # pred_pos (unnormalized): B x n_p x state_dim
                 # pred_motion_norm (normalized): B x n_p x state_dim
-                pred_pos, pred_motion_norm, std_cluster = model.predict_dynamics(inputs)
-
+                # import pdb; pdb.set_trace()
+                if args.sequence_length > args.n_his+1:
+                    pred_pos, pred_motion_norm, std_cluster = model.predict_dynamics(inputs, (step_id-args.n_his))
+                else:
+                    pred_pos, pred_motion_norm, std_cluster = model.predict_dynamics(inputs, (step_id - args.n_his))
                 # concatenate the state of the shapes
                 # pred_pos (unnormalized): B x (n_p + n_s) x state_dim
                 sample_pos = p_sample[step_id].unsqueeze(0)
