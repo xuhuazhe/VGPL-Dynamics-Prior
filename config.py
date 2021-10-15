@@ -36,6 +36,7 @@ parser.add_argument('--evalf', default='eval')
 parser.add_argument('--dataf', default='data')
 parser.add_argument('--data_type', type=str, default='none')
 parser.add_argument('--gt_particles', type=int, default=0)
+parser.add_argument('--shape_aug', type=int, default=0)
 
 parser.add_argument('--valid', type=int, default=0)
 parser.add_argument('--eval', type=int, default=0)

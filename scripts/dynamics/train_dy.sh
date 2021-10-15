@@ -50,4 +50,5 @@ python train.py \
 	--losstype $1 \
 	--sequence_length $2 \
 	--uh_weight $3 \
-	--clip_weight $4
+	--clip_weight $4 \
+    --shape_aug 1
