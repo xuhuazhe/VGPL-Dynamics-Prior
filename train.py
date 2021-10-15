@@ -40,7 +40,7 @@ def main():
 
     # load training data
 
-    phases = ['train', 'valid'] if args.valid == 0 else ['valid']
+    phases = ['train'] if args.valid == 0 else ['valid']
     datasets = {phase: PhysicsFleXDataset(args, phase) for phase in phases}
 
     for phase in phases:
