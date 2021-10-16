@@ -202,7 +202,7 @@ def evaluate(args, eval_epoch, eval_iter):
                 if args.sequence_length > args.n_his+1:
                     pred_pos, pred_motion_norm, std_cluster = model.predict_dynamics(inputs, (step_id-args.n_his))
                 else:
-                    pred_pos, pred_motion_norm, std_cluster = model.predict_dynamics(inputs, (step_id - args.n_his))
+                    pred_pos, pred_motion_norm, std_cluster = model.predict_dynamics(inputs)
                 # concatenate the state of the shapes
                 # pred_pos (unnormalized): B x (n_p + n_s) x state_dim
                 sample_pos = p_sample[step_id].unsqueeze(0)

@@ -9,8 +9,8 @@ python eval.py \
 	--vispy 1 \
 	--data_type ngrip \
 	--n_rollout 50 \
-	--outf_eval dump/dump_ngrip/files_dy_15-Oct-2021-00:16:46.254710_nHis4_aug0.05_gt1_emd_uh_clip_seqlen5_uhw0.05_clipw0.0 \
+	--outf_eval dump/dump_ngrip/files_dy_15-Oct-2021-00:17:02.360286_nHis4_aug0.05_gt1_emd_uh_clip_seqlen5_uhw0.05_clipw0.0 \
 	--eval_epoch 94 \
 	--eval_iter 42 \
 	--sequence_length 5 \
-	--shape_aug 1
+	--shape_aug 0
