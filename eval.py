@@ -104,8 +104,8 @@ def evaluate(args, eval_epoch, eval_iter):
         p_gt = []
         # s_gt = []
         for step in range(args.time_step):
-            data_path = os.path.join(args.dataf, 'train', str(idx_episode).zfill(3), str(step) + '.h5')
-            gt_data_path = os.path.join(args.dataf, 'train', str(idx_episode).zfill(3), 'gt_' + str(step) + '.h5')
+            data_path = os.path.join(f'{args.dataf}', 'train', str(idx_episode).zfill(3), str(step) + '.h5')
+            gt_data_path = os.path.join(f'{args.dataf}', 'train', str(idx_episode).zfill(3), 'gt_' + str(step) + '.h5')
             
             data = load_data(data_names, data_path)
             gt_data = load_data(data_names, gt_data_path)
@@ -152,8 +152,11 @@ def evaluate(args, eval_epoch, eval_iter):
             for step_id in range(st_idx, ed_idx):
 
                 if step_id == st_idx:
-                    # state_cur (unnormalized): n_his x (n_p + n_s) x state_dim
-                    state_cur = p_sample[step_id - args.n_his:step_id]
+                    if args.gt_particles:
+                        # state_cur (unnormalized): n_his x (n_p + n_s) x state_dim
+                        state_cur = p_gt[step_id - args.n_his:step_id]
+                    else:
+                        state_cur = p_sample[step_id - args.n_his:step_id]
                     if use_gpu:
                         state_cur = state_cur.cuda()
 
@@ -582,5 +585,7 @@ if __name__ == '__main__':
         if 'args' in train_log:
             train_args = argparse.Namespace(**train_log['args'])
             args.gt_particles = train_args.gt_particles
+
+    args.gt_particles = 1
 
     evaluate(args, args.eval_epoch, args.eval_iter)

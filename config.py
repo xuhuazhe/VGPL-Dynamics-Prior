@@ -274,9 +274,9 @@ def gen_args():
 
     # path to data
     if args.data_type != 'none':
-        args.dataf = 'data/' + args.dataf + '_' + args.data_type    #+ '_' + args.env
+        args.dataf = 'data/' + args.dataf + '_' + args.data_type + '_new' # + '_' + args.env
     else:
-        args.dataf = 'data/' + args.dataf + '_' + args.env
+        args.dataf = 'data/' + args.dataf + '_' + args.env + '_new'
 
     # n_his
     args.outf += '_nHis%d' % args.n_his
