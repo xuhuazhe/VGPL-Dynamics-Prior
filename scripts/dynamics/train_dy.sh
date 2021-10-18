@@ -19,7 +19,7 @@
 # export LD_LIBRARY_PATH="/sailhome/hshi74/my_lib/:$LD_LIBRARY_PATH"
 
 CUDA_VISIBLE_DEVICES=0 \
-python train.py \
+kernprof -l train.py \
 	--env Gripper \
 	--data_type ngrip \
 	--stage dy \
@@ -42,7 +42,7 @@ python train.py \
 	--matched_motion 0 \
 	--matched_motion_weight 0.0 \
 	--eval 1 \
-	--gt_particles 1 \
+	--gt_particles 0 \
     --shape_aug 1 \
 	--n_epoch 100 \
 	--n_rollout 50 \
