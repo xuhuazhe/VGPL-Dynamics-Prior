@@ -35,13 +35,12 @@ os.system('mkdir -p ' + args.outf)
 
 tee = Tee(os.path.join(args.outf, 'train.log'), 'w')
 
-@profile
 def main():
     ### training
 
     # load training data
 
-    phases = ['train', 'valid'] if args.valid == 0 else ['valid']
+    phases = ['train'] if args.valid == 0 else ['valid']
     datasets = {phase: PhysicsFleXDataset(args, phase) for phase in phases}
 
     for phase in phases:
@@ -213,7 +212,7 @@ def main():
 
                             # pred_pos (unnormalized): B x n_p x state_dim
                             # pred_motion_norm (normalized): B x n_p x state_dim
-                            pred_pos, pred_motion_norm, std_cluster = model.predict_dynamics(inputs)
+                            pred_pos, pred_motion_norm, std_cluster = model.predict_dynamics(inputs, j)
 
                             # concatenate the state of the shapes
                             # pred_pos (unnormalized): B x (n_p + n_s) x state_dim

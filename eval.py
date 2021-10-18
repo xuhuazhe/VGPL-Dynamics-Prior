@@ -21,7 +21,9 @@ from models import EarthMoverLoss, ChamferLoss, UpdatedHausdorffLoss
 import matplotlib.pyplot as plt
 
 import vispy
-vispy.use('osmesa')
+from sys import platform
+if platform != 'darwin':
+    vispy.use('osmesa')
 import vispy.scene
 from vispy import app
 from vispy.visuals import transforms
@@ -104,8 +106,14 @@ def evaluate(args, eval_epoch, eval_iter):
         p_gt = []
         # s_gt = []
         for step in range(args.time_step):
-            data_path = os.path.join(f'{args.dataf}', 'train', str(idx_episode).zfill(3), str(step) + '.h5')
-            gt_data_path = os.path.join(f'{args.dataf}', 'train', str(idx_episode).zfill(3), 'gt_' + str(step) + '.h5')
+            frame_name = str(step) + '.h5'
+            shape_frame_name = 'shape_gt_' + frame_name
+            if args.shape_aug:
+                data_path = os.path.join(args.dataf, 'train', str(idx_episode).zfill(3), shape_frame_name)
+            else:
+                data_path = os.path.join(args.dataf, 'train', str(idx_episode).zfill(3), frame_name)
+
+            gt_data_path = os.path.join(args.dataf, 'train', str(idx_episode).zfill(3), 'gt_' + str(step) + '.h5')
             
             data = load_data(data_names, data_path)
             gt_data = load_data(data_names, gt_data_path)
@@ -190,8 +198,11 @@ def evaluate(args, eval_epoch, eval_iter):
                     inputs = [attr, state_cur, Rr_cur, Rs_cur, memory_init, group_info, cluster_onehot]
                 # pred_pos (unnormalized): B x n_p x state_dim
                 # pred_motion_norm (normalized): B x n_p x state_dim
-                pred_pos, pred_motion_norm, std_cluster = model.predict_dynamics(inputs)
-
+                # import pdb; pdb.set_trace()
+                if args.sequence_length > args.n_his+1:
+                    pred_pos, pred_motion_norm, std_cluster = model.predict_dynamics(inputs, (step_id-args.n_his))
+                else:
+                    pred_pos, pred_motion_norm, std_cluster = model.predict_dynamics(inputs)
                 # concatenate the state of the shapes
                 # pred_pos (unnormalized): B x (n_p + n_s) x state_dim
                 sample_pos = p_sample[step_id].unsqueeze(0)
@@ -457,6 +468,7 @@ def evaluate(args, eval_epoch, eval_iter):
                     vispy.io.write_png(img_path, img)
 
                 elif t_step < 2 * vis_length:
+                    # import pdb; pdb.set_trace()
                     if t_step == vis_length:
                         print("Rendering sampled particles")
 
@@ -468,8 +480,12 @@ def evaluate(args, eval_epoch, eval_iter):
                     colors = np.clip(colors, 0., 1.)
                     # import pdb; pdb.set_trace()
                     if args.env == "Gripper":
-                        new_p = np.delete(copy.copy(p_sample), -3, axis=1)
-                        colors = np.concatenate([colors, np.array([[0, 1, 0, 1], [0, 1, 0, 1]])])
+                        if args.shape_aug:
+                            new_p = copy.copy(p_sample)
+                            colors = np.concatenate([colors, np.array([[0, 1, 0, 1]]).repeat(31, axis=0) ] )
+                        else:
+                            new_p = np.delete(copy.copy(p_sample), -3, axis=1)
+                            colors = np.concatenate([colors, np.array([[0, 1, 0, 1], [0, 1, 0, 1]])])
                     else:
                         new_p = np.delete(copy.copy(p_sample), -2, axis=1)
                         colors = np.concatenate([colors, np.array([[0,1,0,1]])])
@@ -495,8 +511,12 @@ def evaluate(args, eval_epoch, eval_iter):
                     colors = np.clip(colors, 0., 1.)
 
                     if args.env == "Gripper":
-                        new_p = np.delete(copy.copy(p_pred), -3, axis=1)
-                        colors = np.concatenate([colors, np.array([[0, 1, 0, 1], [0, 1, 0, 1]])])
+                        if args.shape_aug:
+                            new_p = copy.copy(p_pred)
+                            colors = np.concatenate([colors, np.array([[0, 1, 0, 1]]).repeat(31, axis=0) ] )
+                        else:
+                            new_p = np.delete(copy.copy(p_pred), -3, axis=1)
+                            colors = np.concatenate([colors, np.array([[0, 1, 0, 1], [0, 1, 0, 1]])])
                     else:
                         new_p = np.delete(copy.copy(p_pred), -2, axis=1)
                         colors = np.concatenate([colors, np.array([[0,1,0,1]])])
@@ -548,7 +568,10 @@ def evaluate(args, eval_epoch, eval_iter):
                     pred = cv2.imread(pred_path)
 
                     frame = np.zeros((1024, 1024, 3), dtype=np.uint8)
-                    frame[:512, :512] = vid
+                    try:
+                        frame[:512, :512] = vid
+                    except:
+                        pass
                     frame[:512, 512:] = gt
                     frame[512:, :512] = sample
                     frame[512:, 512:] = pred
@@ -585,7 +608,5 @@ if __name__ == '__main__':
         if 'args' in train_log:
             train_args = argparse.Namespace(**train_log['args'])
             args.gt_particles = train_args.gt_particles
-
-    args.gt_particles = 1
-
+            
     evaluate(args, args.eval_epoch, args.eval_iter)

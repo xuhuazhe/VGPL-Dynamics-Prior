@@ -5,10 +5,10 @@
 #SBATCH --mem=64G
 #SBATCH --time=3-00:00:00
 #SBATCH --cpus-per-task=16
-#SBATCH --output=/sailhome/hshi74/output/deformable/%A.out
+#SBATCH --output=/sailhome/hshi74/output/VGPL/%A.out
 
 # source ~/.bashrc
-# conda activate deformable
+# conda activate deformable2
 
 # export PYTHONPATH="/viscam/u/hxu/projects/deformable/baselines:/viscam/u/hxu/projects/deformable/PlasticineLab"
 # cd /viscam/u/hxu/projects/deformable/VGPL-Dynamics-Prior
@@ -19,7 +19,7 @@
 # export LD_LIBRARY_PATH="/sailhome/hshi74/my_lib/:$LD_LIBRARY_PATH"
 
 CUDA_VISIBLE_DEVICES=0 \
-kernprof -l train.py \
+python train.py \
 	--env Gripper \
 	--data_type ngrip \
 	--stage dy \
@@ -43,6 +43,7 @@ kernprof -l train.py \
 	--matched_motion_weight 0.0 \
 	--eval 1 \
 	--gt_particles 1 \
+    --shape_aug 1 \
 	--n_epoch 100 \
 	--n_rollout 50 \
 	--ckp_per_iter 10000 \

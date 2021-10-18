@@ -142,7 +142,7 @@ class DynamicsPredictor(nn.Module):
         return rot
 
     # @profile
-    def forward(self, inputs, stat, verbose=0):
+    def forward(self, inputs, stat, verbose=0, j=0):
         args = self.args
         verbose = args.verbose_model
         mean_p, std_p, mean_d, std_d = stat
@@ -392,12 +392,12 @@ class Model(nn.Module):
             mem = mem.cuda()
         return mem
 
-    def predict_dynamics(self, inputs):
+    def predict_dynamics(self, inputs, j=0):
         """
         return:
         ret - predicted position of all particles, shape (n_particles, 3)
         """
-        ret = self.dynamics_predictor(inputs, self.stat, self.args.verbose_model)
+        ret = self.dynamics_predictor(inputs, self.stat, self.args.verbose_model, j=j)
         return ret
 
 
