@@ -377,11 +377,9 @@ def find_relations_neighbor(pos, query_idx, anchor_idx, radius, order, var=False
     point_tree = spatial.cKDTree(pos[anchor_idx])
     neighbors = point_tree.query_ball_point(pos[query_idx], radius, p=order)
 
-    # '''
     # for i in range(len(neighbors)):
-    #     import pdb; pdb.set_trace()
+    #     # import pdb; pdb.set_trace()
     #     visualize_neighbors(pos[anchor_idx], pos[query_idx], i, neighbors[i])
-    # '''
 
     relations = []
     for i in range(len(neighbors)):

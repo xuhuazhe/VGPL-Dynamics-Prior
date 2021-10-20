@@ -107,13 +107,13 @@ def evaluate(args, eval_epoch, eval_iter):
         # s_gt = []
         for step in range(args.time_step):
             frame_name = str(step) + '.h5'
-            shape_frame_name = 'shape_gt_' + frame_name
+            gt_frame_name = 'gt_' + str(step) + '.h5'
             if args.shape_aug:
-                data_path = os.path.join(args.dataf, 'train', str(idx_episode).zfill(3), shape_frame_name)
-            else:
-                data_path = os.path.join(args.dataf, 'train', str(idx_episode).zfill(3), frame_name)
-
-            gt_data_path = os.path.join(args.dataf, 'train', str(idx_episode).zfill(3), 'gt_' + str(step) + '.h5')
+                frame_name = 'shape_' + frame_name
+                gt_frame_name = 'shape_' + gt_frame_name
+            
+            data_path = os.path.join(args.dataf, 'train', str(idx_episode).zfill(3), frame_name)
+            gt_data_path = os.path.join(args.dataf, 'train', str(idx_episode).zfill(3), gt_frame_name)
             
             data = load_data(data_names, data_path)
             gt_data = load_data(data_names, gt_data_path)
@@ -156,9 +156,8 @@ def evaluate(args, eval_epoch, eval_iter):
         ed_idx = args.time_step
 
         with torch.set_grad_enabled(False):
-
             for step_id in range(st_idx, ed_idx):
-
+                # print(step_id)
                 if step_id == st_idx:
                     if args.gt_particles:
                         # state_cur (unnormalized): n_his x (n_p + n_s) x state_dim
@@ -244,6 +243,7 @@ def evaluate(args, eval_epoch, eval_iter):
         print("loss: %.6f, loss_raw: %.10f" % (loss.item(), loss_raw.item()))
 
         loss_list_over_episodes.append(loss_list)
+        # print(loss_list)
         # import pdb; pdb.set_trace()
         '''
         visualization
@@ -453,8 +453,12 @@ def evaluate(args, eval_epoch, eval_iter):
                     colors = np.clip(colors, 0., 1.)
                     # import pdb; pdb.set_trace()
                     if args.env == "Gripper":
-                        new_p = np.delete(copy.copy(p_gt), -3, axis=1)
-                        colors = np.concatenate([colors, np.array([[0, 1, 0, 1], [0, 1, 0, 1]])])
+                        if args.shape_aug:
+                            new_p = copy.copy(p_gt)
+                            colors = np.concatenate([colors, np.array([[0, 1, 0, 1]]).repeat(31, axis=0) ] )
+                        else:
+                            new_p = np.delete(copy.copy(p_gt), -3, axis=1)
+                            colors = np.concatenate([colors, np.array([[0, 1, 0, 1], [0, 1, 0, 1]])])
                     else:
                         new_p = np.delete(copy.copy(p_gt), -2, axis=1)
                         colors = np.concatenate([colors, np.array([[0,1,0,1]])])
@@ -602,11 +606,11 @@ if __name__ == '__main__':
     if len(args.outf_eval) > 0:
         args.outf = args.outf_eval
 
-    with open(os.path.join(args.outf, 'train.npy'), 'rb') as f:
-        train_log = np.load(f, allow_pickle=True)
-        train_log = train_log[None][0]
-        if 'args' in train_log:
-            train_args = argparse.Namespace(**train_log['args'])
-            args.gt_particles = train_args.gt_particles
+    # with open(os.path.join(args.outf, 'train.npy'), 'rb') as f:
+    #     train_log = np.load(f, allow_pickle=True)
+    #     train_log = train_log[None][0]
+    #     if 'args' in train_log:
+    #         train_args = argparse.Namespace(**train_log['args'])
+    #         args.gt_particles = train_args.gt_particles
             
     evaluate(args, args.eval_epoch, args.eval_iter)
