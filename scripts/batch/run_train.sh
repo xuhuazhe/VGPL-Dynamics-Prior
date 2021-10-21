@@ -2,10 +2,10 @@
 # cd /viscam/u/hxu/projects/deformable/VGPL-Dynamics-Prior
 # cd /viscam/u/hshi74/projects/deformable/VGPL-Dynamics-Prior
 
-declare -a arr=("emd_uh_clip")
-declare -a arr2=("5")
-declare -a arr3=("0.05")
-declare -a arr4=("0.0")
+declare -a arr=("5")
+declare -a arr2=("0.5")
+declare -a arr3=("0.5")
+declare -a arr4=("0.05")
 declare -a arr5=("0.05")
 for i in "${arr[@]}"
 do
