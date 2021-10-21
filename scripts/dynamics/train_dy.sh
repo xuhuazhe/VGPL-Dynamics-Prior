@@ -4,8 +4,8 @@
 #SBATCH --gres=gpu:1
 #SBATCH --mem=64G
 #SBATCH --time=3-00:00:00
-#SBATCH --cpus-per-task=16
-#SBATCH --output=/sailhome/hshi74/output/VGPL/%A.out
+#SBATCH --cpus-per-task=8
+#SBATCH --output=/sailhome/hshi74/output/deformable/%A.out
 
 # source ~/.bashrc
 # conda activate deformable2
