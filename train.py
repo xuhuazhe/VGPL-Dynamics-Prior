@@ -201,7 +201,7 @@ def main():
                                 if use_gpu:
                                     Rr_cur = Rr_cur.cuda()
                                     Rs_cur = Rs_cur.cuda()
-                                state_cur = torch.cat([state_cur[:,-3:], pred_pos.unsqueeze(1)], dim=1)
+                                state_cur = torch.cat([state_cur[:,-3:], pred_pos.detach().unsqueeze(1)], dim=1)
 
 
                             if cluster_onehots is not None:
