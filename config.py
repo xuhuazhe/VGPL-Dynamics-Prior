@@ -28,7 +28,8 @@ parser.add_argument('--matched_motion', type=int, default=0)
 parser.add_argument('--matched_motion_weight', type=float, default=0.0)
 parser.add_argument('--uh_weight', type=float, default=0.0)
 parser.add_argument('--clip_weight', type=float, default=0.0)
-
+parser.add_argument('--emd_weight', type=float, default=0.0)
+parser.add_argument('--chamfer_weight', type=float, default=0.0)
 
 parser.add_argument('--outf', default='files')
 parser.add_argument('--outf_eval', default='')
@@ -290,10 +291,12 @@ def gen_args():
         # args.evalf += '_aug%.2f' % args.augment_ratio
 
     args.outf += f'_gt{args.gt_particles}'
-    args.outf += f'_{args.losstype}'
+    # args.outf += f'_{args.losstype}'
     args.outf += f'_seqlen{args.sequence_length}'
-    args.outf += f'_uhw{args.uh_weight}'
-    args.outf += f'_clipw{args.clip_weight}'
+    args.outf += f'_emd{args.emd_weight}'
+    args.outf += f'_chamfer{args.chamfer_weight}'
+    args.outf += f'_uh{args.uh_weight}'
+    args.outf += f'_clip{args.clip_weight}'
 
     # evaluation checkpoints
     if args.stage in ['dy']:

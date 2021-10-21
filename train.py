@@ -201,7 +201,7 @@ def main():
                                 if use_gpu:
                                     Rr_cur = Rr_cur.cuda()
                                     Rs_cur = Rs_cur.cuda()
-                                state_cur = torch.cat([state_cur[:,-3:], pred_pos.unsqueeze(1)], dim=1)
+                                state_cur = torch.cat([state_cur[:,-3:], pred_pos.detach().unsqueeze(1)], dim=1)
 
 
                             if cluster_onehots is not None:
@@ -236,14 +236,20 @@ def main():
                                 if args.uh_weight > 0:
                                     loss += args.uh_weight * uh_loss(pred_pos, gt_pos)
                                 if args.clip_weight > 0:
-                                    loss += args.clip_weight * clip_loss(pred_pos, pred_pos) # self dist
+                                    loss += args.clip_weight * clip_loss(pred_pos, pred_pos)
                             elif args.losstype == 'emd_uh_clip':
                                 loss += emd_loss(pred_pos, gt_pos)
                                 if args.uh_weight > 0:
                                     loss += args.uh_weight * uh_loss(pred_pos, gt_pos)
                                 if args.clip_weight > 0:
-                                    loss += args.clip_weight * clip_loss(pred_pos, pred_pos) # self dist
-                                # print(loss_emd.item(), loss_uh.item(), loss_clip.item())
+                                    loss += args.clip_weight * clip_loss(pred_pos, pred_pos)
+                            elif args.losstype == 'emd_chamfer_uh':
+                                if args.emd_weight > 0:
+                                    loss += args.emd_weight * emd_loss(pred_pos, gt_pos)
+                                if args.chamfer_weight > 0:
+                                    loss += args.chamfer_weight * particle_dist_loss(pred_pos, gt_pos)
+                                if args.uh_weight > 0:
+                                    loss += args.uh_weight * uh_loss(pred_pos, gt_pos)
                             else:
                                 raise NotImplementedError
 
