@@ -47,9 +47,9 @@ kernprof -l train.py \
 	--n_epoch 100 \
 	--n_rollout 50 \
 	--ckp_per_iter 10000 \
-	--losstype emd_chamfer_uh \
-	--sequence_length $1 \
-	--emd_weight $2 \
-	--chamfer_weight $3 \
-	--uh_weight $4 \
-	--augment_ratio $5
+	--losstype $1 \
+	--sequence_length $2 \
+	--emd_weight $3 \
+	--chamfer_weight $4 \
+	--uh_weight $5 \
+	--augment_ratio $6

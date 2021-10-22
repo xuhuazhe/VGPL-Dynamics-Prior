@@ -952,3 +952,66 @@ class PhysicsFleXDataset(Dataset):
         if args.stage in ['dy']:
             return attr, particles, n_particle, n_shape, scene_params, Rr, Rs, cluster_onehot
 
+
+def p2g(x, size=64, p_mass=1.):
+    if x.dim() == 2:
+        x = x[None, :]
+    batch = x.shape[0]
+    grid_m = torch.zeros(batch, size * size * size, dtype=x.dtype, device=x.device)
+    inv_dx = size
+    # base = (self.x[f, p] * self.inv_dx - 0.5).cast(int)
+    # fx = self.x[f, p] * self.inv_dx - base.cast(self.dtype)
+    fx = x * inv_dx
+    base = (x * inv_dx - 0.5).long()
+    fx = fx - base.float()
+    w = [0.5 * (1.5 - fx) ** 2, 0.75 - (fx - 1) ** 2, 0.5 * (fx - 0.5) ** 2]
+    #for offset in ti.static(ti.grouped(self.stencil_range())):
+    #    weight = ti.cast(1.0, self.dtype)
+    #    for d in ti.static(range(self.dim)):
+    #        weight *= w[offset[d]][d]
+    #    self.grid_m[base + offset] += weight * self.p_mass
+    for i in range(3):
+        for j in range(3):
+            for k in range(3):
+                weight = w[i][..., 0] * w[j][..., 1] * w[k][..., 2] * p_mass
+                target = (base + torch.tensor(np.array([i, j, k]), dtype=torch.long, device='cuda:0')).clamp(0, size-1)
+                idx = (target[..., 0] * size + target[..., 1]) * size + target[..., 2]
+                grid_m.scatter_add_(1, idx, weight)
+    return grid_m.reshape(batch, size, size, size)
+
+
+def compute_sdf(density, eps=1e-4, inf=1e10):
+    if density.dim() == 3:
+        density = density[None, :, :]
+    dx = 1./density.shape[1]
+    with torch.no_grad():
+        nearest_points = torch.stack(torch.meshgrid(
+            torch.arange(density.shape[1]),
+            torch.arange(density.shape[2]),
+            torch.arange(density.shape[3]),
+        ), axis=-1)[None, :].to(density.device).expand(density.shape[0], -1, -1, -1, -1) * dx
+        mesh_points = nearest_points.clone()
+
+        is_object = (density <= eps) * inf
+        sdf = is_object.clone()
+
+        for i in range(density.shape[1] * 2): # np.sqrt(1^2+1^2+1^2)
+            for x, y, z in product(range(3), range(3), range(3)):
+                if x + y + z == 0: continue
+                def get_slice(a):
+                    if a == 0: return slice(None), slice(None)
+                    if a == 1: return slice(0, -1), slice(1, None)
+                    return slice(1, None), slice(0, -1)
+                f1, t1 = get_slice(x)
+                f2, t2 = get_slice(y)
+                f3, t3 = get_slice(z)
+                fr = (slice(None), f1, f2, f3)
+                to = (slice(None), t1, t2, t3)
+                dist = ((mesh_points[to] - nearest_points[fr])**2).sum(axis=-1)**0.5
+                dist += (sdf[fr] >= inf) * inf
+                sdf_to = sdf[to]
+                mask = (dist < sdf_to).float()
+                sdf[to] = mask * dist + (1-mask) * sdf_to
+                mask = mask[..., None]
+                nearest_points[to] = (1-mask) * nearest_points[to] + mask * nearest_points[fr]
+        return sdf

@@ -293,10 +293,13 @@ def gen_args():
     args.outf += f'_gt{args.gt_particles}'
     # args.outf += f'_{args.losstype}'
     args.outf += f'_seqlen{args.sequence_length}'
-    args.outf += f'_emd{args.emd_weight}'
-    args.outf += f'_chamfer{args.chamfer_weight}'
-    args.outf += f'_uh{args.uh_weight}'
-    args.outf += f'_clip{args.clip_weight}'
+    if args.losstype == 'L2Shape':
+        args.outf += f'_l2shape'
+    else:
+        args.outf += f'_emd{args.emd_weight}'
+        args.outf += f'_chamfer{args.chamfer_weight}'
+        args.outf += f'_uh{args.uh_weight}'
+        args.outf += f'_clip{args.clip_weight}'
 
     # evaluation checkpoints
     if args.stage in ['dy']:
