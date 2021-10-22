@@ -522,7 +522,7 @@ class L2ShapeLoss(torch.nn.Module):
     def __call__(self, x, y, sdf):
         grid1 = p2g(x)
         grid2 = p2g(y)
-        return torch.abs(grid1 - grid2).sum() + (grid1 * sdf).sum()
+        return torch.mean(torch.abs(grid1 - grid2)) + torch.mean((grid1 * sdf))
 
 
 if __name__ == "__main__":
