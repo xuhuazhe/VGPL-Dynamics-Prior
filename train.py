@@ -35,7 +35,6 @@ os.system('mkdir -p ' + args.outf)
 
 tee = Tee(os.path.join(args.outf, 'train.log'), 'w')
 
-@profile
 def main():
     ### training
 
