@@ -5,11 +5,9 @@ import torch.nn as nn
 import torch.nn.functional as F
 from torch.autograd import Variable
 
-from data_utils import p2g
+from data_utils import p2g, compute_sdf
 import scipy
 from scipy import optimize
-
-from itertools import product
 
 class Encoder(nn.Module):
     def __init__(self, input_size, hidden_size, output_size):
@@ -521,11 +519,10 @@ class L2ShapeLoss(torch.nn.Module):
     def __init__(self):
         super(L2ShapeLoss, self).__init__()
 
-    def __call__(self, x, y):
+    def __call__(self, x, y, sdf):
         grid1 = p2g(x)
         grid2 = p2g(y)
-        # sdf = compute_sdf(grid2)
-        return torch.abs(grid1 - grid2).sum()
+        return torch.abs(grid1 - grid2).sum() + (grid1 * sdf).sum()
 
 
 if __name__ == "__main__":
