@@ -520,9 +520,15 @@ class L2ShapeLoss(torch.nn.Module):
         super(L2ShapeLoss, self).__init__()
 
     def __call__(self, x, y, sdf):
+        c1 = 0.0001
+        c2 = 0.01
         grid1 = p2g(x)
         grid2 = p2g(y)
-        return torch.mean(torch.abs(grid1 - grid2)) + torch.mean((grid1 * sdf))
+        l1 = torch.abs(grid1 - grid2).sum()
+        sdf = (grid1 * sdf).sum()
+        # print(f"L1: {l1}")
+        # print(f"SDF: {sdf}")
+        return c1 * l1 + c2 * sdf
 
 
 if __name__ == "__main__":
