@@ -41,7 +41,7 @@ python train.py \
 	--stdreg 0 \
 	--matched_motion 0 \
 	--matched_motion_weight 0.0 \
-	--eval 1 \
+	--eval 0 \
 	--gt_particles 0 \
     --shape_aug 1 \
 	--n_epoch 100 \
@@ -49,6 +49,7 @@ python train.py \
 	--ckp_per_iter 10000 \
 	--losstype $1 \
 	--sequence_length $2 \
-	--uh_weight $3 \
-	--clip_weight $4 \
-	--augment_ratio $5
+	--emd_weight $3 \
+	--chamfer_weight $4 \
+	--uh_weight $5 \
+	--augment_ratio $6

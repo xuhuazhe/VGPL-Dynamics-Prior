@@ -5,7 +5,7 @@ import torch.nn as nn
 import torch.nn.functional as F
 from torch.autograd import Variable
 
-from data_utils import prepare_input
+from data_utils import p2g, compute_sdf
 import scipy
 from scipy import optimize
 
@@ -514,6 +514,15 @@ class EarthMoverLoss(torch.nn.Module):
         # label: [B, M, D]
         return self.em_distance(pred, label)
 
+
+class L2ShapeLoss(torch.nn.Module):
+    def __init__(self):
+        super(L2ShapeLoss, self).__init__()
+
+    def __call__(self, x, y, sdf):
+        grid1 = p2g(x)
+        grid2 = p2g(y)
+        return torch.mean(torch.abs(grid1 - grid2)) + torch.mean((grid1 * sdf))
 
 
 if __name__ == "__main__":

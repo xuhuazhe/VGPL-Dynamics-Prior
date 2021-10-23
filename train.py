@@ -17,7 +17,7 @@ from torch.utils.data import DataLoader
 from config import gen_args
 from data_utils import PhysicsFleXDataset
 from data_utils import prepare_input, get_scene_info, get_env_group
-from models import Model, ChamferLoss, HausdorfLoss, EarthMoverLoss, UpdatedHausdorffLoss, ClipLoss
+from models import Model, ChamferLoss, HausdorfLoss, EarthMoverLoss, UpdatedHausdorffLoss, ClipLoss, L2ShapeLoss
 from utils import make_graph, check_gradient, set_seed, AverageMeter, get_lr, Tee
 from utils import count_parameters, my_collate, matched_motion
 
@@ -110,6 +110,8 @@ def main():
     emd_loss = EarthMoverLoss()
     uh_loss = UpdatedHausdorffLoss()
     clip_loss = ClipLoss()
+    shape_loss = L2ShapeLoss()
+
     if use_gpu:
         model = model.cuda()
 
@@ -138,7 +140,6 @@ def main():
 
             meter_loss_param = AverageMeter()
 
-
             bar = ProgressBar(max_value=len(dataloaders[phase]))
 
             for i, data in bar(enumerate(dataloaders[phase])):
@@ -151,10 +152,12 @@ def main():
                     # n_shapes: B
                     # scene_params: B x param_dim
                     # Rrs, Rss: B x seq_length x n_rel x (n_p + n_s)
-                    attrs, particles, n_particles, n_shapes, scene_params, Rrs, Rss, cluster_onehots = data
+                    attrs, particles, sdf_list, n_particles, n_shapes, scene_params, Rrs, Rss, cluster_onehots = data
+
                     if use_gpu:
                         attrs = attrs.cuda()
                         particles = particles.cuda()
+                        sdf_list = sdf_list.cuda()
                         Rrs, Rss = Rrs.cuda(), Rss.cuda()
                         if cluster_onehots is not None:
                             cluster_onehots = cluster_onehots.cuda()
@@ -217,6 +220,7 @@ def main():
                             # concatenate the state of the shapes
                             # pred_pos (unnormalized): B x (n_p + n_s) x state_dim
                             gt_pos = particles[:, args.n_his]
+                            gt_sdf = sdf_list[:, args.n_his]
                             pred_pos = torch.cat([pred_pos, gt_pos[:, n_particle:]], 1)
 
                             # gt_motion_norm (normalized): B x (n_p + n_s) x state_dim
@@ -235,14 +239,22 @@ def main():
                                 if args.uh_weight > 0:
                                     loss += args.uh_weight * uh_loss(pred_pos, gt_pos)
                                 if args.clip_weight > 0:
-                                    loss += args.clip_weight * clip_loss(pred_pos, pred_pos) # self dist
+                                    loss += args.clip_weight * clip_loss(pred_pos, pred_pos)
                             elif args.losstype == 'emd_uh_clip':
                                 loss += emd_loss(pred_pos, gt_pos)
                                 if args.uh_weight > 0:
                                     loss += args.uh_weight * uh_loss(pred_pos, gt_pos)
                                 if args.clip_weight > 0:
-                                    loss += args.clip_weight * clip_loss(pred_pos, pred_pos) # self dist
-                                # print(loss_emd.item(), loss_uh.item(), loss_clip.item())
+                                    loss += args.clip_weight * clip_loss(pred_pos, pred_pos)
+                            elif args.losstype == 'emd_chamfer_uh':
+                                if args.emd_weight > 0:
+                                    loss += args.emd_weight * emd_loss(pred_pos, gt_pos)
+                                if args.chamfer_weight > 0:
+                                    loss += args.chamfer_weight * particle_dist_loss(pred_pos, gt_pos)
+                                if args.uh_weight > 0:
+                                    loss += args.uh_weight * uh_loss(pred_pos, gt_pos)
+                            elif args.losstype == 'L2Shape':
+                                loss += shape_loss(pred_pos, gt_pos, gt_sdf)
                             else:
                                 raise NotImplementedError
 
