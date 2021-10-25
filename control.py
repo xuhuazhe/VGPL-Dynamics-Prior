@@ -90,33 +90,14 @@ class Planner(object):
 
         # actions that go as input to the dynamics network
         for i in range(self.n_his - 2, init_act_seq.shape[0] - 1):
-
             if noise_type == "normal":
-
-                if self.env in ['FluidManipClip', 'FluidManipClip_wKuka_wColor']:
-                    # [n_sample, action_dim]
-                    sigma_pos = 0.002
-                    noise_pos = np.random.normal(0, sigma_pos, (self.n_sample, 3))    # position
-
-                    sigma_angle = 0.01
-                    noise_angle = np.random.normal(0, sigma_angle, (self.n_sample, 1))  # angle
-
-                    noise_sample = np.concatenate([noise_pos, noise_angle], -1)
-
-                elif self.env in ['FluidShakeWithIce_1000', 'FluidShakeWithIce_wKuka_wColor_wGripper']:
-                    # [n_sample, action_dim]
-                    sigma_pos = 0.005
-                    noise_sample = np.random.normal(0, sigma_pos, (self.n_sample, 2))
-                else:
-                    sigma = 0.01
-                    noise_sample = np.random.normal(0, sigma, (self.n_sample, 3))
-
+                sigma = 0.01
+                noise_sample = np.random.normal(0, sigma, (self.n_sample, 3))
             else:
                 raise ValueError("unknown noise type: %s" % (noise_type))
 
             act_residual = beta_filter * noise_sample + act_residual * (1. - beta_filter)
             act_seqs_delta[:, i] += act_residual
-
 
             # clip delta lim
             act_seqs_delta[:, i] = np.clip(
@@ -127,16 +108,6 @@ class Planner(object):
             # clip absolute lim
             act_seqs[:, i + 1] = np.clip(
                 act_seqs[:, i + 1], action_lower_lim, action_upper_lim)
-
-
-        # print(act_seqs[:5])
-        # time.sleep(100)
-
-        '''
-        print(init_act_seq[:, 3])
-        print(np.mean(act_seqs[:, :, 3], 0))
-        time.sleep(10)
-        '''
 
         # act_seqs: [n_sample, -1, action_dim]
         return act_seqs
@@ -487,16 +458,16 @@ def main():
                 # s_cur = torch.FloatTensor(np.stack(s_list[-n_his:]))
 
                 action = planner.trajectory_optimization(
-                                            state_cur=state_cur,
-                                            state_goal=state_goal,
-                                            act_seq=actions[i-args.n_his:],
-                                            n_look_ahead=n_look_ahead - (i - ctrl_init_idx),
-                                            n_update_iter=n_update_iter_init if i == st_idx else n_update_iter,
-                                            action_lower_lim=action_lower_lim,
-                                            action_upper_lim=action_upper_lim,
-                                            action_lower_delta_lim=action_lower_delta_lim,
-                                            action_upper_delta_lim=action_upper_delta_lim,
-                                            use_gpu=use_gpu)
+                            state_cur=state_cur,
+                            state_goal=state_goal,
+                            act_seq=actions[i-args.n_his:],
+                            n_look_ahead=n_look_ahead - (i - ctrl_init_idx),
+                            n_update_iter=n_update_iter_init if i == st_idx else n_update_iter,
+                            action_lower_lim=action_lower_lim,
+                            action_upper_lim=action_upper_lim,
+                            action_lower_delta_lim=action_lower_delta_lim,
+                            action_upper_delta_lim=action_upper_delta_lim,
+                            use_gpu=use_gpu)
                 print(action.shape)
 
 

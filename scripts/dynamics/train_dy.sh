@@ -2,7 +2,7 @@
 #SBATCH --job-name=VGPL-Gripper
 #SBATCH --partition=viscam
 #SBATCH --gres=gpu:1
-#SBATCH --mem=64G
+#SBATCH --mem=20G
 #SBATCH --time=3-00:00:00
 #SBATCH --cpus-per-task=8
 #SBATCH --output=/sailhome/hshi74/output/deformable/%A.out
@@ -52,4 +52,5 @@ kernprof -l train.py \
 	--emd_weight $3 \
 	--chamfer_weight $4 \
 	--uh_weight $5 \
-	--augment_ratio $6
+	--clip_weight $6 \
+	--augment_ratio $7
