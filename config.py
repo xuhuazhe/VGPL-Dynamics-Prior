@@ -33,6 +33,7 @@ parser.add_argument('--chamfer_weight', type=float, default=0.0)
 
 parser.add_argument('--outf', default='files')
 parser.add_argument('--outf_eval', default='')
+parser.add_argument('--outf_control', default='')
 parser.add_argument('--evalf', default='eval')
 parser.add_argument('--dataf', default='data')
 parser.add_argument('--data_type', type=str, default='none')

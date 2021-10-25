@@ -215,13 +215,14 @@ def main():
 
                             # pred_pos (unnormalized): B x n_p x state_dim
                             # pred_motion_norm (normalized): B x n_p x state_dim
-                            pred_pos, pred_motion_norm, std_cluster = model.predict_dynamics(inputs, j)
+                            pred_pos_p, pred_motion_norm, std_cluster = model.predict_dynamics(inputs, j)
 
                             # concatenate the state of the shapes
                             # pred_pos (unnormalized): B x (n_p + n_s) x state_dim
                             gt_pos = particles[:, args.n_his]
+                            gt_pos_p = gt_pos[:, :n_particle]
                             gt_sdf = sdf_list[:, args.n_his]
-                            pred_pos = torch.cat([pred_pos, gt_pos[:, n_particle:]], 1)
+                            pred_pos = torch.cat([pred_pos_p, gt_pos[:, n_particle:]], 1)
 
                             # gt_motion_norm (normalized): B x (n_p + n_s) x state_dim
                             # pred_motion_norm (normalized): B x (n_p + n_s) x state_dim
@@ -235,32 +236,39 @@ def main():
                             gt_motion_norm = (gt_motion - mean_d) / std_d
                             pred_motion_norm = torch.cat([pred_motion_norm, gt_motion_norm[:, n_particle:]], 1)
                             if args.losstype == 'chamfer_uh_clip':
-                                loss += particle_dist_loss(pred_pos, gt_pos)
+                                loss += particle_dist_loss(pred_pos_p, gt_pos_p)
                                 if args.uh_weight > 0:
-                                    loss += args.uh_weight * uh_loss(pred_pos, gt_pos)
+                                    loss += args.uh_weight * uh_loss(pred_pos_p, gt_pos_p)
                                 if args.clip_weight > 0:
-                                    loss += args.clip_weight * clip_loss(pred_pos, pred_pos)
+                                    loss += args.clip_weight * clip_loss(pred_pos_p, pred_pos_p)
                             elif args.losstype == 'emd_uh_clip':
-                                loss += emd_loss(pred_pos, gt_pos)
+                                loss += emd_loss(pred_pos_p, gt_pos_p)
                                 if args.uh_weight > 0:
-                                    loss += args.uh_weight * uh_loss(pred_pos, gt_pos)
+                                    loss += args.uh_weight * uh_loss(pred_pos_p, gt_pos_p)
                                 if args.clip_weight > 0:
-                                    loss += args.clip_weight * clip_loss(pred_pos, pred_pos)
-                            elif args.losstype == 'emd_chamfer_uh':
+                                    loss += args.clip_weight * clip_loss(pred_pos_p, pred_pos_p)
+                            elif args.losstype == 'emd_chamfer_uh_clip':
                                 if args.emd_weight > 0:
-                                    loss += args.emd_weight * emd_loss(pred_pos, gt_pos)
+                                    emd_l = args.emd_weight * emd_loss(pred_pos_p, gt_pos_p)
+                                    loss += emd_l
                                 if args.chamfer_weight > 0:
-                                    loss += args.chamfer_weight * particle_dist_loss(pred_pos, gt_pos)
+                                    chamfer_l = args.chamfer_weight * particle_dist_loss(pred_pos_p, gt_pos_p)
+                                    loss += chamfer_l
                                 if args.uh_weight > 0:
-                                    loss += args.uh_weight * uh_loss(pred_pos, gt_pos)
+                                    uh_l = args.uh_weight * uh_loss(pred_pos_p, gt_pos_p)
+                                    loss += uh_l
+                                if args.clip_weight > 0:
+                                    clip_l = args.clip_weight * clip_loss(pred_pos_p, pred_pos_p)
+                                    loss += clip_l
+                                # print(f"EMD: {emd_l.item()}; Chamfer: {chamfer_l.item()}; UH: {uh_l.item()}; Clip: {clip_l.item()}")
                             elif args.losstype == 'L2Shape':
-                                loss += shape_loss(pred_pos, gt_pos, gt_sdf)
+                                loss += shape_loss(pred_pos_p, gt_pos_p, gt_sdf)
                             else:
                                 raise NotImplementedError
 
                             if args.stdreg:
                                 loss += args.stdreg_weight * std_cluster
-                            loss_raw = F.l1_loss(pred_pos, gt_pos)
+                            loss_raw = F.l1_loss(pred_pos_p, gt_pos_p)
 
                             meter_loss.update(loss.item(), B)
                             meter_loss_raw.update(loss_raw.item(), B)

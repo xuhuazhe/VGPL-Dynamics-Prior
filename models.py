@@ -433,6 +433,7 @@ class UpdatedHausdorffLoss(torch.nn.Module):
         x = x[:, :, None, :].repeat(1, 1, y.size(1), 1) # x: [B, N, M, D]
         y = y[:, None, :, :].repeat(1, x.size(1), 1, 1) # y: [B, N, M, D]
         dis = torch.norm(torch.add(x, -y), 2, dim=3)    # dis: [B, N, M]
+        # print(dis.shape)
         dis_xy = torch.max(torch.min(dis, dim=2)[0])   # dis_xy: mean over N
         dis_yx = torch.max(torch.min(dis, dim=1)[0])   # dis_yx: mean over M
 
@@ -451,9 +452,9 @@ class ClipLoss(torch.nn.Module):
         x = x[:, :, None, :].repeat(1, 1, y.size(1), 1)  # x: [B, N, M, D]
         y = y[:, None, :, :].repeat(1, x.size(1), 1, 1)  # y: [B, N, M, D]
         dis = torch.norm(torch.add(x, -y), 2, dim=3)  # dis: [B, N, M]
+        dxy = torch.topk(dis, k=2, dim=2, largest=False)[0][:, :, 1]  # dxy [B, M, 1]
 
-        dxy = torch.min(torch.topk(dis, k=2, dim=2, largest=False)[0][:, :, 1])  # dxy [B, M, 1]
-        return dxy
+        return torch.min(dxy)
 
     def __call__(self, array1, array2):
         return self.clip_loss(array1, array2)

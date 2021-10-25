@@ -200,15 +200,16 @@ def evaluate(args, eval_epoch, eval_iter):
                 # pred_motion_norm (normalized): B x n_p x state_dim
                 # import pdb; pdb.set_trace()
                 if args.sequence_length > args.n_his+1:
-                    pred_pos, pred_motion_norm, std_cluster = model.predict_dynamics(inputs, (step_id-args.n_his))
+                    pred_pos_p, pred_motion_norm, std_cluster = model.predict_dynamics(inputs, (step_id-args.n_his))
                 else:
-                    pred_pos, pred_motion_norm, std_cluster = model.predict_dynamics(inputs)
+                    pred_pos_p, pred_motion_norm, std_cluster = model.predict_dynamics(inputs)
                 # concatenate the state of the shapes
                 # pred_pos (unnormalized): B x (n_p + n_s) x state_dim
                 sample_pos = p_sample[step_id].unsqueeze(0)
+                sample_pos_p = sample_pos[:, :n_particle]
                 if use_gpu:
                     sample_pos = sample_pos.cuda()
-                pred_pos = torch.cat([pred_pos, sample_pos[:, n_particle:]], 1)
+                pred_pos = torch.cat([pred_pos_p, sample_pos[:, n_particle:]], 1)
 
                 # sample_motion_norm (normalized): B x (n_p + n_s) x state_dim
                 # pred_motion_norm (normalized): B x (n_p + n_s) x state_dim
@@ -220,10 +221,10 @@ def evaluate(args, eval_epoch, eval_iter):
                 pred_motion_norm = torch.cat([pred_motion_norm, sample_motion_norm[:, n_particle:]], 1)
 
                 loss_cur = F.l1_loss(pred_motion_norm[:, :n_particle], sample_motion_norm[:, :n_particle])
-                loss_cur_raw = F.l1_loss(pred_pos, sample_pos)
-                loss_emd = emd_loss(pred_pos, sample_pos)
-                loss_chamfer = chamfer_loss(pred_pos, sample_pos)
-                loss_uh = uh_loss(pred_pos, sample_pos)
+                loss_cur_raw = F.l1_loss(pred_pos_p, sample_pos_p)
+                loss_emd = emd_loss(pred_pos_p, sample_pos_p)
+                loss_chamfer = chamfer_loss(pred_pos_p, sample_pos_p)
+                loss_uh = uh_loss(pred_pos_p, sample_pos_p)
 
                 loss += loss_cur
                 loss_raw += loss_cur_raw
