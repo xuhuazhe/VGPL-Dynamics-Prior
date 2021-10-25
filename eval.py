@@ -95,7 +95,6 @@ def evaluate(args, eval_epoch, eval_iter):
         loss_list = []
         
         print("Rollout %d / %d" % (idx_episode, args.n_rollout))
-
         B = 1
         n_particle, n_shape = 0, 0
 
@@ -106,6 +105,8 @@ def evaluate(args, eval_epoch, eval_iter):
         p_gt = []
         # s_gt = []
         for step in range(args.time_step):
+            if 20 <= step % 30 <=29:
+                continue
             frame_name = str(step) + '.h5'
             gt_frame_name = 'gt_' + str(step) + '.h5'
             if args.shape_aug:
@@ -153,7 +154,7 @@ def evaluate(args, eval_epoch, eval_iter):
         loss_raw = 0.
         loss_counter = 0.
         st_idx = args.n_his
-        ed_idx = args.time_step
+        ed_idx = args.time_step-30
 
         with torch.set_grad_enabled(False):
             for step_id in range(st_idx, ed_idx):
@@ -164,8 +165,8 @@ def evaluate(args, eval_epoch, eval_iter):
                         state_cur = p_gt[step_id - args.n_his:step_id]
                     else:
                         state_cur = p_sample[step_id - args.n_his:step_id]
-                    if use_gpu:
-                        state_cur = state_cur.cuda()
+                if use_gpu:
+                    state_cur = state_cur.cuda()
 
                 if step_id % 50 == 0:
                     print("Step %d / %d" % (step_id, ed_idx))
@@ -256,7 +257,7 @@ def evaluate(args, eval_epoch, eval_iter):
         p_sample = p_sample.numpy()[:ed_idx]
         p_gt = p_gt.numpy()[:ed_idx]
         # s_gt = s_gt.numpy()[st_idx:ed_idx]
-        vis_length = ed_idx - st_idx
+        vis_length = ed_idx - args.n_his  #st_idx
         # print(vis_length)
 
         if args.vispy:
