@@ -39,7 +39,7 @@ def main():
     ### training
 
     # load training data
-
+    print('start main')
     phases = ['train'] if args.valid == 0 else ['valid']
     datasets = {phase: PhysicsFleXDataset(args, phase) for phase in phases}
 
@@ -55,7 +55,7 @@ def main():
         shuffle=True if phase == 'train' else False,
         num_workers=args.num_workers,
         collate_fn=my_collate) for phase in phases}
-
+    print('loaded data .....')
     # create model and train
     use_gpu = torch.cuda.is_available()
     model = Model(args, use_gpu)

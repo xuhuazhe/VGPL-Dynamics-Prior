@@ -990,6 +990,8 @@ def p2g(x, size=64, p_mass=1.):
                                                                                                                  size - 1)
                 idx = (target[..., 0] * size + target[..., 1]) * size + target[..., 2]
                 grid_m.scatter_add_(1, idx, weight)
+    # torch.nn.functional.gumbel_softmax(grid_m, tau=1, hard=True)
+
     grid_m = (grid_m > 0.0001).float()
     return grid_m.reshape(batch, size, size, size)
 
