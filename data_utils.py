@@ -985,6 +985,7 @@ def p2g(x, size=64, p_mass=1.):
                 weight = w[i][..., 0] * w[j][..., 1] * w[k][..., 2] * p_mass
                 target = (base + torch.tensor(np.array([i, j, k]), dtype=torch.long, device='cuda:0')).clamp(0, size-1)
                 idx = (target[..., 0] * size + target[..., 1]) * size + target[..., 2]
+                import pdb; pdb.set_trace()
                 grid_m.scatter_add_(1, idx, weight)
     return grid_m.reshape(batch, size, size, size)
 
