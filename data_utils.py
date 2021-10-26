@@ -983,10 +983,14 @@ def p2g(x, size=64, p_mass=1.):
         for j in range(3):
             for k in range(3):
                 weight = w[i][..., 0] * w[j][..., 1] * w[k][..., 2] * p_mass
-                target = (base + torch.tensor(np.array([i, j, k]), dtype=torch.long, device='cuda:0')).clamp(0, size-1)
+                if torch.cuda.is_available():
+                    target = (base + torch.tensor(np.array([i, j, k]), dtype=torch.long, device='cuda:0')).clamp(0, size-1)
+                else:
+                    target = (base + torch.tensor(np.array([i, j, k]), dtype=torch.long)).clamp(0,
+                                                                                                                 size - 1)
                 idx = (target[..., 0] * size + target[..., 1]) * size + target[..., 2]
-                import pdb; pdb.set_trace()
                 grid_m.scatter_add_(1, idx, weight)
+    grid_m = (grid_m > 0.0001).float()
     return grid_m.reshape(batch, size, size, size)
 
 
