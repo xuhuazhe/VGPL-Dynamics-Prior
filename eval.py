@@ -595,6 +595,8 @@ def evaluate(args, eval_epoch, eval_iter):
 
     eval_plot_curves(np.mean(loss_list_over_episodes, axis=0), path=os.path.join(args.evalf, 'plot', 'eval_loss_curves.png'))
 
+    print(loss_list_over_episodes[:, -1, 1])
+
     info = f"\nAverage (+- std) emd loss over episodes: {np.mean(loss_list_over_episodes[:, :, 1])} (+- {np.std(loss_list_over_episodes[:, :, 1])})"
     info += f"\nAverage (+- std) chamfer loss over episodes: {np.mean(loss_list_over_episodes[:, :, 2])} (+- {np.std(loss_list_over_episodes[:, :, 2])})"
     info += f"\nAverage (+- std) hausdorff loss over episodes: {np.mean(loss_list_over_episodes[:, :, 3])} (+- {np.std(loss_list_over_episodes[:, :, 3])})"
