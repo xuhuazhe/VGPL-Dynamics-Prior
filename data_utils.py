@@ -995,7 +995,7 @@ def p2g(x, size=64, p_mass=1.):
     grid_m = torch.clip(grid_m / grid_m.max(), max=1, min=0)
     print('>1 means NAN', torch.isnan(grid_m).sum())
     # step 2 x**(0.000001)
-    grid_m = grid_m ** (0.03)
+    grid_m = grid_m ** (0.1)
     print('>1 means NAN', torch.isnan(grid_m).sum())
     # step 3 softmax
     lam = 10
