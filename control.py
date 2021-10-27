@@ -3,6 +3,7 @@ import numpy as np
 import torch
 from tqdm import tqdm, trange
 import copy
+import imageio
 
 import matplotlib.pyplot as plt
 import pdb
@@ -32,6 +33,10 @@ class Planner(object):
         self.reward_weight = 1
         if dist_func == 'emd':
             self.dist_func = EarthMoverLoss()
+
+        self.n_grips = 3
+        self.len_per_grip = 20
+        self.len_per_grip_back = 10
     
     def trajectory_optimization(
         self,
@@ -48,22 +53,83 @@ class Planner(object):
         reward_scale_factor=1.):
 
         for i in range(n_update_iter):
-            act_seqs = self.sample_action_sequences(
-                act_seq,
-                action_lower_lim, action_upper_lim,
-                action_lower_delta_lim, action_upper_delta_lim)
+            init_pose_seqs, act_seqs = self.sample_action_params()
+            print(f"Init poses: {init_pose_seqs.shape}")
+            print(f"Actions: {act_seqs.shape}")
+            # act_seqs = self.sample_action_sequences(
+            #     act_seq,
+            #     action_lower_lim, action_upper_lim,
+            #     action_lower_delta_lim, action_upper_delta_lim)
             state_seqs = self.model_rollout(
-                state_cur, act_seqs, n_look_ahead, use_gpu)
+                state_cur, init_pose_seqs, act_seqs, n_look_ahead, use_gpu)
             reward_seqs = reward_scale_factor * self.evaluate_traj(state_seqs, state_goal)
             reward_seqs = reward_seqs.data.cpu().numpy()
 
             print('update_iter %d/%d, max: %.4f, mean: %.4f, std: %.4f' % (
                 i, n_update_iter, np.max(reward_seqs), np.mean(reward_seqs), np.std(reward_seqs)))
 
-            act_seq = self.optimize_action(act_seqs, reward_seqs)
+            init_pose_seq, act_seq = self.optimize_action_MAX(init_pose_seqs, act_seqs, reward_seqs)
 
         # act_seq: [n_his + n_look_ahead - 1, action_dim]
-        return act_seq
+        return init_pose_seq, act_seq
+
+    def sample_action_params(self, rate=0.01, r=0.25):
+        zero_pad = np.array([0,0,0])
+
+        init_pose_seqs = []
+        act_seqs = []
+        n_sampled = 0
+        while n_sampled < self.n_sample:
+            init_pose_seq = []
+            act_seq = []
+            for i in range(self.n_grips):
+                mid_point = np.array([0.5, 0.4, 0.5, 0, 0, 0])
+                p_noise = np.clip(np.array([0, 0, np.random.randn()*0.06]), a_max=0.1, a_min=-0.1)
+                new_mid_point = mid_point[:3] + p_noise
+                rot_noise = np.random.uniform(0, np.pi)
+                x1 = new_mid_point[0] - r * np.cos(rot_noise)
+                y1 = new_mid_point[2] + r * np.sin(rot_noise)
+                x2 = new_mid_point[0] + r * np.cos(rot_noise)
+                y2 = new_mid_point[2] - r * np.sin(rot_noise)
+
+                init_pose_seq.append([x1, 0.14, y1, 1, 0, 0, 0, x2, 0.14, y2, 1, 0, 0, 0]) # 12
+
+                delta_g = np.random.uniform(0.27, 0.35)
+                counter = 0
+                actions = []
+                
+                while delta_g > 0 and counter < self.len_per_grip:
+                    x = rate * np.cos(rot_noise)
+                    y = - rate * np.sin(rot_noise)
+                    delta_g -= 2 * rate
+                    actions.append(np.concatenate([np.array([x/0.02,0,y/0.02]), zero_pad, 
+                                                    np.array([-x/0.02,0,-y/0.02]), zero_pad]))
+                    counter += 1
+
+                actions = actions[:self.len_per_grip]
+
+                for _ in range(self.len_per_grip - len(actions)):
+                    actions.append(np.concatenate([zero_pad, zero_pad, zero_pad, zero_pad]))
+
+                counter = 0
+                while counter < self.len_per_grip_back:
+                    x = - rate * np.cos(rot_noise)
+                    y = rate * np.sin(rot_noise)
+                    actions.append(np.concatenate([np.array([x/0.02,0,y/0.02]), zero_pad, 
+                                                    np.array([-x/0.02,0,-y/0.02]), zero_pad]))
+                    counter += 1
+
+                act_seq.append(actions)
+
+            init_pose_seq = np.stack(init_pose_seq)
+            init_pose_seqs.append(init_pose_seq)
+
+            act_seq = np.stack(act_seq)
+            act_seqs.append(act_seq)
+
+            n_sampled += 1
+
+        return np.stack(init_pose_seqs), np.stack(act_seqs)
 
     def sample_action_sequences(
         self,
@@ -110,6 +176,7 @@ class Planner(object):
                 act_seqs[:, i + 1], action_lower_lim, action_upper_lim)
 
         # act_seqs: [n_sample, -1, action_dim]
+        # print(act_seqs.shape)
         return act_seqs
 
     def expand(self, info):
@@ -156,84 +223,90 @@ class Planner(object):
     def model_rollout(
         self,
         state_cur,      # [1, n_his, state_dim]
+        init_pose_seqs_np,
         act_seqs_np,    # [n_sample, -1, action_dim]
         n_look_ahead,
         use_gpu):
 
+        init_pose_seqs = torch.FloatTensor(init_pose_seqs_np).float()
         act_seqs = torch.FloatTensor(act_seqs_np).float()
         if use_gpu:
             act_seqs = act_seqs.cuda()
+            init_pose_seqs = init_pose_seqs.cuda()
 
         # states_cur: [n_sample, n_his, state_dim]
 
         states_pred_list = []
-        assert n_look_ahead == act_seqs.shape[1] - self.n_his + 1
+        # assert n_look_ahead == act_seqs.shape[1] - self.n_his + 1
         if self.use_gpu:
             state_cur = self.expand(state_cur.unsqueeze(0)).cuda()
         else:
             state_cur = self.expand(state_cur.unsqueeze(0))
 
-        for i in range(min(n_look_ahead, act_seqs.shape[1] - self.n_his + 1)):
-            # state_cur = torch.tensor(state_cur_np, device=device).float()
-            print(f"{i}/{min(n_look_ahead, act_seqs.shape[1] - self.n_his + 1)}")
-            attrs = []
-            Rr_curs = []
-            Rs_curs = []
-            max_n_rel = 0
-            for j in range(self.n_sample):
-                # pdb.set_trace()
-                attr, _, Rr_cur, Rs_cur, cluster_onehot = prepare_input(state_cur[j][-1].cpu().numpy(), self.n_particle,
-                                                                        self.n_shape, self.args, stdreg=self.args.stdreg)
-                if use_gpu:
-                    attr = attr.cuda()
-                    Rr_cur = Rr_cur.cuda()
-                    Rs_cur = Rs_cur.cuda()
-                max_n_rel = max(max_n_rel, Rr_cur.size(0))
-                attr = attr.unsqueeze(0)
-                Rr_cur = Rr_cur.unsqueeze(0)
-                Rs_cur = Rs_cur.unsqueeze(0)
-                # state_cur = state_cur.unsqueeze(0)
-                attrs.append(attr)
-                Rr_curs.append(Rr_cur)
-                Rs_curs.append(Rs_cur)
+        # for i in range(min(n_look_ahead, act_seqs.shape[1] - self.n_his + 1)):
+        for i in range(act_seqs.shape[1]):
+            shape1 = init_pose_seqs[:, i, :3]
+            shape2 = init_pose_seqs[:, i, 7:10]
+            for j in range(act_seqs.shape[2]):
+                # state_cur = torch.tensor(state_cur_np, device=device).float()
+                true_idx = i * (self.len_per_grip + self.len_per_grip_back) + j
+                print(f"{true_idx}/{act_seqs.shape[1] * act_seqs.shape[2]}")
+                attrs = []
+                Rr_curs = []
+                Rs_curs = []
+                max_n_rel = 0
+                for k in range(self.n_sample):
+                    # pdb.set_trace()
+                    attr, _, Rr_cur, Rs_cur, cluster_onehot = prepare_input(state_cur[k][-1].cpu().numpy(), self.n_particle,
+                                                                            self.n_shape, self.args, stdreg=self.args.stdreg)
+                    if use_gpu:
+                        attr = attr.cuda()
+                        Rr_cur = Rr_cur.cuda()
+                        Rs_cur = Rs_cur.cuda()
+                    max_n_rel = max(max_n_rel, Rr_cur.size(0))
+                    attr = attr.unsqueeze(0)
+                    Rr_cur = Rr_cur.unsqueeze(0)
+                    Rs_cur = Rs_cur.unsqueeze(0)
+                    # state_cur = state_cur.unsqueeze(0)
+                    attrs.append(attr)
+                    Rr_curs.append(Rr_cur)
+                    Rs_curs.append(Rs_cur)
 
-            attrs = torch.cat(attrs, dim=0)
-            for k in range(len(Rr_curs)):
-                Rr, Rs = Rr_curs[k], Rs_curs[k]
-                if self.use_gpu:
-                    Rr = torch.cat([Rr, torch.zeros((1, max_n_rel - Rr.size(1), self.n_particle + self.n_shape), device='cuda')], 1)
-                    Rs = torch.cat([Rs, torch.zeros((1, max_n_rel - Rs.size(1), self.n_particle + self.n_shape), device='cuda')], 1)
-                else:
-                    Rr = torch.cat([Rr, torch.zeros(1, max_n_rel - Rr.size(1), self.n_particle + self.n_shape)], 1)
-                    Rs = torch.cat([Rs, torch.zeros(1, max_n_rel - Rs.size(1), self.n_particle + self.n_shape)], 1)
-                Rr_curs[k], Rs_curs[k] = Rr, Rs
+                attrs = torch.cat(attrs, dim=0)
+                for k in range(len(Rr_curs)):
+                    Rr, Rs = Rr_curs[k], Rs_curs[k]
+                    if self.use_gpu:
+                        Rr = torch.cat([Rr, torch.zeros((1, max_n_rel - Rr.size(1), self.n_particle + self.n_shape), device='cuda')], 1)
+                        Rs = torch.cat([Rs, torch.zeros((1, max_n_rel - Rs.size(1), self.n_particle + self.n_shape), device='cuda')], 1)
+                    else:
+                        Rr = torch.cat([Rr, torch.zeros(1, max_n_rel - Rr.size(1), self.n_particle + self.n_shape)], 1)
+                        Rs = torch.cat([Rs, torch.zeros(1, max_n_rel - Rs.size(1), self.n_particle + self.n_shape)], 1)
+                    Rr_curs[k], Rs_curs[k] = Rr, Rs
 
-            Rr_curs = torch.cat(Rr_curs, dim=0)
-            Rs_curs = torch.cat(Rs_curs, dim=0)
+                Rr_curs = torch.cat(Rr_curs, dim=0)
+                Rs_curs = torch.cat(Rs_curs, dim=0)
 
-            inputs = [attrs, state_cur, Rr_curs, Rs_curs, self.memory_init, self.group_gt, None]
-            # inputs = self.expand_inputs(inputs)
+                inputs = [attrs, state_cur, Rr_curs, Rs_curs, self.memory_init, self.group_gt, None]
+                # inputs = self.expand_inputs(inputs)
 
+                # act_cur = act_seqs[:, i:i + self.n_his]
+                # state_cur_act = self.state_action(state_new, act_cur)
+                # states_pred: [n_sample, state_dim]
+                pred_pos, pred_motion_norm, std_cluster  = self.model.predict_dynamics(inputs)
+                
+                shape1 += act_seqs[:, i, j, :3] * 0.02
+                shape2 += act_seqs[:, i, j, 6:9] * 0.02
 
-            act_cur = act_seqs[:, i:i + self.n_his]
-            # state_cur_act = self.state_action(state_new, act_cur)
-            # states_pred: [n_sample, state_dim]
-            pred_pos, pred_motion_norm, std_cluster  = self.model.predict_dynamics(inputs)
-            new_shape1 = inputs[1][:, -1, self.n_particle+1, :] + act_cur[:, -1, :] * 0.02
-            if self.use_gpu:
-                new_shape2 = inputs[1][:, -1, self.n_particle+2, :] + act_cur[:, -1, :] * 0.02 * torch.cuda.FloatTensor([-1, 1, 1])
-            else:
-                new_shape2 = inputs[1][:, -1, self.n_particle+2, :] + act_cur[:, -1, :] * 0.02 * torch.FloatTensor([-1, 1, 1])
+                pred_pos = torch.cat([pred_pos, state_cur[:, -1, -3, :].unsqueeze(1), shape1.unsqueeze(1), shape2.unsqueeze(1)], 1)
+                # print(f"pred_pos shape: {pred_pos.shape}")
 
-            pred_pos = torch.cat([pred_pos, state_cur[:, -1, -3, :].unsqueeze(1), new_shape1.unsqueeze(1), new_shape2.unsqueeze(1)], 1)
-            # print(f"pred_pos shape: {pred_pos.shape}")
+                state_cur = torch.cat([state_cur[:, 1:], pred_pos.unsqueeze(1)], 1)
+                # print(f"state_cur shape: {state_cur.shape}")
 
-            state_cur = torch.cat([state_cur[:, 1:], pred_pos.unsqueeze(1)], 1)
-            # print(f"state_cur shape: {state_cur.shape}")
-
-            # print(torch.cuda.memory_summary())
-            
-            states_pred_list.append(pred_pos[:, :self.n_particle, :])
+                # print(torch.cuda.memory_summary())
+                
+                states_pred_list.append(pred_pos[:, :self.n_particle, :])
+        
         # states_pred_tensor: [n_sample, n_look_ahead, state_dim]
         states_pred_tensor = torch.stack(states_pred_list, dim=1)
 
@@ -249,6 +322,17 @@ class Planner(object):
         reward_seqs = self.dist_func(state_seqs[:, -1], goal)
         # reward_seqs: [n_sample]
         return reward_seqs
+
+    def optimize_action_MAX(
+        self,
+        init_pose_seqs,
+        act_seqs,       # [n_sample, -1, action_dim]
+        reward_seqs     # [n_sample]
+    ):
+
+        idx = np.argmax(reward_seqs)
+        # [-1, action_dim]
+        return init_pose_seqs[idx], act_seqs[idx]
 
     def optimize_action_CEM(    # Cross Entropy Method (CEM)
         self,
@@ -334,7 +418,7 @@ def main():
     env.primitives.primitives[0].set_state(0, [0.3, 0.4, 0.5, 1, 0, 0, 0])
     env.primitives.primitives[1].set_state(0, [0.7, 0.4, 0.5, 1, 0, 0, 0])
     
-    set_parameters(env, yield_stress=300, E=800, nu=0.2) # 200， 5e3, 0.2
+    set_parameters(env, yield_stress=200, E=5e3, nu=0.2) # 200， 5e3, 0.2
 
     # env.render('plt')
     
@@ -427,6 +511,7 @@ def main():
     planner = Planner(args=args, n_his=args.n_his, n_particle=n_particle, n_shape=n_shape, scene_params=scene_params,
                     model=model, dist_func=dist_func, use_gpu=use_gpu, n_sample=n_sample)
     planner.prepare_rollout()
+
     actions = all_actions[:args.n_his - 1]
     # duplicate the last action #n_look_ahead times
     for i in range(n_look_ahead):
@@ -436,16 +521,15 @@ def main():
     action_lower_lim, action_upper_lim, action_lower_delta_lim, action_upper_delta_lim = \
         set_action_limit(all_actions=all_actions, ctrl_init_idx=ctrl_init_idx)
 
-
     st_idx = ctrl_init_idx
     ed_idx = ctrl_init_idx + 1 # + n_look_ahead
 
     p_list = copy.copy(all_p[:args.n_his])
     s_list = copy.copy(all_s[:args.n_his])
     if use_gpu:
-        state_goal = torch.cuda.FloatTensor(all_p[-1]).unsqueeze(0)[:, :300, :]
+        state_goal = torch.cuda.FloatTensor(all_p[-1]).unsqueeze(0)[:, :n_particle, :]
     else:
-        state_goal = torch.FloatTensor(all_p[-1]).unsqueeze(0)[:, :300, :]
+        state_goal = torch.FloatTensor(all_p[-1]).unsqueeze(0)[:, :n_particle, :]
     
     ### We now have n_his states, n_his - 1 actions
     for i in range(st_idx, ed_idx):
@@ -457,7 +541,19 @@ def main():
                 state_cur = torch.FloatTensor(np.stack(p_list[-args.n_his:]))
                 # s_cur = torch.FloatTensor(np.stack(s_list[-n_his:]))
 
-                action = planner.trajectory_optimization(
+                # action = planner.trajectory_optimization(
+                #             state_cur=state_cur,
+                #             state_goal=state_goal,
+                #             act_seq=actions[i-args.n_his:],
+                #             n_look_ahead=n_look_ahead - (i - ctrl_init_idx),
+                #             n_update_iter=n_update_iter_init if i == st_idx else n_update_iter,
+                #             action_lower_lim=action_lower_lim,
+                #             action_upper_lim=action_upper_lim,
+                #             action_lower_delta_lim=action_lower_delta_lim,
+                #             action_upper_delta_lim=action_upper_delta_lim,
+                #             use_gpu=use_gpu)
+
+                init_pose_seq, act_seq = planner.trajectory_optimization(
                             state_cur=state_cur,
                             state_goal=state_goal,
                             act_seq=actions[i-args.n_his:],
@@ -468,15 +564,27 @@ def main():
                             action_lower_delta_lim=action_lower_delta_lim,
                             action_upper_delta_lim=action_upper_delta_lim,
                             use_gpu=use_gpu)
-                print(action.shape)
+                
+                print(init_pose_seq.shape, act_seq.shape)
 
 
-    env_act = np.zeros([action.shape[0], 12])
-    env_act[:, :3] = action
-    env_act[:, 6:9] = action * np.array([-1, 1, 1])
-    for i in range(action.shape[0]):
-        env.step(env_act[i])
-        env.render(mode='plt', write=True, idx=i)
+    # env_act = np.zeros([action.shape[0], 12])
+    # env_act[:, :3] = action
+    # env_act[:, 6:9] = action * np.array([-1, 1, 1])
+
+    render_dir = f"{args.outf}/control"
+    os.system('mkdir -p ' + f"{render_dir}/000")
+
+    for i in range(act_seq.shape[0]):
+        env.primitives.primitives[0].set_state(0, init_pose_seq[i, :7])
+        env.primitives.primitives[1].set_state(0, init_pose_seq[i, 7:])
+        for j in range(act_seq.shape[1]):
+            true_idx = i * act_seq.shape[1] + j
+            env.step(act_seq[i][j])
+            rgb_img, depth_img = env.render(mode='get')
+            imageio.imwrite(f"{render_dir}/000/{true_idx:03d}_rgb.png", rgb_img)
+
+    os.system(f'ffmpeg -y -i {render_dir}/000/%03d_rgb.png -c:v libx264 -vf fps=25 -pix_fmt yuv420p {render_dir}/000/vid000.mp4')         
 
 
 if __name__ == '__main__':

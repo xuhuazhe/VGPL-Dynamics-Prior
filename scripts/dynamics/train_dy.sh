@@ -26,7 +26,7 @@ kernprof -l train.py \
 	--gen_data 0 \
 	--gen_stat 0 \
 	--gen_vision 0 \
-	--num_workers 8 \
+	--num_workers 4 \
 	--resume 0 \
 	--resume_epoch 0 \
 	--resume_iter 0 \
