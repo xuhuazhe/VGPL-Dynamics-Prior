@@ -18,7 +18,8 @@ from plb.config import load
 
 class Planner(object):
     def __init__(self, args, n_his, n_particle, n_shape, scene_params, model, dist_func, use_gpu, n_sample, 
-                n_grips, len_per_grip, len_per_grip_back, n_shapes_per_gripper, n_shapes_floor, beta_filter=1, env="gripper"):
+                n_grips, len_per_grip, len_per_grip_back, n_shapes_per_gripper, n_shapes_floor, 
+                batch_size, beta_filter=1, env="gripper"):
         self.args = args
         self.n_his = n_his
         self.n_particle = n_particle
@@ -38,6 +39,7 @@ class Planner(object):
         self.len_per_grip_back = len_per_grip_back
         self.n_shapes_per_gripper = n_shapes_per_gripper
         self.n_shapes_floor = n_shapes_floor
+        self.batch_size = batch_size
     
     def trajectory_optimization(
         self,
@@ -54,24 +56,38 @@ class Planner(object):
         reward_scale_factor=1.0):
 
         for i in range(n_update_iter):
-            init_pose_seqs, act_seqs = self.sample_action_params()
-            print(f"Init poses: {init_pose_seqs.shape}")
-            print(f"Actions: {act_seqs.shape}")
-            # act_seqs = self.sample_action_sequences(
-            #     act_seq,
-            #     action_lower_lim, action_upper_lim,
-            #     action_lower_delta_lim, action_upper_delta_lim)
-            state_seqs = self.model_rollout(
-                state_cur, init_pose_seqs, act_seqs, n_look_ahead, use_gpu)
-            # print(state_seqs)
-            reward_seqs = reward_scale_factor * self.evaluate_traj(state_seqs, state_goal)
-            print(reward_seqs)
-            reward_seqs = reward_seqs.data.cpu().numpy()
+            n_batch = int(self.n_sample / self.batch_size)
+            init_pose_seqs_batch = []
+            act_seqs_batch = []
+            reward_seqs_batch = []
+            for _, j in enumerate(tqdm(range(n_batch), total=n_batch)):
+                # print(f"Batch: {j}/{n_batch}")
+                init_pose_seqs, act_seqs = self.sample_action_params()
+                print(f"Init poses: {init_pose_seqs.shape}")
+                print(f"Actions: {act_seqs.shape}")
+                # act_seqs = self.sample_action_sequences(
+                #     act_seq,
+                #     action_lower_lim, action_upper_lim,
+                #     action_lower_delta_lim, action_upper_delta_lim)
+                state_seqs = self.model_rollout(
+                    state_cur, init_pose_seqs, act_seqs, n_look_ahead, use_gpu)
+                # print(state_seqs)
+                reward_seqs = reward_scale_factor * self.evaluate_traj(state_seqs, state_goal)
+                print(reward_seqs)
+                reward_seqs = reward_seqs.data.cpu().numpy()
 
-            print('update_iter %d/%d, max: %.4f, mean: %.4f, std: %.4f' % (
-                i, n_update_iter, np.max(reward_seqs), np.mean(reward_seqs), np.std(reward_seqs)))
+                init_pose_seqs_batch.append(init_pose_seqs)
+                act_seqs_batch.append(act_seqs)
+                reward_seqs_batch.append(reward_seqs)
 
-            init_pose_seq, act_seq = self.optimize_action_MAX(init_pose_seqs, act_seqs, reward_seqs)
+            init_pose_seqs_batch = np.concatenate(init_pose_seqs_batch, axis=0)
+            act_seqs_batch = np.concatenate(act_seqs_batch, axis=0)
+            reward_seqs_batch = np.concatenate(reward_seqs_batch, axis=0)
+            
+            print('update_iter %d/%d, min: %.4f, mean: %.4f, std: %.4f' % (
+                i, n_update_iter, np.min(reward_seqs_batch), np.mean(reward_seqs_batch), np.std(reward_seqs_batch)))
+
+            init_pose_seq, act_seq = self.optimize_action_MAX(init_pose_seqs_batch, act_seqs_batch, reward_seqs_batch)
 
         # act_seq: [n_his + n_look_ahead - 1, action_dim]
         return init_pose_seq, act_seq
@@ -82,7 +98,7 @@ class Planner(object):
         init_pose_seqs = []
         act_seqs = []
         n_sampled = 0
-        while n_sampled < self.n_sample:
+        while n_sampled < self.batch_size:
             init_pose_seq = []
             act_seq = []
             for i in range(self.n_grips):
@@ -202,11 +218,11 @@ class Planner(object):
     def expand(self, info):
         length = len(info.shape)
         if length == 2:
-            info = info.expand([self.n_sample, -1])
+            info = info.expand([self.batch_size, -1])
         elif length == 3:
-            info = info.expand([self.n_sample, -1, -1])
+            info = info.expand([self.batch_size, -1, -1])
         elif length == 4:
-            info = info.expand([self.n_sample, -1, -1, -1])
+            info = info.expand([self.batch_size, -1, -1, -1])
         return info
 
     def state_action(self, state_cur, act_cur):
@@ -220,8 +236,8 @@ class Planner(object):
         pdb.set_trace()
 
     def prepare_rollout(self):
-        B = self.n_sample
-        self.scene_params = self.scene_params.expand(self.n_sample, -1)
+        B = self.batch_size
+        self.scene_params = self.scene_params.expand(self.batch_size, -1)
         self.group_gt = get_env_group(self.args, self.n_particle, self.scene_params, use_gpu=self.use_gpu)
         self.memory_init = self.model.init_memory(B, self.n_particle + self.n_shape)
 
@@ -263,7 +279,7 @@ class Planner(object):
         else:
             state_cur = self.expand(state_cur.unsqueeze(0))
 
-        print(state_cur.shape)
+        # print(state_cur.shape)
 
         # for i in range(min(n_look_ahead, act_seqs.shape[1] - self.n_his + 1)):
         for i in range(act_seqs.shape[1]):
@@ -272,12 +288,12 @@ class Planner(object):
             for j in range(act_seqs.shape[2]):
                 # state_cur = torch.tensor(state_cur_np, device=device).float()
                 true_idx = i * (self.len_per_grip + self.len_per_grip_back) + j
-                print(f"{true_idx}/{act_seqs.shape[1] * act_seqs.shape[2]}")
+                # print(f"{true_idx}/{act_seqs.shape[1] * act_seqs.shape[2]}")
                 attrs = []
                 Rr_curs = []
                 Rs_curs = []
                 max_n_rel = 0
-                for k in range(self.n_sample):
+                for k in range(self.batch_size):
                     # pdb.set_trace()
                     attr, _, Rr_cur, Rs_cur, cluster_onehot = prepare_input(state_cur[k][-1].cpu().numpy(), self.n_particle,
                                                                             self.n_shape, self.args, stdreg=self.args.stdreg)
@@ -512,7 +528,8 @@ def main():
     unit_quat_pad = np.tile([1, 0, 0, 0], (n_shapes_per_gripper, 1))
     ctrl_init_idx = args.n_his
     n_update_delta = 1
-    n_sample = 5
+    n_sample = 8
+    batch_size = 4
     n_update_iter_init = 1
     n_update_iter = 1
     dist_func = 'emd'
@@ -569,7 +586,7 @@ def main():
     planner = Planner(args=args, n_his=args.n_his, n_particle=n_particle, n_shape=n_shape, scene_params=scene_params,
                     model=model, dist_func=dist_func, use_gpu=use_gpu, n_sample=n_sample, n_grips=n_grips,
                     len_per_grip=len_per_grip, len_per_grip_back=len_per_grip_back, 
-                    n_shapes_per_gripper=n_shapes_per_gripper, n_shapes_floor=n_shapes_floor)
+                    n_shapes_per_gripper=n_shapes_per_gripper, n_shapes_floor=n_shapes_floor, batch_size=batch_size)
     planner.prepare_rollout()
 
     # actions = act_seq_gt[:args.n_his - 1]
