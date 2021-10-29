@@ -993,12 +993,13 @@ def p2g(x, size=64, p_mass=1.):
     # torch.nn.functional.gumbel_softmax(grid_m, tau=1, hard=True)
     # step 1 normalize grid_m
     grid_m = torch.clip(grid_m / grid_m.max(), max=1, min=0)
-    print('>1 means NAN', torch.isnan(grid_m).sum())
+    grid_m = torch.min(8.5*grid_m, 0.15/0.9 * (grid_m-0.1) + 0.85)
+    # print('>1 means NAN', torch.isnan(grid_m).sum())
     # step 2 x**(0.000001)
-    grid_m = grid_m ** (0.1)
-    print('>1 means NAN', torch.isnan(grid_m).sum())
+    # grid_m = grid_m ** (0.1)
+    # print('>1 means NAN', torch.isnan(grid_m).sum())
     # step 3 softmax
-    lam = 10
+    lam = 3
     grid_m = torch.exp(lam*grid_m) / (torch.exp(lam*grid_m) + torch.exp(lam*(1-grid_m)))
     print('>1 means NAN', torch.isnan(grid_m).sum())
     # grid_m = (grid_m > 0.0001).float()
