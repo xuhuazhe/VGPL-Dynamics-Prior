@@ -17,9 +17,9 @@ from plb.engine.taichi_env import TaichiEnv
 from plb.config import load
 
 class Planner(object):
-    def __init__(self, args, n_his, n_particle, n_shape, scene_params, model, dist_func, use_gpu, n_sample, 
+    def __init__(self, args, n_his, n_particle, n_shape, scene_params, model, dist_func, use_gpu, 
                 n_grips, len_per_grip, len_per_grip_back, n_shapes_per_gripper, n_shapes_floor, 
-                batch_size, beta_filter=1, env="gripper"):
+                beta_filter=1, env="gripper"):
         self.args = args
         self.n_his = n_his
         self.n_particle = n_particle
@@ -29,8 +29,7 @@ class Planner(object):
         self.env = env
         self.model = model
         self.use_gpu = use_gpu
-        self.n_sample = n_sample
-        self.reward_weight = 1
+        self.reward_weight = 10.0
         if dist_func == 'emd':
             self.dist_func = EarthMoverLoss()
 
@@ -39,7 +38,14 @@ class Planner(object):
         self.len_per_grip_back = len_per_grip_back
         self.n_shapes_per_gripper = n_shapes_per_gripper
         self.n_shapes_floor = n_shapes_floor
-        self.batch_size = batch_size
+
+        self.n_sample = args.control_sample_size
+        self.batch_size = args.control_batch_size
+
+        self.mid_point = np.array([0.5, 0.4, 0.5, 0, 0, 0])
+        self.default_h = 0.14
+        self.sample_radius = 0.25
+        self.gripper_rate = 0.01
     
     def trajectory_optimization(
         self,
@@ -84,17 +90,75 @@ class Planner(object):
             act_seqs_batch = np.concatenate(act_seqs_batch, axis=0)
             reward_seqs_batch = np.concatenate(reward_seqs_batch, axis=0)
             
-            print('update_iter %d/%d, min: %.4f, mean: %.4f, std: %.4f' % (
-                i, n_update_iter, np.min(reward_seqs_batch), np.mean(reward_seqs_batch), np.std(reward_seqs_batch)))
+            print('update_iter %d/%d, max: %.4f, mean: %.4f, std: %.4f' % (
+                i, n_update_iter, np.max(reward_seqs_batch), np.mean(reward_seqs_batch), np.std(reward_seqs_batch)))
 
-            init_pose_seq, act_seq = self.optimize_action_MAX(init_pose_seqs_batch, act_seqs_batch, reward_seqs_batch)
+            if self.args.opt_algo == 'max':
+                init_pose_seq, act_seq = self.optimize_action_max(init_pose_seqs_batch, act_seqs_batch, reward_seqs_batch)
+            elif self.args.opt_algo == 'CEM':
+                init_pose_seq, act_seq = self.optimize_action_CEM(init_pose_seqs_batch, act_seqs_batch, reward_seqs_batch)
+            elif self.args.opt_algo == 'MPPI':
+                init_pose_seq, act_seq = self.optimize_action_MPPI(init_pose_seqs_batch, act_seqs_batch, reward_seqs_batch)
+            else:
+                raise NotImplementedError
 
         # act_seq: [n_his + n_look_ahead - 1, action_dim]
         return init_pose_seq, act_seq
 
-    def sample_action_params(self, rate=0.01, r=0.25):
-        zero_pad = np.zeros(3)
+    def get_pose(self, new_mid_point, rot_noise):
+        x1 = new_mid_point[0] - self.sample_radius * np.cos(rot_noise)
+        y1 = new_mid_point[2] + self.sample_radius * np.sin(rot_noise)
+        x2 = new_mid_point[0] + self.sample_radius * np.cos(rot_noise)
+        y2 = new_mid_point[2] - self.sample_radius * np.sin(rot_noise)
 
+        prim1 = [x1, self.default_h, y1, 1, 0, 0, 0] 
+        prim2 = [x2, self.default_h, y2, 1, 0, 0, 0]
+
+        new_prim1 = []
+        for j in range(self.n_shapes_per_gripper):
+            prim1_tmp = np.concatenate(([prim1[0], prim1[1] + 0.018 * (j-5), prim1[2]], prim1[3:]), axis=None)
+            new_prim1.append(prim1_tmp)
+        new_prim1 = np.stack(new_prim1)
+    
+        new_prim2 = []
+        for j in range(self.n_shapes_per_gripper):
+            prim2_tmp = np.concatenate(([prim2[0], prim2[1] + 0.018 * (j-5), prim2[2]], prim2[3:]), axis=None)
+            new_prim2.append(prim2_tmp)
+        new_prim2 = np.stack(new_prim2)
+
+        init_pose = np.concatenate((new_prim1, new_prim2), axis=1)
+
+        return init_pose
+
+    def get_action_seq(self, rot_noise):
+        delta_g = np.random.uniform(0.27, 0.35)
+        counter = 0
+        actions = []
+        
+        while delta_g > 0 and counter < self.len_per_grip:
+            x = self.gripper_rate * np.cos(rot_noise)
+            y = - self.gripper_rate * np.sin(rot_noise)
+            delta_g -= 2 * self.gripper_rate
+            actions.append(np.concatenate([np.array([x/0.02,0,y/0.02]), np.zeros(3), 
+                                            np.array([-x/0.02,0,-y/0.02]), np.zeros(3)]))
+            counter += 1
+
+        actions = actions[:self.len_per_grip]
+
+        for _ in range(self.len_per_grip - len(actions)):
+            actions.append(np.concatenate([np.zeros(3), np.zeros(3), np.zeros(3), np.zeros(3)]))
+
+        counter = 0
+        while counter < self.len_per_grip_back:
+            x = - self.gripper_rate * np.cos(rot_noise)
+            y = self.gripper_rate * np.sin(rot_noise)
+            actions.append(np.concatenate([np.array([x/0.02,0,y/0.02]), np.zeros(3), 
+                                            np.array([-x/0.02,0,-y/0.02]), np.zeros(3)]))
+            counter += 1
+
+        return actions
+
+    def sample_action_params(self):
         init_pose_seqs = []
         act_seqs = []
         n_sampled = 0
@@ -102,59 +166,16 @@ class Planner(object):
             init_pose_seq = []
             act_seq = []
             for i in range(self.n_grips):
-                mid_point = np.array([0.5, 0.4, 0.5, 0, 0, 0])
                 p_noise = np.clip(np.array([0, 0, np.random.randn()*0.06]), a_max=0.1, a_min=-0.1)
-                new_mid_point = mid_point[:3] + p_noise
+                new_mid_point = self.mid_point[:3] + p_noise
                 rot_noise = np.random.uniform(0, np.pi)
-                x1 = new_mid_point[0] - r * np.cos(rot_noise)
-                y1 = new_mid_point[2] + r * np.sin(rot_noise)
-                x2 = new_mid_point[0] + r * np.cos(rot_noise)
-                y2 = new_mid_point[2] - r * np.sin(rot_noise)
-
-                prim1 = [x1, 0.14, y1, 1, 0, 0, 0] 
-                prim2 = [x2, 0.14, y2, 1, 0, 0, 0]
-
-                new_prim1 = []
-                for j in range(self.n_shapes_per_gripper):
-                    prim1_tmp = np.concatenate(([prim1[0], prim1[1] + 0.018 * (j-5), prim1[2]], prim1[3:]), axis=None)
-                    new_prim1.append(prim1_tmp)
-                new_prim1 = np.stack(new_prim1)
-            
-                new_prim2 = []
-                for j in range(self.n_shapes_per_gripper):
-                    prim2_tmp = np.concatenate(([prim2[0], prim2[1] + 0.018 * (j-5), prim2[2]], prim2[3:]), axis=None)
-                    new_prim2.append(prim2_tmp)
-                new_prim2 = np.stack(new_prim2)
-
-                init_pose = np.concatenate((new_prim1, new_prim2), axis=1)
+                
+                init_pose = self.get_pose(new_mid_point, rot_noise)
                 # print(init_pose.shape)
                 init_pose_seq.append(init_pose)
 
-                delta_g = np.random.uniform(0.27, 0.35)
-                counter = 0
-                actions = []
-                
-                while delta_g > 0 and counter < self.len_per_grip:
-                    x = rate * np.cos(rot_noise)
-                    y = - rate * np.sin(rot_noise)
-                    delta_g -= 2 * rate
-                    actions.append(np.concatenate([np.array([x/0.02,0,y/0.02]), zero_pad, 
-                                                    np.array([-x/0.02,0,-y/0.02]), zero_pad]))
-                    counter += 1
-
-                actions = actions[:self.len_per_grip]
-
-                for _ in range(self.len_per_grip - len(actions)):
-                    actions.append(np.concatenate([zero_pad, zero_pad, zero_pad, zero_pad]))
-
-                counter = 0
-                while counter < self.len_per_grip_back:
-                    x = - rate * np.cos(rot_noise)
-                    y = rate * np.sin(rot_noise)
-                    actions.append(np.concatenate([np.array([x/0.02,0,y/0.02]), zero_pad, 
-                                                    np.array([-x/0.02,0,-y/0.02]), zero_pad]))
-                    counter += 1
-
+                actions = self.get_action_seq(rot_noise)
+                # print(actions.shape)
                 act_seq.append(actions)
 
             init_pose_seq = np.stack(init_pose_seq)
@@ -362,52 +383,77 @@ class Planner(object):
         print(state_seqs.shape, state_goal.shape)
         reward_seqs = []
         for i in range(state_seqs.shape[0]):
-            reward_seqs.append(self.dist_func(state_seqs[i, -1].unsqueeze(0), state_goal))
+            # smaller loss, larger reward
+            emd_loss = self.dist_func(state_seqs[i, -1].unsqueeze(0), state_goal)
+            reward_seqs.append(0.0 - emd_loss)
         # reward_seqs: [n_sample]
-        # print(torch.stack(reward_seqs))
-        return torch.stack(reward_seqs)
+        reward_seqs = torch.stack(reward_seqs)
+        # print(reward_seqs)
+        return reward_seqs
 
-    def optimize_action_MAX(
+    def optimize_action_max(
         self,
         init_pose_seqs,
         act_seqs,       # [n_sample, -1, action_dim]
         reward_seqs     # [n_sample]
     ):
 
-        idx = np.argmin(reward_seqs)
+        idx = np.argmax(reward_seqs)
         print(f"Selected idx: {idx} with loss {reward_seqs[idx]}")
         # [-1, action_dim]
         return init_pose_seqs[idx], act_seqs[idx]
 
     def optimize_action_CEM(    # Cross Entropy Method (CEM)
         self,
+        init_pose_seqs,
         act_seqs,       # [n_sample, -1, action_dim]
         reward_seqs     # [n_sample]
     ):
 
         idx = np.argsort(reward_seqs)
         # [-1, action_dim]
-        return np.mean(act_seqs[idx[-5:], :, :], 0)
+        return np.mean(init_pose_seqs[idx[-5:], :, :], 0), np.mean(act_seqs[idx[-5:], :, :], 0)
 
-    def optimize_action(   # Model-Predictive Path Integral (MPPI)
+    def optimize_action_MPPI(   # Model-Predictive Path Integral (MPPI)
         self,
+        init_pose_seqs,
         act_seqs,       # [n_sample, -1, action_dim]
         reward_seqs     # [n_sample]
     ):
-        # reward_base = self.args.reward_base
-        reward_base = np.mean(reward_seqs)
-        reward_weight = self.reward_weight
-
+        print(f"reward_seqs: {reward_seqs}")
         # [n_sample, 1, 1]
-        reward_seqs_exp = np.exp(reward_weight * (reward_seqs - reward_base))
-        reward_seqs_exp = reward_seqs_exp.reshape(-1, 1, 1)
+        # reward_seqs_exp = np.exp(self.reward_weight * (reward_seqs - np.mean(reward_seqs)))
+        reward_seqs = (reward_seqs - np.mean(reward_seqs)) / np.var(reward_seqs)
+        reward_seqs_norm = reward_seqs / np.linalg.norm(reward_seqs)
+        reward_seqs_exp = np.exp(self.reward_weight * reward_seqs_norm)
+        print(f"reward_seqs_exp: {reward_seqs_exp}")
 
         # [-1, action_dim]
         eps = 1e-8
-        act_seq = (reward_seqs_exp * act_seqs).sum(0) / (np.sum(reward_seqs_exp) + eps)
+        mid_point_x = np.full((self.n_sample, self.n_grips), self.mid_point[0])
+        # mid_point_y = np.repeat(self.mid_point[2], [self.batch_size, self.n_grips])
+        gripper_mid_pt = int((self.n_shapes_per_gripper - 1) / 2)
+        rot_noise_seqs = np.arccos((init_pose_seqs[:, :, gripper_mid_pt, 0] - mid_point_x) / self.sample_radius)
+        print(rot_noise_seqs)
+        print(reward_seqs_exp.reshape(-1, 1))
+        print(reward_seqs_exp.reshape(-1, 1) * rot_noise_seqs)
 
+        rot_noise_seq = np.sum(reward_seqs_exp.reshape(-1, 1) * rot_noise_seqs, axis=0) / (np.sum(reward_seqs_exp) + eps)
+        # act_seq = np.sum(reward_seqs_exp.reshape(-1, 1, 1, 1) * act_seqs, axis=0) / (np.sum(reward_seqs_exp) + eps)
+
+        print(f"rot_noise_seq: {rot_noise_seq}")
+
+        init_pose_seq = []
+        act_seq = []
+        for rot_noise in rot_noise_seq:
+            init_pose_seq.append(self.get_pose(self.mid_point, rot_noise))
+            act_seq.append(self.get_action_seq(rot_noise))
+
+        init_pose_seq = np.stack(init_pose_seq)
+        act_seq = np.stack(act_seq)
+        
         # [-1, action_dim]
-        return act_seq
+        return init_pose_seq, act_seq
 
 def set_parameters(env: TaichiEnv, yield_stress, E, nu):
         env.simulator.yield_stress.fill(yield_stress)
@@ -524,12 +570,9 @@ def main():
     n_shapes_floor = 9
     n_shapes_per_gripper = 11
 
-    zero_pad = np.zeros(3)
     unit_quat_pad = np.tile([1, 0, 0, 0], (n_shapes_per_gripper, 1))
     ctrl_init_idx = args.n_his
     n_update_delta = 1
-    n_sample = 8
-    batch_size = 4
     n_update_iter_init = 1
     n_update_iter = 1
     dist_func = 'emd'
@@ -565,8 +608,8 @@ def main():
                 all_p.append(states)
                 all_s.append(this_data[1])
 
-                action = np.concatenate([(states[g1_idx] - prev_states[g1_idx]) / 0.02, zero_pad,
-                                        (states[g2_idx] - prev_states[g2_idx]) / 0.02, zero_pad])
+                action = np.concatenate([(states[g1_idx] - prev_states[g1_idx]) / 0.02, np.zeros(3),
+                                        (states[g2_idx] - prev_states[g2_idx]) / 0.02, np.zeros(3)])
                 
                 actions.append(action)
             prev_states = states
@@ -584,9 +627,9 @@ def main():
 
 
     planner = Planner(args=args, n_his=args.n_his, n_particle=n_particle, n_shape=n_shape, scene_params=scene_params,
-                    model=model, dist_func=dist_func, use_gpu=use_gpu, n_sample=n_sample, n_grips=n_grips,
+                    model=model, dist_func=dist_func, use_gpu=use_gpu, n_grips=n_grips,
                     len_per_grip=len_per_grip, len_per_grip_back=len_per_grip_back, 
-                    n_shapes_per_gripper=n_shapes_per_gripper, n_shapes_floor=n_shapes_floor, batch_size=batch_size)
+                    n_shapes_per_gripper=n_shapes_per_gripper, n_shapes_floor=n_shapes_floor)
     planner.prepare_rollout()
 
     # actions = act_seq_gt[:args.n_his - 1]
