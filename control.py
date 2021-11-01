@@ -58,7 +58,6 @@ class Planner(object):
         # action_upper_lim,
         # action_lower_delta_lim,
         # action_upper_delta_lim,
-        use_gpu,
         reward_scale_factor=1.0):
 
         for i in range(n_update_iter):
@@ -66,6 +65,7 @@ class Planner(object):
             init_pose_seqs_batch = []
             act_seqs_batch = []
             reward_seqs_batch = []
+            state_cur_seqs_batch = []
             for _, j in enumerate(tqdm(range(n_batch), total=n_batch)):
                 # print(f"Batch: {j}/{n_batch}")
                 init_pose_seqs, act_seqs = self.sample_action_params()
@@ -76,7 +76,7 @@ class Planner(object):
                 #     action_lower_lim, action_upper_lim,
                 #     action_lower_delta_lim, action_upper_delta_lim)
                 state_seqs = self.model_rollout(
-                    state_cur, init_pose_seqs, act_seqs, n_look_ahead, use_gpu)
+                    state_cur, init_pose_seqs, act_seqs, n_look_ahead)
                 # print(state_seqs)
                 reward_seqs = reward_scale_factor * self.evaluate_traj(state_seqs, state_goal)
                 print(reward_seqs)
@@ -85,16 +85,18 @@ class Planner(object):
                 init_pose_seqs_batch.append(init_pose_seqs)
                 act_seqs_batch.append(act_seqs)
                 reward_seqs_batch.append(reward_seqs)
+                state_cur_seqs_batch.append(state_seqs[:, -self.n_his:, :, :])
 
             init_pose_seqs_batch = np.concatenate(init_pose_seqs_batch, axis=0)
             act_seqs_batch = np.concatenate(act_seqs_batch, axis=0)
             reward_seqs_batch = np.concatenate(reward_seqs_batch, axis=0)
+            state_cur_seqs_batch = torch.cat(state_cur_seqs_batch, 0)
             
             print('update_iter %d/%d, max: %.4f, mean: %.4f, std: %.4f' % (
                 i, n_update_iter, np.max(reward_seqs_batch), np.mean(reward_seqs_batch), np.std(reward_seqs_batch)))
 
             if self.args.opt_algo == 'max':
-                init_pose_seq, act_seq = self.optimize_action_max(init_pose_seqs_batch, act_seqs_batch, reward_seqs_batch)
+                init_pose_seq, act_seq, state_cur_seq = self.optimize_action_max(init_pose_seqs_batch, act_seqs_batch, reward_seqs_batch, state_cur_seqs_batch)
             elif self.args.opt_algo == 'CEM':
                 init_pose_seq, act_seq = self.optimize_action_CEM(init_pose_seqs_batch, act_seqs_batch, reward_seqs_batch)
             elif self.args.opt_algo == 'MPPI':
@@ -103,7 +105,7 @@ class Planner(object):
                 raise NotImplementedError
 
         # act_seq: [n_his + n_look_ahead - 1, action_dim]
-        return init_pose_seq, act_seq
+        return init_pose_seq, act_seq, state_cur_seq
 
     def get_pose(self, new_mid_point, rot_noise):
         x1 = new_mid_point[0] - self.sample_radius * np.cos(rot_noise)
@@ -282,12 +284,11 @@ class Planner(object):
         state_cur,      # [1, n_his, state_dim]
         init_pose_seqs_np,
         act_seqs_np,    # [n_sample, -1, action_dim]
-        n_look_ahead,
-        use_gpu):
+        n_look_ahead):
 
         init_pose_seqs = torch.FloatTensor(init_pose_seqs_np).float()
         act_seqs = torch.FloatTensor(act_seqs_np).float()
-        if use_gpu:
+        if self.use_gpu:
             act_seqs = act_seqs.cuda()
             init_pose_seqs = init_pose_seqs.cuda()
 
@@ -318,7 +319,7 @@ class Planner(object):
                     # pdb.set_trace()
                     attr, _, Rr_cur, Rs_cur, cluster_onehot = prepare_input(state_cur[k][-1].cpu().numpy(), self.n_particle,
                                                                             self.n_shape, self.args, stdreg=self.args.stdreg)
-                    if use_gpu:
+                    if self.use_gpu:
                         attr = attr.cuda()
                         Rr_cur = Rr_cur.cuda()
                         Rs_cur = Rs_cur.cuda()
@@ -380,6 +381,9 @@ class Planner(object):
     ):
         # reward_seqs = -np.mean(np.sum((state_seqs[:, -1] - state_goal)**2, 2), 1)
         # goal = state_goal.expand(self.n_sample, -1, -1)
+        if self.use_gpu:
+            state_goal = state_goal.cuda()
+
         print(state_seqs.shape, state_goal.shape)
         reward_seqs = []
         for i in range(state_seqs.shape[0]):
@@ -395,13 +399,14 @@ class Planner(object):
         self,
         init_pose_seqs,
         act_seqs,       # [n_sample, -1, action_dim]
-        reward_seqs     # [n_sample]
+        reward_seqs,    # [n_sample]
+        state_cur_seqs
     ):
 
         idx = np.argmax(reward_seqs)
         print(f"Selected idx: {idx} with loss {reward_seqs[idx]}")
         # [-1, action_dim]
-        return init_pose_seqs[idx], act_seqs[idx]
+        return init_pose_seqs[idx], act_seqs[idx], state_cur_seqs[idx]
 
     def optimize_action_CEM(    # Cross Entropy Method (CEM)
         self,
@@ -627,7 +632,7 @@ def main():
 
 
     planner = Planner(args=args, n_his=args.n_his, n_particle=n_particle, n_shape=n_shape, scene_params=scene_params,
-                    model=model, dist_func=dist_func, use_gpu=use_gpu, n_grips=n_grips,
+                    model=model, dist_func=dist_func, use_gpu=use_gpu, n_grips=1,
                     len_per_grip=len_per_grip, len_per_grip_back=len_per_grip_back, 
                     n_shapes_per_gripper=n_shapes_per_gripper, n_shapes_floor=n_shapes_floor)
     planner.prepare_rollout()
@@ -650,10 +655,7 @@ def main():
 
     # p_list = copy.copy(all_p[:args.n_his])
     # s_list = copy.copy(all_s[:args.n_his])
-    if use_gpu:
-        state_goal = torch.cuda.FloatTensor(all_p[-1]).unsqueeze(0)[:, :n_particle, :]
-    else:
-        state_goal = torch.FloatTensor(all_p[-1]).unsqueeze(0)[:, :n_particle, :]
+    state_goal = torch.FloatTensor(all_p[-1]).unsqueeze(0)[:, :n_particle, :]
     
     ### We now have n_his states, n_his - 1 actions
     for i in range(st_idx, ed_idx):
@@ -662,39 +664,56 @@ def main():
         if i == st_idx or i % n_update_delta == 0:
             # update the action sequence every n_update_delta iterations
             with torch.set_grad_enabled(False):
-                # state_cur = torch.FloatTensor(np.stack(p_list[-args.n_his:]))
                 state_cur = torch.FloatTensor(np.stack(all_p[:args.n_his]))
                 # print(state_cur.shape)
                 # state_seqs = planner.model_rollout(state_cur, init_pose_gt, act_seq_gt, n_look_ahead, use_gpu)
                 # reward_seqs = planner.evaluate_traj(state_seqs, state_goal)
                 # print(f"GT reward: {reward_seqs}")
+    
+                # # init_pose_seq, act_seq = planner.trajectory_optimization(
+                #     state_cur=state_cur,
+                #     state_goal=state_goal,
+                #     # act_seq=actions[i-args.n_his:],
+                #     n_look_ahead=n_look_ahead - (i - ctrl_init_idx),
+                #     n_update_iter=n_update_iter_init if i == st_idx else n_update_iter,
+                #     # action_lower_lim=action_lower_lim,
+                #     # action_upper_lim=action_upper_lim,
+                #     # action_lower_delta_lim=action_lower_delta_lim,
+                #     # action_upper_delta_lim=action_upper_delta_lim
+                # )
 
-                # s_cur = torch.FloatTensor(np.stack(s_list[-n_his:]))
+                init_pose_seq = []
+                act_seq = []
+                for i in range(n_grips):
+                    if i > 0:
+                        start_idx = i * (len_per_grip + len_per_grip_back)
+                        state_cur_gt = torch.FloatTensor(np.stack(all_p[start_idx:start_idx+args.n_his]))
+                        if use_gpu: state_cur_gt = state_cur_gt.cuda()
+                        state_cur = torch.cat((state_cur, state_cur_gt[:, n_particle:, :]), 1)
+                    
+                    print(state_cur.shape)
+                    
+                    end_idx = min((i + 1) * (len_per_grip + len_per_grip_back) - 1, len(all_p) - 1)
+                    state_goal = torch.FloatTensor(all_p[end_idx]).unsqueeze(0)[:, :n_particle, :]
 
-                # action = planner.trajectory_optimization(
-                #             state_cur=state_cur,
-                #             state_goal=state_goal,
-                #             act_seq=actions[i-args.n_his:],
-                #             n_look_ahead=n_look_ahead - (i - ctrl_init_idx),
-                #             n_update_iter=n_update_iter_init if i == st_idx else n_update_iter,
-                #             action_lower_lim=action_lower_lim,
-                #             action_upper_lim=action_upper_lim,
-                #             action_lower_delta_lim=action_lower_delta_lim,
-                #             action_upper_delta_lim=action_upper_delta_lim,
-                #             use_gpu=use_gpu)
-
-                init_pose_seq, act_seq = planner.trajectory_optimization(
-                            state_cur=state_cur,
-                            state_goal=state_goal,
-                            # act_seq=actions[i-args.n_his:],
-                            n_look_ahead=n_look_ahead - (i - ctrl_init_idx),
-                            n_update_iter=n_update_iter_init if i == st_idx else n_update_iter,
-                            # action_lower_lim=action_lower_lim,
-                            # action_upper_lim=action_upper_lim,
-                            # action_lower_delta_lim=action_lower_delta_lim,
-                            # action_upper_delta_lim=action_upper_delta_lim,
-                            use_gpu=use_gpu)
+                    init_pose, actions, state_cur = planner.trajectory_optimization(
+                        state_cur=state_cur,
+                        state_goal=state_goal,
+                        # act_seq=actions[i-args.n_his:],
+                        n_look_ahead=n_look_ahead - (i - ctrl_init_idx),
+                        n_update_iter=n_update_iter_init if i == st_idx else n_update_iter,
+                        # action_lower_lim=action_lower_lim,
+                        # action_upper_lim=action_upper_lim,
+                        # action_lower_delta_lim=action_lower_delta_lim,
+                        # action_upper_delta_lim=action_upper_delta_lim
+                    )
+                    print(init_pose.shape, actions.shape)
+                    init_pose_seq.append(init_pose)
+                    act_seq.append(actions)
                 
+                init_pose_seq = np.concatenate(init_pose_seq, axis=0)
+                act_seq = np.concatenate(act_seq, axis=0)
+
                 print(init_pose_seq.shape, act_seq.shape)
 
 

@@ -3,7 +3,7 @@ kernprof -l control.py \
 	--env Gripper \
 	--data_type ngrip \
 	--stage dy \
-	--outf_control dump/dump_ngrip/files_dy_29-Oct-2021-11:57:00.445190_nHis4_aug0.05_gt0_seqlen6_emd0.3_chamfer0.7_uh0.1_clip0.0 \
+	--outf_control dump/dump_ngrip/files_dy_29-Oct-2021-00:20:35.178221_nHis4_aug0.05_gt0_seqlen6_emd0.3_chamfer0.7_uh0.1_clip0.0 \
 	--gripperf ../PlasticineLab/plb/envs/gripper.yml \
 	--eval_epoch 95 \
 	--eval_iter 225 \
