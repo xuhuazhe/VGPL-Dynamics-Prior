@@ -58,23 +58,32 @@ class Planner(object):
         # action_upper_lim,
         # action_lower_delta_lim,
         # action_upper_delta_lim,
-        reward_scale_factor=1.0):
+        reward_scale_factor=1.0
+    ):
+            
+        n_batch = int(self.n_sample / self.batch_size)
 
         for i in range(n_update_iter):
-            n_batch = int(self.n_sample / self.batch_size)
             init_pose_seqs_batch = []
             act_seqs_batch = []
             reward_seqs_batch = []
             state_cur_seqs_batch = []
+            
             for _, j in enumerate(tqdm(range(n_batch), total=n_batch)):
                 # print(f"Batch: {j}/{n_batch}")
-                init_pose_seqs, act_seqs = self.sample_action_params()
+                if i > 0 and self.args.opt_algo == 'CEM':
+                    init_pose_seqs, act_seqs = self.sample_gaussian(init_pose_seqs_mean, init_pose_seqs_std)
+                else:
+                    init_pose_seqs, act_seqs = self.sample_action_params()
+                
                 print(f"Init poses: {init_pose_seqs.shape}")
                 print(f"Actions: {act_seqs.shape}")
+                
                 # act_seqs = self.sample_action_sequences(
                 #     act_seq,
                 #     action_lower_lim, action_upper_lim,
                 #     action_lower_delta_lim, action_upper_delta_lim)
+
                 state_seqs = self.model_rollout(
                     state_cur, init_pose_seqs, act_seqs, n_look_ahead)
                 # print(state_seqs)
@@ -91,14 +100,19 @@ class Planner(object):
             act_seqs_batch = np.concatenate(act_seqs_batch, axis=0)
             reward_seqs_batch = np.concatenate(reward_seqs_batch, axis=0)
             state_cur_seqs_batch = torch.cat(state_cur_seqs_batch, 0)
-            
+
             print('update_iter %d/%d, max: %.4f, mean: %.4f, std: %.4f' % (
                 i, n_update_iter, np.max(reward_seqs_batch), np.mean(reward_seqs_batch), np.std(reward_seqs_batch)))
 
             if self.args.opt_algo == 'max':
                 init_pose_seq, act_seq, state_cur_seq = self.optimize_action_max(init_pose_seqs_batch, act_seqs_batch, reward_seqs_batch, state_cur_seqs_batch)
             elif self.args.opt_algo == 'CEM':
-                init_pose_seq, act_seq = self.optimize_action_CEM(init_pose_seqs_batch, act_seqs_batch, reward_seqs_batch)
+                init_pose_seqs_mean, init_pose_seqs_std = self.optimize_action_CEM(init_pose_seqs_batch, act_seqs_batch, reward_seqs_batch)
+                print(f"Init poses mean: {init_pose_seqs_mean.shape}")
+                print(f"Init poses std: {init_pose_seqs_std.shape}")
+                init_pose_seq = init_pose_seqs_mean
+                act_seq = self.get_action_seq_from_pose(init_pose_seq)
+                state_cur_seq = None # placeholder
             elif self.args.opt_algo == 'MPPI':
                 init_pose_seq, act_seq = self.optimize_action_MPPI(init_pose_seqs_batch, act_seqs_batch, reward_seqs_batch)
             else:
@@ -160,6 +174,20 @@ class Planner(object):
 
         return actions
 
+    def get_action_seq_from_pose(self, init_pose_seq):
+        gripper_mid_pt = int((self.n_shapes_per_gripper - 1) / 2)
+        mid_point_x = np.full(self.n_grips, self.mid_point[0])
+        rot_noise_seq = np.arccos((init_pose_seq[:, gripper_mid_pt, 0] - mid_point_x) / self.sample_radius)
+        print(f"rot_noise_seq: {rot_noise_seq}")
+
+        act_seq = []
+        for rot_noise in rot_noise_seq:
+            act_seq.append(self.get_action_seq(rot_noise))
+
+        act_seq = np.stack(act_seq)
+
+        return act_seq
+
     def sample_action_params(self):
         init_pose_seqs = []
         act_seqs = []
@@ -189,6 +217,18 @@ class Planner(object):
             n_sampled += 1
 
         return np.stack(init_pose_seqs), np.stack(act_seqs)
+
+    def sample_gaussian(self, mean, std):
+        init_pose_seqs = []
+        act_seqs = []
+        for i in range(self.batch_size):
+            init_pose_seq = np.random.normal(mean, std)
+            act_seq = self.get_action_seq_from_pose(init_pose_seq)
+            init_pose_seqs.append(init_pose_seq)
+            act_seqs.append(act_seq)
+        init_pose_seqs = np.stack(init_pose_seqs)
+        act_seqs = np.stack(act_seqs)
+        return init_pose_seqs, act_seqs
 
     def sample_action_sequences(
         self,
@@ -384,7 +424,7 @@ class Planner(object):
         if self.use_gpu:
             state_goal = state_goal.cuda()
 
-        print(state_seqs.shape, state_goal.shape)
+        # print(state_seqs.shape, state_goal.shape)
         reward_seqs = []
         for i in range(state_seqs.shape[0]):
             # smaller loss, larger reward
@@ -412,12 +452,15 @@ class Planner(object):
         self,
         init_pose_seqs,
         act_seqs,       # [n_sample, -1, action_dim]
-        reward_seqs     # [n_sample]
+        reward_seqs,    # [n_sample]
     ):
-
         idx = np.argsort(reward_seqs)
-        # [-1, action_dim]
-        return np.mean(init_pose_seqs[idx[-5:], :, :], 0), np.mean(act_seqs[idx[-5:], :, :], 0)
+        top_seqs = reward_seqs[idx[-5:]]
+        print(f"Top seqs: {top_seqs}")
+        init_pose_seqs_mean = np.mean(init_pose_seqs[idx[-5:]], axis=0)
+        init_pose_seqs_std = np.std(init_pose_seqs[idx[-5:]], axis=0)
+
+        return init_pose_seqs_mean, init_pose_seqs_std
 
     def optimize_action_MPPI(   # Model-Predictive Path Integral (MPPI)
         self,
@@ -493,6 +536,8 @@ def main():
 
     if len(args.outf_control) > 0:
         args.outf = args.outf_control
+
+    tee = Tee(os.path.join(args.outf, 'control', 'control.log'), 'w')
 
     # set up the env
     cfg = load(args.gripperf)
@@ -579,7 +624,7 @@ def main():
     ctrl_init_idx = args.n_his
     n_update_delta = 1
     n_update_iter_init = 1
-    n_update_iter = 1
+    n_update_iter = 5
     dist_func = 'emd'
 
     for i in range(n_vid):
@@ -630,13 +675,6 @@ def main():
                 # print(len(actions))
                 act_seq_gt.append(actions)
 
-
-    planner = Planner(args=args, n_his=args.n_his, n_particle=n_particle, n_shape=n_shape, scene_params=scene_params,
-                    model=model, dist_func=dist_func, use_gpu=use_gpu, n_grips=1,
-                    len_per_grip=len_per_grip, len_per_grip_back=len_per_grip_back, 
-                    n_shapes_per_gripper=n_shapes_per_gripper, n_shapes_floor=n_shapes_floor)
-    planner.prepare_rollout()
-
     # actions = act_seq_gt[:args.n_his - 1]
     # # duplicate the last action #n_look_ahead times
     # for i in range(n_look_ahead):
@@ -656,6 +694,12 @@ def main():
     # p_list = copy.copy(all_p[:args.n_his])
     # s_list = copy.copy(all_s[:args.n_his])
     state_goal = torch.FloatTensor(all_p[-1]).unsqueeze(0)[:, :n_particle, :]
+
+    planner = Planner(args=args, n_his=args.n_his, n_particle=n_particle, n_shape=n_shape, scene_params=scene_params,
+                    model=model, dist_func=dist_func, use_gpu=use_gpu, n_grips=n_grips,
+                    len_per_grip=len_per_grip, len_per_grip_back=len_per_grip_back, 
+                    n_shapes_per_gripper=n_shapes_per_gripper, n_shapes_floor=n_shapes_floor)
+    planner.prepare_rollout()
     
     ### We now have n_his states, n_his - 1 actions
     for i in range(st_idx, ed_idx):
@@ -682,37 +726,51 @@ def main():
                 #     # action_upper_delta_lim=action_upper_delta_lim
                 # )
 
-                init_pose_seq = []
-                act_seq = []
-                for i in range(n_grips):
-                    if i > 0:
-                        start_idx = i * (len_per_grip + len_per_grip_back)
-                        state_cur_gt = torch.FloatTensor(np.stack(all_p[start_idx:start_idx+args.n_his]))
-                        if use_gpu: state_cur_gt = state_cur_gt.cuda()
-                        state_cur = torch.cat((state_cur, state_cur_gt[:, n_particle:, :]), 1)
-                    
-                    print(state_cur.shape)
-                    
-                    end_idx = min((i + 1) * (len_per_grip + len_per_grip_back) - 1, len(all_p) - 1)
-                    state_goal = torch.FloatTensor(all_p[end_idx]).unsqueeze(0)[:, :n_particle, :]
+                init_pose_seq, act_seq, _ = planner.trajectory_optimization(
+                    state_cur=state_cur,
+                    state_goal=state_goal,
+                    # act_seq=actions[i-args.n_his:],
+                    n_look_ahead=n_look_ahead - (i - ctrl_init_idx),
+                    n_update_iter=n_update_iter,
+                    # action_lower_lim=action_lower_lim,
+                    # action_upper_lim=action_upper_lim,
+                    # action_lower_delta_lim=action_lower_delta_lim,
+                    # action_upper_delta_lim=action_upper_delta_lim
+                )
 
-                    init_pose, actions, state_cur = planner.trajectory_optimization(
-                        state_cur=state_cur,
-                        state_goal=state_goal,
-                        # act_seq=actions[i-args.n_his:],
-                        n_look_ahead=n_look_ahead - (i - ctrl_init_idx),
-                        n_update_iter=n_update_iter_init if i == st_idx else n_update_iter,
-                        # action_lower_lim=action_lower_lim,
-                        # action_upper_lim=action_upper_lim,
-                        # action_lower_delta_lim=action_lower_delta_lim,
-                        # action_upper_delta_lim=action_upper_delta_lim
-                    )
-                    print(init_pose.shape, actions.shape)
-                    init_pose_seq.append(init_pose)
-                    act_seq.append(actions)
+                # init_pose_seq = []
+                # act_seq = []
+                # for i in range(n_grips):
+                #     if i > 0:
+                #         start_idx = i * (len_per_grip + len_per_grip_back)
+                #         state_cur_gt = torch.FloatTensor(np.stack(all_p[start_idx:start_idx+args.n_his]))
+                #         if use_gpu: state_cur_gt = state_cur_gt.cuda()
+                #         state_cur = torch.cat((state_cur, state_cur_gt[:, n_particle:, :]), 1)
+                    
+                #     # print(state_cur.shape)
+                    
+                #     # start_idx = i * (len_per_grip + len_per_grip_back)
+                #     # state_cur = torch.FloatTensor(np.stack(all_p[start_idx:start_idx+args.n_his]))
+                #     end_idx = min((i + 1) * (len_per_grip + len_per_grip_back) - 1, len(all_p) - 1)
+                #     state_goal = torch.FloatTensor(all_p[end_idx]).unsqueeze(0)[:, :n_particle, :]
+
+                #     init_pose, actions, state_cur = planner.trajectory_optimization(
+                #         state_cur=state_cur,
+                #         state_goal=state_goal,
+                #         # act_seq=actions[i-args.n_his:],
+                #         n_look_ahead=n_look_ahead - (i - ctrl_init_idx),
+                #         n_update_iter=n_update_iter_init if i == st_idx else n_update_iter,
+                #         # action_lower_lim=action_lower_lim,
+                #         # action_upper_lim=action_upper_lim,
+                #         # action_lower_delta_lim=action_lower_delta_lim,
+                #         # action_upper_delta_lim=action_upper_delta_lim
+                #     )
+                #     # print(init_pose.shape, actions.shape)
+                #     init_pose_seq.append(init_pose)
+                #     act_seq.append(actions)
                 
-                init_pose_seq = np.concatenate(init_pose_seq, axis=0)
-                act_seq = np.concatenate(act_seq, axis=0)
+                # init_pose_seq = np.concatenate(init_pose_seq, axis=0)
+                # act_seq = np.concatenate(act_seq, axis=0)
 
                 print(init_pose_seq.shape, act_seq.shape)
 
