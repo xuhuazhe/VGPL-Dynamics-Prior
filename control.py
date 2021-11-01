@@ -177,7 +177,12 @@ class Planner(object):
     def get_action_seq_from_pose(self, init_pose_seq):
         gripper_mid_pt = int((self.n_shapes_per_gripper - 1) / 2)
         mid_point_x = np.full(self.n_grips, self.mid_point[0])
-        rot_noise_seq = np.arccos((init_pose_seq[:, gripper_mid_pt, 0] - mid_point_x) / self.sample_radius)
+        
+        cos = (init_pose_seq[:, gripper_mid_pt, 0] - mid_point_x) / self.sample_radius
+        if cos.any() < -1.0 or cos.any() > 1.0:
+            raise ValueError
+        print(f"pose: {init_pose_seq[:, gripper_mid_pt, 0]}; cos: {cos}")
+        rot_noise_seq = np.arccos(cos)
         print(f"rot_noise_seq: {rot_noise_seq}")
 
         act_seq = []
@@ -221,11 +226,17 @@ class Planner(object):
     def sample_gaussian(self, mean, std):
         init_pose_seqs = []
         act_seqs = []
-        for i in range(self.batch_size):
+        i = 0
+        while i < self.batch_size:
             init_pose_seq = np.random.normal(mean, std)
-            act_seq = self.get_action_seq_from_pose(init_pose_seq)
+            try:
+                act_seq = self.get_action_seq_from_pose(init_pose_seq)
+            except ValueError:
+                print("Invalid init pose sample!")
+                continue    
             init_pose_seqs.append(init_pose_seq)
             act_seqs.append(act_seq)
+            i += 1
         init_pose_seqs = np.stack(init_pose_seqs)
         act_seqs = np.stack(act_seqs)
         return init_pose_seqs, act_seqs
