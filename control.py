@@ -537,6 +537,9 @@ def main():
     if len(args.outf_control) > 0:
         args.outf = args.outf_control
 
+    control_out_dir = os.path.join(args.outf, 'control')
+    os.system('mkdir -p ' + control_out_dir)
+
     tee = Tee(os.path.join(args.outf, 'control', 'control.log'), 'w')
 
     # set up the env
@@ -779,8 +782,7 @@ def main():
     # env_act[:, :3] = action
     # env_act[:, 6:9] = action * np.array([-1, 1, 1])
 
-    render_dir = f"{args.outf}/control"
-    os.system('mkdir -p ' + f"{render_dir}/000")
+    os.system('mkdir -p ' + f"{control_out_dir}/000")
 
     # init_pose_seq = init_pose_gt[0]
     # act_seq = act_seq_gt[0]
@@ -793,9 +795,9 @@ def main():
             true_idx = i * act_seq.shape[1] + j
             env.step(act_seq[i][j])
             rgb_img, depth_img = env.render(mode='get')
-            imageio.imwrite(f"{render_dir}/000/{true_idx:03d}_rgb.png", rgb_img)
+            imageio.imwrite(f"{control_out_dir}/000/{true_idx:03d}_rgb.png", rgb_img)
 
-    os.system(f'ffmpeg -y -i {render_dir}/000/%03d_rgb.png -c:v libx264 -vf fps=25 -pix_fmt yuv420p {render_dir}/000/vid000.mp4')         
+    os.system(f'ffmpeg -y -i {control_out_dir}/000/%03d_rgb.png -c:v libx264 -vf fps=25 -pix_fmt yuv420p {control_out_dir}/000/vid000.mp4')         
 
 
 if __name__ == '__main__':
