@@ -127,6 +127,7 @@ control
 parser.add_argument('--opt_algo', type=str, default='max')
 parser.add_argument('--control_sample_size', type=int, default=8)
 parser.add_argument('--control_batch_size', type=int, default=4)
+parser.add_argument('--rewardtype', type=str, default='emd')
 
 def gen_args():
     args = parser.parse_args()

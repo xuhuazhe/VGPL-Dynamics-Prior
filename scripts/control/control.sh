@@ -12,6 +12,7 @@ kernprof -l control.py \
 	--n_his 4 \
 	--augment_ratio 0.05 \
 	--shape_aug 1 \
-	--opt_algo CEM \
+	--opt_algo max \
 	--control_sample_size 100 \
-	--control_batch_size 4
+	--control_batch_size 4 \
+	--rewardtype emd

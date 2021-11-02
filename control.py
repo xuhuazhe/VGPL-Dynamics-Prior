@@ -17,9 +17,11 @@ from plb.engine.taichi_env import TaichiEnv
 from plb.config import load
 
 class Planner(object):
-    def __init__(self, args, n_his, n_particle, n_shape, scene_params, model, dist_func, use_gpu, 
-                n_grips, len_per_grip, len_per_grip_back, n_shapes_per_gripper, n_shapes_floor, 
-                beta_filter=1, env="gripper"):
+    def __init__(self, taichi_env, env_init_state, args, n_his, n_particle, n_shape, scene_params, model, dist_func, 
+                use_gpu, use_sim, n_grips, len_per_grip, len_per_grip_back, n_shapes_per_gripper, n_shapes_floor, 
+                rollout_path, beta_filter=1, env="gripper"):
+        self.taichi_env = taichi_env
+        self.env_init_state = env_init_state
         self.args = args
         self.n_his = n_his
         self.n_particle = n_particle
@@ -29,6 +31,7 @@ class Planner(object):
         self.env = env
         self.model = model
         self.use_gpu = use_gpu
+        self.use_sim = use_sim
         self.reward_weight = 10.0
         if dist_func == 'emd':
             self.dist_func = EarthMoverLoss()
@@ -39,6 +42,8 @@ class Planner(object):
         self.n_shapes_per_gripper = n_shapes_per_gripper
         self.n_shapes_floor = n_shapes_floor
 
+        self.rollout_path = rollout_path
+
         self.n_sample = args.control_sample_size
         self.batch_size = args.control_batch_size
 
@@ -46,6 +51,7 @@ class Planner(object):
         self.default_h = 0.14
         self.sample_radius = 0.25
         self.gripper_rate = 0.01
+        self.gripper_mid_pt = int((self.n_shapes_per_gripper - 1) / 2)
     
     def trajectory_optimization(
         self,
@@ -84,9 +90,12 @@ class Planner(object):
                 #     action_lower_lim, action_upper_lim,
                 #     action_lower_delta_lim, action_upper_delta_lim)
 
-                state_seqs = self.model_rollout(
-                    state_cur, init_pose_seqs, act_seqs, n_look_ahead)
-                # print(state_seqs)
+                if self.use_sim:
+                    state_seqs = self.sim_rollout(init_pose_seqs, act_seqs)
+                else:
+                    state_seqs = self.model_rollout(
+                        state_cur, init_pose_seqs, act_seqs, n_look_ahead)
+                    print(state_seqs.shape)
                 reward_seqs = reward_scale_factor * self.evaluate_traj(state_seqs, state_goal)
                 print(reward_seqs)
                 reward_seqs = reward_seqs.data.cpu().numpy()
@@ -107,7 +116,7 @@ class Planner(object):
             if self.args.opt_algo == 'max':
                 init_pose_seq, act_seq, state_cur_seq = self.optimize_action_max(init_pose_seqs_batch, act_seqs_batch, reward_seqs_batch, state_cur_seqs_batch)
             elif self.args.opt_algo == 'CEM':
-                init_pose_seqs_mean, init_pose_seqs_std = self.optimize_action_CEM(init_pose_seqs_batch, act_seqs_batch, reward_seqs_batch)
+                init_pose_seqs_mean, init_pose_seqs_std = self.optimize_action_CEM(init_pose_seqs_batch, act_seqs_batch, reward_seqs_batch, i)
                 print(f"Init poses mean: {init_pose_seqs_mean.shape}")
                 print(f"Init poses std: {init_pose_seqs_std.shape}")
                 init_pose_seq = init_pose_seqs_mean
@@ -175,15 +184,14 @@ class Planner(object):
         return actions
 
     def get_action_seq_from_pose(self, init_pose_seq):
-        gripper_mid_pt = int((self.n_shapes_per_gripper - 1) / 2)
         mid_point_x = np.full(self.n_grips, self.mid_point[0])
         
-        cos = (init_pose_seq[:, gripper_mid_pt, 0] - mid_point_x) / self.sample_radius
-        if cos.any() < -1.0 or cos.any() > 1.0:
+        cos = (init_pose_seq[:, self.gripper_mid_pt, 0] - mid_point_x) / self.sample_radius
+        if cos.min() < -1.0 or cos.max() > 1.0:
             raise ValueError
-        print(f"pose: {init_pose_seq[:, gripper_mid_pt, 0]}; cos: {cos}")
+        # print(f"pose: {init_pose_seq[:, gripper_mid_pt, 0]}; cos: {cos}")
         rot_noise_seq = np.arccos(cos)
-        print(f"rot_noise_seq: {rot_noise_seq}")
+        # print(f"rot_noise_seq: {rot_noise_seq}")
 
         act_seq = []
         for rot_noise in rot_noise_seq:
@@ -202,7 +210,7 @@ class Planner(object):
             act_seq = []
             for i in range(self.n_grips):
                 p_noise = np.clip(np.array([0, 0, np.random.randn()*0.06]), a_max=0.1, a_min=-0.1)
-                new_mid_point = self.mid_point[:3] + p_noise
+                new_mid_point = self.mid_point[:3]
                 rot_noise = np.random.uniform(0, np.pi)
                 
                 init_pose = self.get_pose(new_mid_point, rot_noise)
@@ -232,7 +240,7 @@ class Planner(object):
             try:
                 act_seq = self.get_action_seq_from_pose(init_pose_seq)
             except ValueError:
-                print("Invalid init pose sample!")
+                # print("Invalid init pose sample!")
                 continue    
             init_pose_seqs.append(init_pose_seq)
             act_seqs.append(act_seq)
@@ -329,6 +337,37 @@ class Planner(object):
                     infos = self.expand(infos)
             inputs_new.append(infos)
         return inputs_new
+
+    def sim_rollout(self, init_pose_seqs, act_seqs):
+        state_seq_batch = []
+        for t in range(act_seqs.shape[0]):
+            self.taichi_env.set_state(**self.env_init_state)
+            state_seq = []
+            for i in range(act_seqs.shape[1]):
+                self.taichi_env.primitives.primitives[0].set_state(0, init_pose_seqs[t, i, self.gripper_mid_pt, :7])
+                self.taichi_env.primitives.primitives[1].set_state(0, init_pose_seqs[t, i, self.gripper_mid_pt, 7:])
+                for j in range(act_seqs.shape[2]):
+                    self.taichi_env.step(act_seqs[t][i][j])
+                    x = self.taichi_env.simulator.get_x(0)
+                    step_size = len(x) // self.n_particle
+                    # print(f"x before: {x.shape}")
+                    x = x[::step_size]
+                    particles = x[:300]
+                    # print(f"x after: {x.shape}")
+                    state_seq.append(particles)
+
+            state_seq = np.stack(state_seq)
+            # print(f"rollout state_seq: {state_seq.shape}")
+            state_seq_batch.append(state_seq)
+
+        if self.use_gpu:
+            state_seq_batch = torch.from_numpy(np.stack(state_seq_batch)).cuda()
+        else:
+            state_seq_batch = torch.from_numpy(np.stack(state_seq_batch))
+
+        print(f"state_seq_batch: {state_seq_batch.shape}")
+
+        return state_seq_batch
 
     def model_rollout(
         self,
@@ -439,8 +478,8 @@ class Planner(object):
         reward_seqs = []
         for i in range(state_seqs.shape[0]):
             # smaller loss, larger reward
-            emd_loss = self.dist_func(state_seqs[i, -1].unsqueeze(0), state_goal)
-            reward_seqs.append(0.0 - emd_loss)
+            loss = self.dist_func(state_seqs[i, -1].unsqueeze(0), state_goal)
+            reward_seqs.append(0.0 - loss)
         # reward_seqs: [n_sample]
         reward_seqs = torch.stack(reward_seqs)
         # print(reward_seqs)
@@ -454,22 +493,31 @@ class Planner(object):
         state_cur_seqs
     ):
 
-        idx = np.argmax(reward_seqs)
-        print(f"Selected idx: {idx} with loss {reward_seqs[idx]}")
+        idx = np.argsort(reward_seqs)
+        print(f"Selected idx: {idx[-1]} with loss {reward_seqs[idx[-1]]}")
+
+        self.visualize_sampled_init_pos(init_pose_seqs, idx, 1, \
+            os.path.join(self.args.outf, 'control', '000', f'plot_max'))
+
         # [-1, action_dim]
-        return init_pose_seqs[idx], act_seqs[idx], state_cur_seqs[idx]
+        return init_pose_seqs[-1], act_seqs[-1], state_cur_seqs[-1]
 
     def optimize_action_CEM(    # Cross Entropy Method (CEM)
         self,
         init_pose_seqs,
         act_seqs,       # [n_sample, -1, action_dim]
         reward_seqs,    # [n_sample]
+        iter,
+        best_k=5
     ):
         idx = np.argsort(reward_seqs)
-        top_seqs = reward_seqs[idx[-5:]]
-        print(f"Top seqs: {top_seqs}")
-        init_pose_seqs_mean = np.mean(init_pose_seqs[idx[-5:]], axis=0)
-        init_pose_seqs_std = np.std(init_pose_seqs[idx[-5:]], axis=0)
+        # top_seqs = reward_seqs[idx[-best_k:]]
+        # print(f"Top seqs: {top_seqs}")
+        self.visualize_sampled_init_pos(init_pose_seqs, idx, best_k, \
+            os.path.join(self.args.outf, 'control', '000', f'plot_cem_{str(iter).zfill(3)}'))
+
+        init_pose_seqs_mean = np.mean(init_pose_seqs[idx[-best_k:]], axis=0)
+        init_pose_seqs_std = np.std(init_pose_seqs[idx[-best_k:]], axis=0)
 
         return init_pose_seqs_mean, init_pose_seqs_std
 
@@ -491,8 +539,8 @@ class Planner(object):
         eps = 1e-8
         mid_point_x = np.full((self.n_sample, self.n_grips), self.mid_point[0])
         # mid_point_y = np.repeat(self.mid_point[2], [self.batch_size, self.n_grips])
-        gripper_mid_pt = int((self.n_shapes_per_gripper - 1) / 2)
-        rot_noise_seqs = np.arccos((init_pose_seqs[:, :, gripper_mid_pt, 0] - mid_point_x) / self.sample_radius)
+        
+        rot_noise_seqs = np.arccos((init_pose_seqs[:, :, self.gripper_mid_pt, 0] - mid_point_x) / self.sample_radius)
         print(rot_noise_seqs)
         print(reward_seqs_exp.reshape(-1, 1))
         print(reward_seqs_exp.reshape(-1, 1) * rot_noise_seqs)
@@ -513,6 +561,26 @@ class Planner(object):
         
         # [-1, action_dim]
         return init_pose_seq, act_seq
+
+    def visualize_sampled_init_pos(self, init_pose_seqs, idx, best_k, path):
+        selected = init_pose_seqs[idx[-best_k:], :, self.gripper_mid_pt, :3]
+        others = init_pose_seqs[idx[:-best_k], :, self.gripper_mid_pt, :3]
+        print(f"selected: {selected.shape}; others: {others.shape}")
+        fig = plt.figure(figsize=(24, 4.8))
+        for i in range(self.n_grips):
+            ax = fig.add_subplot(1, self.n_grips, i + 1)
+            ax.scatter(selected[:, i, 0], selected[:, i, 2], c='r')
+            ax.scatter(others[:, i, 0], others[:, i, 2], color=[0.0,0.3,0.7,0.3])
+            # extents = np.array([getattr(ax, 'get_{}lim'.format(dim))() for dim in 'xyz'])
+            # sz = extents[:, 1] - extents[:, 0]
+            # centers = np.mean(extents, axis=1)
+            # maxsize = max(abs(sz))
+            # r = 0.15 #maxsize / 2
+            # for ctr, dim in zip(centers, 'xyz'):
+            #     getattr(ax, 'set_{}lim'.format(dim))(ctr - r, ctr + r)
+            # ax.view_init(azim=0, elev=90)
+        plt.savefig(path)
+        # plt.show()
 
 def set_parameters(env: TaichiEnv, yield_stress, E, nu):
         env.simulator.yield_stress.fill(yield_stress)
@@ -548,10 +616,10 @@ def main():
     if len(args.outf_control) > 0:
         args.outf = args.outf_control
 
-    control_out_dir = os.path.join(args.outf, 'control')
+    control_out_dir = os.path.join(args.outf, 'control', '000')
     os.system('mkdir -p ' + control_out_dir)
 
-    tee = Tee(os.path.join(args.outf, 'control', 'control.log'), 'w')
+    tee = Tee(os.path.join(control_out_dir, 'control.log'), 'w')
 
     # set up the env
     cfg = load(args.gripperf)
@@ -577,6 +645,7 @@ def main():
     # env.render('plt')
     
     use_gpu = True
+    use_sim = True
     task_name = 'gripper'
     n_look_ahead = 20
     action_dim = taichi_env.primitives.action_dim
@@ -638,8 +707,7 @@ def main():
     ctrl_init_idx = args.n_his
     n_update_delta = 1
     n_update_iter_init = 1
-    n_update_iter = 5
-    dist_func = 'emd'
+    n_update_iter = 1
 
     for i in range(n_vid):
         B = 1
@@ -709,10 +777,11 @@ def main():
     # s_list = copy.copy(all_s[:args.n_his])
     state_goal = torch.FloatTensor(all_p[-1]).unsqueeze(0)[:, :n_particle, :]
 
-    planner = Planner(args=args, n_his=args.n_his, n_particle=n_particle, n_shape=n_shape, scene_params=scene_params,
-                    model=model, dist_func=dist_func, use_gpu=use_gpu, n_grips=n_grips,
+    planner = Planner(taichi_env=env, env_init_state=state, args=args, n_his=args.n_his, n_particle=n_particle, n_shape=n_shape, scene_params=scene_params,
+                    model=model, dist_func=args.rewardtype, use_gpu=use_gpu, use_sim=use_sim, n_grips=n_grips,
                     len_per_grip=len_per_grip, len_per_grip_back=len_per_grip_back, 
-                    n_shapes_per_gripper=n_shapes_per_gripper, n_shapes_floor=n_shapes_floor)
+                    n_shapes_per_gripper=n_shapes_per_gripper, n_shapes_floor=n_shapes_floor,
+                    rollout_path=control_out_dir)
     planner.prepare_rollout()
     
     ### We now have n_his states, n_his - 1 actions
@@ -793,10 +862,10 @@ def main():
     # env_act[:, :3] = action
     # env_act[:, 6:9] = action * np.array([-1, 1, 1])
 
-    os.system('mkdir -p ' + f"{control_out_dir}/000")
-
     # init_pose_seq = init_pose_gt[0]
     # act_seq = act_seq_gt[0]
+
+    env.set_state(**state)
 
     gripper_mid_pt = int((n_shapes_per_gripper - 1) / 2)
     for i in range(act_seq.shape[0]):
@@ -806,9 +875,9 @@ def main():
             true_idx = i * act_seq.shape[1] + j
             env.step(act_seq[i][j])
             rgb_img, depth_img = env.render(mode='get')
-            imageio.imwrite(f"{control_out_dir}/000/{true_idx:03d}_rgb.png", rgb_img)
+            imageio.imwrite(f"{control_out_dir}/{true_idx:03d}_rgb.png", rgb_img)
 
-    os.system(f'ffmpeg -y -i {control_out_dir}/000/%03d_rgb.png -c:v libx264 -vf fps=25 -pix_fmt yuv420p {control_out_dir}/000/vid000.mp4')         
+    os.system(f'ffmpeg -y -i {control_out_dir}/%03d_rgb.png -c:v libx264 -vf fps=25 -pix_fmt yuv420p {control_out_dir}/vid000.mp4')         
 
 
 if __name__ == '__main__':
