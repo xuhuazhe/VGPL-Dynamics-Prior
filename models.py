@@ -516,20 +516,17 @@ class EarthMoverLoss(torch.nn.Module):
         return self.em_distance(pred, label)
 
 
-class L2ShapeLoss(torch.nn.Module):
+class L1ShapeLoss(torch.nn.Module):
     def __init__(self):
-        super(L2ShapeLoss, self).__init__()
+        super(L1ShapeLoss, self).__init__()
 
-    def __call__(self, x, y, sdf):
+    def __call__(self, x, y):
         c1 = 0.0001
-        c2 = 0.01
         grid1 = p2g(x)
         grid2 = p2g(y)
         l1 = torch.abs(grid1 - grid2).sum()
-        sdf = (grid1 * sdf).sum()
         # print(f"L1: {l1}")
-        # print(f"SDF: {sdf}")
-        return c1 * l1 + c2 * sdf
+        return c1 * l1
 
 
 if __name__ == "__main__":

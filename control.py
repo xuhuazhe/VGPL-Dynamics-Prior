@@ -10,7 +10,7 @@ import pdb
 
 from config import gen_args
 from data_utils import load_data, get_scene_info, get_env_group, prepare_input
-from models import Model, EarthMoverLoss
+from models import Model, EarthMoverLoss, L1ShapeLoss
 from utils import create_instance_colors, set_seed,  Tee, count_parameters
 
 from plb.engine.taichi_env import TaichiEnv
@@ -33,8 +33,7 @@ class Planner(object):
         self.use_gpu = use_gpu
         self.use_sim = use_sim
         self.reward_weight = 10.0
-        if dist_func == 'emd':
-            self.dist_func = EarthMoverLoss()
+        self.dist_func = dist_func
 
         self.n_grips = n_grips
         self.len_per_grip = len_per_grip
@@ -478,7 +477,12 @@ class Planner(object):
         reward_seqs = []
         for i in range(state_seqs.shape[0]):
             # smaller loss, larger reward
-            loss = self.dist_func(state_seqs[i, -1].unsqueeze(0), state_goal)
+            if self.dist_func == "emd":
+                dist_func = EarthMoverLoss()
+                loss = dist_func(state_seqs[i, -1].unsqueeze(0), state_goal)
+            elif self.dist_func == "l1shape":
+                dist_func = L1ShapeLoss()
+                loss = dist_func(state_seqs[i, -1].unsqueeze(0), state_goal)
             reward_seqs.append(0.0 - loss)
         # reward_seqs: [n_sample]
         reward_seqs = torch.stack(reward_seqs)
@@ -645,32 +649,32 @@ def main():
     # env.render('plt')
     
     use_gpu = True
-    use_sim = True
+    use_sim = args.use_sim
     task_name = 'gripper'
     n_look_ahead = 20
-    action_dim = taichi_env.primitives.action_dim
-    action = np.zeros([n_look_ahead, action_dim])
-    i = 0
-    count = i / 50
-    # map count from 0...1 to -1...1
-    count = 2 * count - 1
-    updown = count * 0.12
-    grip_motion = np.random.uniform(0.20, 0.24)
-    action[:20, 2] = updown #0.1
-    action[:20, 1] = -0.7
-    action[:20, 8] = updown #0.1
-    action[:20, 7] = -0.7
+    # action_dim = taichi_env.primitives.action_dim
+    # action = np.zeros([n_look_ahead, action_dim])
+    # i = 0
+    # count = i / 50
+    # # map count from 0...1 to -1...1
+    # count = 2 * count - 1
+    # updown = count * 0.12
+    # grip_motion = np.random.uniform(0.20, 0.24)
+    # action[:20, 2] = updown #0.1
+    # action[:20, 1] = -0.7
+    # action[:20, 8] = updown #0.1
+    # action[:20, 7] = -0.7
 
-    for idx, act in enumerate(tqdm(action, total=n_look_ahead)):
+    # for idx, act in enumerate(tqdm(action, total=n_look_ahead)):
 
-        obs = env.step(act)
-        if task_name == 'gripper':
-            primitive_state = [env.primitives.primitives[0].get_state(0), env.primitives.primitives[1].get_state(0)]
-        else:
-            primitive_state = [env.primitives.primitives[0].get_state(0)]
+    #     obs = env.step(act)
+    #     if task_name == 'gripper':
+    #         primitive_state = [env.primitives.primitives[0].get_state(0), env.primitives.primitives[1].get_state(0)]
+    #     else:
+    #         primitive_state = [env.primitives.primitives[0].get_state(0)]
 
-        # if (idx+1) % 5 == 0:
-        #     env.render(mode='plt')
+    #     # if (idx+1) % 5 == 0:
+    #     #     env.render(mode='plt')
 
     # load dynamics model
     model = Model(args, use_gpu)
@@ -705,9 +709,9 @@ def main():
 
     unit_quat_pad = np.tile([1, 0, 0, 0], (n_shapes_per_gripper, 1))
     ctrl_init_idx = args.n_his
-    n_update_delta = 1
-    n_update_iter_init = 1
-    n_update_iter = 1
+    # n_update_delta = 1
+    # n_update_iter_init = 1
+    # n_update_iter = 1
 
     for i in range(n_vid):
         B = 1
@@ -720,6 +724,8 @@ def main():
         for t in range(args.time_step):
             if task_name == "gripper":
                 frame_name = str(t) + '.h5'
+                if args.gt_state_goal:
+                    frame_name = 'gt_' + frame_name
                 if args.shape_aug:
                     frame_name = 'shape_' + frame_name
                 frame_path = os.path.join(rollout_dir, str(i).zfill(3), frame_name)
@@ -733,8 +739,6 @@ def main():
                 g2_idx = g1_idx + n_shapes_per_gripper
 
             states = this_data[0]
-            if t % (len_per_grip + len_per_grip_back) == 0:
-                init_pose_gt.append(np.concatenate((states[g1_idx: g2_idx], unit_quat_pad, states[g2_idx:], unit_quat_pad), axis=1))
             
             if t >= 1:
                 all_p.append(states)
@@ -742,20 +746,20 @@ def main():
 
                 action = np.concatenate([(states[g1_idx] - prev_states[g1_idx]) / 0.02, np.zeros(3),
                                         (states[g2_idx] - prev_states[g2_idx]) / 0.02, np.zeros(3)])
-                
+            
                 actions.append(action)
             prev_states = states
 
-            if len(actions) == len_per_grip + len_per_grip_back:
-                act_seq_gt.append(actions)
-                # print(len(actions))
-                actions = []
-
-            if t == args.time_step - 1:
+            if t % (len_per_grip + len_per_grip_back) == 0:
+                init_pose_gt.append(np.concatenate((states[g1_idx: g2_idx], unit_quat_pad, states[g2_idx:], unit_quat_pad), axis=1))
+            
+            if (t % (len_per_grip + len_per_grip_back) == 0 and t > 0) or t == args.time_step - 1:
                 while len(actions) < len_per_grip + len_per_grip_back:
                     actions.append(actions[-1])
+                    print(f"append at {t}")
                 # print(len(actions))
                 act_seq_gt.append(actions)
+                actions = []
 
     # actions = act_seq_gt[:args.n_his - 1]
     # # duplicate the last action #n_look_ahead times
@@ -788,96 +792,83 @@ def main():
     for i in range(st_idx, ed_idx):
         print("\n### Step %d/%d" % (i, ed_idx))
         
-        if i == st_idx or i % n_update_delta == 0:
+        if i == st_idx:
             # update the action sequence every n_update_delta iterations
             with torch.set_grad_enabled(False):
                 state_cur = torch.FloatTensor(np.stack(all_p[:args.n_his]))
                 # print(state_cur.shape)
-                # state_seqs = planner.model_rollout(state_cur, init_pose_gt, act_seq_gt, n_look_ahead, use_gpu)
-                # reward_seqs = planner.evaluate_traj(state_seqs, state_goal)
-                # print(f"GT reward: {reward_seqs}")
-    
-                # # init_pose_seq, act_seq = planner.trajectory_optimization(
-                #     state_cur=state_cur,
-                #     state_goal=state_goal,
-                #     # act_seq=actions[i-args.n_his:],
-                #     n_look_ahead=n_look_ahead - (i - ctrl_init_idx),
-                #     n_update_iter=n_update_iter_init if i == st_idx else n_update_iter,
-                #     # action_lower_lim=action_lower_lim,
-                #     # action_upper_lim=action_upper_lim,
-                #     # action_lower_delta_lim=action_lower_delta_lim,
-                #     # action_upper_delta_lim=action_upper_delta_lim
-                # )
+                if args.gt_action:
+                    if use_sim:
+                        state_seqs = planner.sim_rollout(init_pose_gt, act_seq_gt)
+                    else:
+                        state_seqs = planner.model_rollout(state_cur, init_pose_gt, act_seq_gt, n_look_ahead)
+                    reward_seqs = planner.evaluate_traj(state_seqs, state_goal)
+                    print(f"GT reward: {reward_seqs}")
+                    init_pose_seq = init_pose_gt[0]
+                    act_seq = act_seq_gt[0]
+                else:
+                    init_pose_seq, act_seq, _ = planner.trajectory_optimization(
+                        state_cur=state_cur,
+                        state_goal=state_goal,
+                        # act_seq=actions[i-args.n_his:],
+                        n_look_ahead=n_look_ahead - (i - ctrl_init_idx),
+                        n_update_iter=args.opt_iter,
+                        # action_lower_lim=action_lower_lim,
+                        # action_upper_lim=action_upper_lim,
+                        # action_lower_delta_lim=action_lower_delta_lim,
+                        # action_upper_delta_lim=action_upper_delta_lim
+                    )
 
-                init_pose_seq, act_seq, _ = planner.trajectory_optimization(
-                    state_cur=state_cur,
-                    state_goal=state_goal,
-                    # act_seq=actions[i-args.n_his:],
-                    n_look_ahead=n_look_ahead - (i - ctrl_init_idx),
-                    n_update_iter=n_update_iter,
-                    # action_lower_lim=action_lower_lim,
-                    # action_upper_lim=action_upper_lim,
-                    # action_lower_delta_lim=action_lower_delta_lim,
-                    # action_upper_delta_lim=action_upper_delta_lim
-                )
-
-                # init_pose_seq = []
-                # act_seq = []
-                # for i in range(n_grips):
-                #     if i > 0:
-                #         start_idx = i * (len_per_grip + len_per_grip_back)
-                #         state_cur_gt = torch.FloatTensor(np.stack(all_p[start_idx:start_idx+args.n_his]))
-                #         if use_gpu: state_cur_gt = state_cur_gt.cuda()
-                #         state_cur = torch.cat((state_cur, state_cur_gt[:, n_particle:, :]), 1)
+                    # init_pose_seq = []
+                    # act_seq = []
+                    # for i in range(n_grips):
+                    #     if i > 0:
+                    #         start_idx = i * (len_per_grip + len_per_grip_back)
+                    #         state_cur_gt = torch.FloatTensor(np.stack(all_p[start_idx:start_idx+args.n_his]))
+                    #         if use_gpu: state_cur_gt = state_cur_gt.cuda()
+                    #         state_cur = torch.cat((state_cur, state_cur_gt[:, n_particle:, :]), 1)
                     
-                #     # print(state_cur.shape)
+                    #     # print(state_cur.shape)
                     
-                #     # start_idx = i * (len_per_grip + len_per_grip_back)
-                #     # state_cur = torch.FloatTensor(np.stack(all_p[start_idx:start_idx+args.n_his]))
-                #     end_idx = min((i + 1) * (len_per_grip + len_per_grip_back) - 1, len(all_p) - 1)
-                #     state_goal = torch.FloatTensor(all_p[end_idx]).unsqueeze(0)[:, :n_particle, :]
+                    #     # start_idx = i * (len_per_grip + len_per_grip_back)
+                    #     # state_cur = torch.FloatTensor(np.stack(all_p[start_idx:start_idx+args.n_his]))
+                    #     end_idx = min((i + 1) * (len_per_grip + len_per_grip_back) - 1, len(all_p) - 1)
+                    #     state_goal = torch.FloatTensor(all_p[end_idx]).unsqueeze(0)[:, :n_particle, :]
 
-                #     init_pose, actions, state_cur = planner.trajectory_optimization(
-                #         state_cur=state_cur,
-                #         state_goal=state_goal,
-                #         # act_seq=actions[i-args.n_his:],
-                #         n_look_ahead=n_look_ahead - (i - ctrl_init_idx),
-                #         n_update_iter=n_update_iter_init if i == st_idx else n_update_iter,
-                #         # action_lower_lim=action_lower_lim,
-                #         # action_upper_lim=action_upper_lim,
-                #         # action_lower_delta_lim=action_lower_delta_lim,
-                #         # action_upper_delta_lim=action_upper_delta_lim
-                #     )
-                #     # print(init_pose.shape, actions.shape)
-                #     init_pose_seq.append(init_pose)
-                #     act_seq.append(actions)
-                
-                # init_pose_seq = np.concatenate(init_pose_seq, axis=0)
-                # act_seq = np.concatenate(act_seq, axis=0)
+                    #     init_pose, actions, state_cur = planner.trajectory_optimization(
+                    #         state_cur=state_cur,
+                    #         state_goal=state_goal,
+                    #         # act_seq=actions[i-args.n_his:],
+                    #         n_look_ahead=n_look_ahead - (i - ctrl_init_idx),
+                    #         n_update_iter=n_update_iter_init if i == st_idx else n_update_iter,
+                    #         # action_lower_lim=action_lower_lim,
+                    #         # action_upper_lim=action_upper_lim,
+                    #         # action_lower_delta_lim=action_lower_delta_lim,
+                    #         # action_upper_delta_lim=action_upper_delta_lim
+                    #     )
+                    #     # print(init_pose.shape, actions.shape)
+                    #     init_pose_seq.append(init_pose)
+                    #     act_seq.append(actions)
+                    
+                    # init_pose_seq = np.concatenate(init_pose_seq, axis=0)
+                    # act_seq = np.concatenate(act_seq, axis=0)
 
                 print(init_pose_seq.shape, act_seq.shape)
 
 
-    # env_act = np.zeros([action.shape[0], 12])
-    # env_act[:, :3] = action
-    # env_act[:, 6:9] = action * np.array([-1, 1, 1])
+    # env.set_state(**state)
 
-    # init_pose_seq = init_pose_gt[0]
-    # act_seq = act_seq_gt[0]
+    # gripper_mid_pt = int((n_shapes_per_gripper - 1) / 2)
+    # for i in range(act_seq.shape[0]):
+    #     env.primitives.primitives[0].set_state(0, init_pose_seq[i, gripper_mid_pt, :7])
+    #     env.primitives.primitives[1].set_state(0, init_pose_seq[i, gripper_mid_pt, 7:])
+    #     for j in range(act_seq.shape[1]):
+    #         true_idx = i * act_seq.shape[1] + j
+    #         env.step(act_seq[i][j])
+    #         rgb_img, depth_img = env.render(mode='get')
+    #         imageio.imwrite(f"{control_out_dir}/{true_idx:03d}_rgb.png", rgb_img)
 
-    env.set_state(**state)
-
-    gripper_mid_pt = int((n_shapes_per_gripper - 1) / 2)
-    for i in range(act_seq.shape[0]):
-        env.primitives.primitives[0].set_state(0, init_pose_seq[i, gripper_mid_pt, :7])
-        env.primitives.primitives[1].set_state(0, init_pose_seq[i, gripper_mid_pt, 7:])
-        for j in range(act_seq.shape[1]):
-            true_idx = i * act_seq.shape[1] + j
-            env.step(act_seq[i][j])
-            rgb_img, depth_img = env.render(mode='get')
-            imageio.imwrite(f"{control_out_dir}/{true_idx:03d}_rgb.png", rgb_img)
-
-    os.system(f'ffmpeg -y -i {control_out_dir}/%03d_rgb.png -c:v libx264 -vf fps=25 -pix_fmt yuv420p {control_out_dir}/vid000.mp4')         
+    # os.system(f'ffmpeg -y -i {control_out_dir}/%03d_rgb.png -c:v libx264 -vf fps=25 -pix_fmt yuv420p {control_out_dir}/vid000.mp4')
 
 
 if __name__ == '__main__':

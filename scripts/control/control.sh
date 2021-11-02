@@ -13,6 +13,10 @@ kernprof -l control.py \
 	--augment_ratio 0.05 \
 	--shape_aug 1 \
 	--opt_algo max \
-	--control_sample_size 100 \
+	--opt_iter 1 \
+	--control_sample_size 20 \
 	--control_batch_size 4 \
-	--rewardtype emd
+	--rewardtype emd \
+	--use_sim 1 \
+	--gt_action 1 \
+	--gt_state_goal 1

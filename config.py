@@ -128,6 +128,10 @@ parser.add_argument('--opt_algo', type=str, default='max')
 parser.add_argument('--control_sample_size', type=int, default=8)
 parser.add_argument('--control_batch_size', type=int, default=4)
 parser.add_argument('--rewardtype', type=str, default='emd')
+parser.add_argument('--use_sim', type=int, default=0)
+parser.add_argument('--gt_action', type=int, default=0)
+parser.add_argument('--gt_state_goal', type=int, default=0)
+parser.add_argument('--opt_iter', type=int, default=1)
 
 def gen_args():
     args = parser.parse_args()
@@ -306,8 +310,8 @@ def gen_args():
     args.outf += f'_gt{args.gt_particles}'
     # args.outf += f'_{args.losstype}'
     args.outf += f'_seqlen{args.sequence_length}'
-    if args.losstype == 'L2Shape':
-        args.outf += f'_l2shape'
+    if args.losstype == 'l1shape':
+        args.outf += f'_l1shape'
     else:
         args.outf += f'_emd{args.emd_weight}'
         args.outf += f'_chamfer{args.chamfer_weight}'
