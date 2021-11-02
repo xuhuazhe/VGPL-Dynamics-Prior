@@ -210,7 +210,7 @@ class Planner(object):
             act_seq = []
             for i in range(self.n_grips):
                 p_noise = np.clip(np.array([0, 0, np.random.randn()*0.06]), a_max=0.1, a_min=-0.1)
-                new_mid_point = self.mid_point[:3]
+                new_mid_point = self.mid_point[:3] + p_noise
                 rot_noise = np.random.uniform(0, np.pi)
                 
                 init_pose = self.get_pose(new_mid_point, rot_noise)
@@ -580,7 +580,7 @@ class Planner(object):
             #     getattr(ax, 'set_{}lim'.format(dim))(ctr - r, ctr + r)
             # ax.view_init(azim=0, elev=90)
         plt.savefig(path)
-        # plt.show()
+        plt.show()
 
 def set_parameters(env: TaichiEnv, yield_stress, E, nu):
         env.simulator.yield_stress.fill(yield_stress)
