@@ -182,7 +182,7 @@ class Planner(object):
 
         return actions
 
-    def get_action_seq_from_pose(self, init_pose_seq):
+    def get_rot_from_pose(self, init_pose_seq):
         mid_point_x = np.full(self.n_grips, self.mid_point[0])
         
         cos = (init_pose_seq[:, self.gripper_mid_pt, 0] - mid_point_x) / self.sample_radius
@@ -191,7 +191,10 @@ class Planner(object):
         # print(f"pose: {init_pose_seq[:, gripper_mid_pt, 0]}; cos: {cos}")
         rot_noise_seq = np.arccos(cos)
         # print(f"rot_noise_seq: {rot_noise_seq}")
+        return rot_noise_seq
 
+    def get_action_seq_from_pose(self, init_pose_seq):
+        rot_noise_seq = self.get_rot_from_pose(init_pose_seq)
         act_seq = []
         for rot_noise in rot_noise_seq:
             act_seq.append(self.get_action_seq(rot_noise))
@@ -503,6 +506,9 @@ class Planner(object):
         self.visualize_sampled_init_pos(init_pose_seqs, idx, 1, \
             os.path.join(self.args.outf, 'control', '000', f'plot_max'))
 
+        self.visualize_sample_and_loss(init_pose_seqs, idx, 1, \
+            os.path.join(self.args.outf, 'control', '000', f'plot_max_loss'))
+
         # [-1, action_dim]
         return init_pose_seqs[-1], act_seqs[-1], state_cur_seqs[-1]
 
@@ -584,6 +590,40 @@ class Planner(object):
             #     getattr(ax, 'set_{}lim'.format(dim))(ctr - r, ctr + r)
             # ax.view_init(azim=0, elev=90)
         plt.savefig(path)
+        plt.show()
+
+    def visualize_sample_and_loss(self, init_pose_seqs, reward_seqs, idx, best_k, path):
+        rot_seqs = []
+        for seq in init_pose_seqs:
+            rot_seq = self.get_rot_from_pose(seq)
+            rot_seqs.append(rot_seq)
+        rot_seqs = np.stack(rot_seqs)
+        print(f"rot_seqs: {rot_seqs.shape}")
+
+        color = reward_seqs
+
+        # creating figures
+        fig = plt.figure(figsize=(10, 10))
+        ax = fig.add_subplot(111, projection='3d')
+
+        # setting color bar
+        color_map = cm.ScalarMappable(cmap=cm.jet)
+        color_map.set_array(color)
+
+        # creating the heatmap
+        ax.scatter(rot_seqs[idx[-best_k:], 0], rot_seqs[idx[-best_k:], 1], rot_seqs[idx[-best_k:], 2], 
+                        marker='o', s=200, color=[1.0,0.0,0.0,1.0])
+        ax.scatter(rot_seqs[idx[:-best_k], 0], rot_seqs[idx[:-best_k], 1], rot_seqs[idx[:-best_k], 2], 
+                        marker='o', s=200, color=[0.0,0.3,0.7,0.7])
+        plt.colorbar(color_map)
+
+        # adding title and labels
+        ax.set_title("3D Heatmap")
+        ax.set_xlabel('1st grip')
+        ax.set_ylabel('2nd grip')
+        ax.set_zlabel('3rd grip')
+        
+        # plt.savefig(path)
         plt.show()
 
 def set_parameters(env: TaichiEnv, yield_stress, E, nu):
