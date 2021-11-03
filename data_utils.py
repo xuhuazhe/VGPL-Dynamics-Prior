@@ -1041,3 +1041,12 @@ def compute_sdf(density, eps=1e-4, inf=1e10):
                 mask = mask[..., None]
                 nearest_points[to] = (1-mask) * nearest_points[to] + mask * nearest_points[fr]
         return sdf
+
+
+def p2v(xyz):
+    import open3d as o3d
+    pcd = o3d.geometry.PointCloud()
+    pcd.points = o3d.utility.Vector3dVector(xyz)
+    voxel_grid = o3d.geometry.VoxelGrid.create_from_point_cloud(pcd, voxel_size=0.002)
+    o3d.visualization.draw_geometries([voxel_grid])
+    return voxel_grid
