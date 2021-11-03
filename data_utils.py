@@ -1047,19 +1047,22 @@ def compute_sdf(density, eps=1e-4, inf=1e10):
 def p2v(xyz):
     # fig = plt.figure()
     # ax = fig.add_subplot(111, projection='3d')
-    # for i in range(xyz.shape[0]):
-    pcd = o3d.geometry.PointCloud()
-    # import pdb; pdb.set_trace()
-    pcd.points = o3d.utility.Vector3dVector(xyz.detach())
-    voxel_grid = o3d.geometry.VoxelGrid.create_from_point_cloud(pcd, voxel_size=0.03)
-    # data = voxel_grid.create_dense(origin=[0,0,0], color=[0,0,0], voxel_size=0.03, width=1, height=1, depth=1)
-    my_voxel = np.zeros((32, 32, 32))
-    for j, d in enumerate(voxel_grid.get_voxels()):
-        # print(j)
-        my_voxel[d.grid_index[0], d.grid_index[1], d.grid_index[2]] = 1
+    my_voxels = []
+    for i in range(xyz.shape[0]):
+        pcd = o3d.geometry.PointCloud()
+        # import pdb; pdb.set_trace()
+        pcd.points = o3d.utility.Vector3dVector(xyz[i].detach())
+        voxel_grid = o3d.geometry.VoxelGrid.create_from_point_cloud(pcd, voxel_size=0.03)
+        # data = voxel_grid.create_dense(origin=[0,0,0], color=[0,0,0], voxel_size=0.03, width=1, height=1, depth=1)
+        my_voxel = np.zeros((32, 32, 32))
+        for j, d in enumerate(voxel_grid.get_voxels()):
+            # print(j)
+            my_voxel[d.grid_index[0], d.grid_index[1], d.grid_index[2]] = 1
+        my_voxels.append(my_voxel)
+    my_voxels = np.stack(my_voxels)
         # z, x, y = my_voxel.nonzero()
         # ax.scatter(x, y, z, c=z, alpha=1)
         # plt.show()
             # import pdb; pdb.set_trace()
         # o3d.visualization.draw_geometries([voxel_grid])
-    return my_voxel
+    return my_voxels
