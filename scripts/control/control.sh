@@ -14,7 +14,7 @@ kernprof -l control.py \
 	--shape_aug 1 \
 	--opt_algo max \
 	--opt_iter 1 \
-	--control_sample_size 100 \
+	--control_sample_size 8 \
 	--control_batch_size 4 \
 	--rewardtype l1shape \
 	--use_sim 1 \

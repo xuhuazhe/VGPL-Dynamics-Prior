@@ -527,7 +527,7 @@ class L1ShapeLoss(torch.nn.Module):
         grid1 = p2v(x)
         grid2 = p2v(y)
         l1 = torch.abs(grid1 - grid2).sum()
-        # print(f"L1: {l1}")
+        # print(f"L1: {l1.shape}")
         return c1 * l1
 
 
