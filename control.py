@@ -822,7 +822,7 @@ def main():
     state_goal = torch.FloatTensor(all_p[-1]).unsqueeze(0)[:, :n_particle, :]
 
     planner = Planner(taichi_env=env, env_init_state=state, args=args, n_his=args.n_his, n_particle=n_particle, n_shape=n_shape, scene_params=scene_params,
-                    model=model, dist_func=args.rewardtype, use_gpu=use_gpu, use_sim=use_sim, n_grips=n_grips,
+                    model=model, dist_func=args.rewardtype, use_gpu=use_gpu, use_sim=use_sim, n_grips=1,
                     len_per_grip=len_per_grip, len_per_grip_back=len_per_grip_back, 
                     n_shapes_per_gripper=n_shapes_per_gripper, n_shapes_floor=n_shapes_floor,
                     rollout_path=control_out_dir)
@@ -847,51 +847,54 @@ def main():
                     init_pose_seq = init_pose_gt[0]
                     act_seq = act_seq_gt[0]
                 else:
-                    init_pose_seq, act_seq, _ = planner.trajectory_optimization(
-                        state_cur=state_cur,
-                        state_goal=state_goal,
-                        # act_seq=actions[i-args.n_his:],
-                        n_look_ahead=n_look_ahead - (i - ctrl_init_idx),
-                        n_update_iter=args.opt_iter,
-                        # action_lower_lim=action_lower_lim,
-                        # action_upper_lim=action_upper_lim,
-                        # action_lower_delta_lim=action_lower_delta_lim,
-                        # action_upper_delta_lim=action_upper_delta_lim
-                    )
+                    # init_pose_seq, act_seq, _ = planner.trajectory_optimization(
+                    #     state_cur=state_cur,
+                    #     state_goal=state_goal,
+                    #     # act_seq=actions[i-args.n_his:],
+                    #     n_look_ahead=n_look_ahead - (i - ctrl_init_idx),
+                    #     n_update_iter=args.opt_iter,
+                    #     # action_lower_lim=action_lower_lim,
+                    #     # action_upper_lim=action_upper_lim,
+                    #     # action_lower_delta_lim=action_lower_delta_lim,
+                    #     # action_upper_delta_lim=action_upper_delta_lim
+                    # )
 
-                    # init_pose_seq = []
-                    # act_seq = []
-                    # for i in range(n_grips):
-                    #     if i > 0:
-                    #         start_idx = i * (len_per_grip + len_per_grip_back)
-                    #         state_cur_gt = torch.FloatTensor(np.stack(all_p[start_idx:start_idx+args.n_his]))
-                    #         if use_gpu: state_cur_gt = state_cur_gt.cuda()
-                    #         state_cur = torch.cat((state_cur, state_cur_gt[:, n_particle:, :]), 1)
+                    init_pose_seq = []
+                    act_seq = []
+                    for i in range(n_grips):
+                        if i > 0:
+                            start_idx = i * (len_per_grip + len_per_grip_back)
+                            state_cur_gt = torch.FloatTensor(np.stack(all_p[start_idx:start_idx+args.n_his]))
+                            if use_gpu:
+                                state_cur = state_cur.cuda() 
+                                state_cur_gt = state_cur_gt.cuda()
+                            state_cur = torch.cat((state_cur, state_cur_gt[:, n_particle:, :]), 1)
                     
-                    #     # print(state_cur.shape)
+                        # print(state_cur.shape)
                     
-                    #     # start_idx = i * (len_per_grip + len_per_grip_back)
-                    #     # state_cur = torch.FloatTensor(np.stack(all_p[start_idx:start_idx+args.n_his]))
-                    #     end_idx = min((i + 1) * (len_per_grip + len_per_grip_back) - 1, len(all_p) - 1)
-                    #     state_goal = torch.FloatTensor(all_p[end_idx]).unsqueeze(0)[:, :n_particle, :]
+                        # start_idx = i * (len_per_grip + len_per_grip_back)
+                        # state_cur = torch.FloatTensor(np.stack(all_p[start_idx:start_idx+args.n_his]))
+                        end_idx = min((i + 1) * (len_per_grip + len_per_grip_back) - 1, len(all_p) - 1)
+                        state_goal = torch.FloatTensor(all_p[end_idx]).unsqueeze(0)[:, :n_particle, :]
 
-                    #     init_pose, actions, state_cur = planner.trajectory_optimization(
-                    #         state_cur=state_cur,
-                    #         state_goal=state_goal,
-                    #         # act_seq=actions[i-args.n_his:],
-                    #         n_look_ahead=n_look_ahead - (i - ctrl_init_idx),
-                    #         n_update_iter=n_update_iter_init if i == st_idx else n_update_iter,
-                    #         # action_lower_lim=action_lower_lim,
-                    #         # action_upper_lim=action_upper_lim,
-                    #         # action_lower_delta_lim=action_lower_delta_lim,
-                    #         # action_upper_delta_lim=action_upper_delta_lim
-                    #     )
-                    #     # print(init_pose.shape, actions.shape)
-                    #     init_pose_seq.append(init_pose)
-                    #     act_seq.append(actions)
+                        init_pose, actions, _ = planner.trajectory_optimization(
+                            state_cur=state_cur,
+                            state_goal=state_goal,
+                            # act_seq=actions[i-args.n_his:],
+                            n_look_ahead=n_look_ahead - (i - ctrl_init_idx),
+                            n_update_iter=args.opt_iter,
+                            # action_lower_lim=action_lower_lim,
+                            # action_upper_lim=action_upper_lim,
+                            # action_lower_delta_lim=action_lower_delta_lim,
+                            # action_upper_delta_lim=action_upper_delta_lim
+                        )
+
+                        # print(init_pose.shape, actions.shape)
+                        init_pose_seq.append(init_pose)
+                        act_seq.append(actions)
                     
-                    # init_pose_seq = np.concatenate(init_pose_seq, axis=0)
-                    # act_seq = np.concatenate(act_seq, axis=0)
+                    init_pose_seq = np.concatenate(init_pose_seq, axis=0)
+                    act_seq = np.concatenate(act_seq, axis=0)
 
                 print(init_pose_seq.shape, act_seq.shape)
 
