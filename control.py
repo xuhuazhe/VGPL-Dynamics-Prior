@@ -856,19 +856,19 @@ def main():
                 print(init_pose_seq.shape, act_seq.shape)
 
 
-    # env.set_state(**state)
+    env.set_state(**state)
 
-    # gripper_mid_pt = int((n_shapes_per_gripper - 1) / 2)
-    # for i in range(act_seq.shape[0]):
-    #     env.primitives.primitives[0].set_state(0, init_pose_seq[i, gripper_mid_pt, :7])
-    #     env.primitives.primitives[1].set_state(0, init_pose_seq[i, gripper_mid_pt, 7:])
-    #     for j in range(act_seq.shape[1]):
-    #         true_idx = i * act_seq.shape[1] + j
-    #         env.step(act_seq[i][j])
-    #         rgb_img, depth_img = env.render(mode='get')
-    #         imageio.imwrite(f"{control_out_dir}/{true_idx:03d}_rgb.png", rgb_img)
+    gripper_mid_pt = int((n_shapes_per_gripper - 1) / 2)
+    for i in range(act_seq.shape[0]):
+        env.primitives.primitives[0].set_state(0, init_pose_seq[i, gripper_mid_pt, :7])
+        env.primitives.primitives[1].set_state(0, init_pose_seq[i, gripper_mid_pt, 7:])
+        for j in range(act_seq.shape[1]):
+            true_idx = i * act_seq.shape[1] + j
+            env.step(act_seq[i][j])
+            rgb_img, depth_img = env.render(mode='get')
+            imageio.imwrite(f"{control_out_dir}/{true_idx:03d}_rgb.png", rgb_img)
 
-    # os.system(f'ffmpeg -y -i {control_out_dir}/%03d_rgb.png -c:v libx264 -vf fps=25 -pix_fmt yuv420p {control_out_dir}/vid000.mp4')
+    os.system(f'ffmpeg -y -i {control_out_dir}/%03d_rgb.png -c:v libx264 -vf fps=25 -pix_fmt yuv420p {control_out_dir}/vid000.mp4')
 
 
 if __name__ == '__main__':
