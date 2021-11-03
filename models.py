@@ -5,7 +5,7 @@ import torch.nn as nn
 import torch.nn.functional as F
 from torch.autograd import Variable
 
-from data_utils import p2g, compute_sdf
+from data_utils import p2g, compute_sdf, p2v
 import scipy
 from scipy import optimize
 
@@ -523,8 +523,8 @@ class L2ShapeLoss(torch.nn.Module):
     def __call__(self, x, y, sdf):
         c1 = 0.0001
         c2 = 0.00
-        grid1 = p2g(x)
-        grid2 = p2g(y)
+        grid1 = p2v(x)
+        grid2 = p2v(y)
         l1 = torch.abs(grid1 - grid2).mean()
         # sdf = (grid1 * sdf).sum()
         # print(f"L1: {l1}")
