@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 #SBATCH --job-name=VGPL-Gripper
-#SBATCH --partition=viscam
+#SBATCH --partition=svl
 #SBATCH --gres=gpu:1
 #SBATCH --mem=20G
 #SBATCH --time=3-00:00:00

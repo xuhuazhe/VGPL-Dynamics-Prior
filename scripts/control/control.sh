@@ -1,4 +1,12 @@
 #!/usr/bin/env bash
+#SBATCH --job-name=VGPL-Gripper
+#SBATCH --partition=svl
+#SBATCH --gres=gpu:1
+#SBATCH --mem=16G
+#SBATCH --time=3-00:00:00
+#SBATCH --cpus-per-task=4
+#SBATCH --output=/sailhome/hshi74/output/deformable/%A.out
+
 kernprof -l control.py \
 	--env Gripper \
 	--data_type ngrip \
@@ -14,9 +22,9 @@ kernprof -l control.py \
 	--shape_aug 1 \
 	--opt_algo max \
 	--opt_iter 1 \
-	--control_sample_size 8 \
-	--control_batch_size 4 \
-	--rewardtype l1shape \
+	--rewardtype emd \
 	--use_sim 1 \
 	--gt_action 0 \
-	--gt_state_goal 1
+	--gt_state_goal 1 \
+	--control_sample_size 200 \
+	--control_batch_size 10
