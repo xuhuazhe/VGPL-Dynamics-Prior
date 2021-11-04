@@ -2,7 +2,6 @@ import os
 import time
 import sys
 import copy
-print('1')
 import multiprocessing as mp
 from progressbar import ProgressBar
 
@@ -13,7 +12,6 @@ import torch.nn.functional as F
 from torch.autograd import Variable
 from torch.optim.lr_scheduler import ReduceLROnPlateau
 from torch.utils.data import DataLoader
-print('1')
 
 
 from config import gen_args
@@ -22,9 +20,7 @@ from data_utils import prepare_input, get_scene_info, get_env_group
 from models import Model, ChamferLoss, HausdorfLoss, EarthMoverLoss, UpdatedHausdorffLoss, ClipLoss, L2ShapeLoss
 from utils import make_graph, check_gradient, set_seed, AverageMeter, get_lr, Tee
 from utils import count_parameters, my_collate, matched_motion
-print('1')
 from eval import evaluate
-print('1')
 import cProfile
 import pstats
 import io
@@ -36,7 +32,6 @@ os.system('mkdir -p ' + args.dataf)
 os.system('mkdir -p ' + args.outf)
 
 tee = Tee(os.path.join(args.outf, 'train.log'), 'w')
-print('1')
 def main():
     ### training
 
@@ -178,6 +173,8 @@ def main():
                     # for now, only used as a placeholder
                     memory_init = model.init_memory(B, n_particle + n_shape)
                     loss = 0
+                    if args.curriculum and (epoch + 1) % 25 == 0:
+                        args.sequence_length += 1
                     for j in range(args.sequence_length - args.n_his):
                         with torch.set_grad_enabled(phase == 'train'):
                             # state_cur (unnormalized): B x n_his x (n_p + n_s) x state_dim
@@ -250,6 +247,7 @@ def main():
                                 if args.clip_weight > 0:
                                     loss += args.clip_weight * clip_loss(pred_pos_p, pred_pos_p)
                             elif args.losstype == 'emd_chamfer_uh_clip':
+                                loss = 0
                                 if args.emd_weight > 0:
                                     emd_l = args.emd_weight * emd_loss(pred_pos_p, gt_pos_p)
                                     loss += emd_l
