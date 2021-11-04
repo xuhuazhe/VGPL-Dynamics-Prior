@@ -47,6 +47,7 @@ python train.py \
 	--n_epoch 100 \
 	--n_rollout 50 \
 	--ckp_per_iter 10000 \
+	--curriculum 1 \
 	--losstype $1 \
 	--sequence_length $2 \
 	--emd_weight $3 \

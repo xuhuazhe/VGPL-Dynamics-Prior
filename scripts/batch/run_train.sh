@@ -1,12 +1,12 @@
 #!/usr/bin/env bash
-# cd /viscam/u/hxu/projects/deformable/VGPL-Dynamics-Prior
+ cd /viscam/u/hxu/projects/deformable/VGPL-Dynamics-Prior
 # cd /viscam/u/hshi74/projects/deformable/VGPL-Dynamics-Prior
 
 declare -a arr=("emd_chamfer_uh_clip")
-declare -a arr2=("6")
+declare -a arr2=("5")
 declare -a arr3=("0.3")
 declare -a arr4=("0.7")
-declare -a arr5=("0.15")
+declare -a arr5=("0.1")
 declare -a arr6=("0.0")
 declare -a arr7=("0.05")
 for i in "${arr[@]}"
