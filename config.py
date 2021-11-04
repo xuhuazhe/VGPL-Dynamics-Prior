@@ -132,6 +132,8 @@ parser.add_argument('--use_sim', type=int, default=0)
 parser.add_argument('--gt_action', type=int, default=0)
 parser.add_argument('--gt_state_goal', type=int, default=0)
 parser.add_argument('--opt_iter', type=int, default=1)
+parser.add_argument('--sample_iter', type=int, default=1)
+parser.add_argument('--n_grips', type=int, default=3)
 
 def gen_args():
     args = parser.parse_args()

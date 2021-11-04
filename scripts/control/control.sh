@@ -20,8 +20,10 @@ kernprof -l control.py \
 	--n_his 4 \
 	--augment_ratio 0.05 \
 	--shape_aug 1 \
+	--n_grips 3 \
 	--opt_algo max \
 	--opt_iter 1 \
+	--sample_iter 3 \
 	--rewardtype emd \
 	--use_sim 1 \
 	--gt_action 0 \
