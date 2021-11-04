@@ -125,6 +125,9 @@ def main():
     rollout_iter = -1
     for epoch in range(st_epoch, args.n_epoch):
 
+        if args.curriculum and (epoch + 1) % 25 == 0:
+            args.sequence_length += 1
+
         for phase in phases:
 
             model.train(phase == 'train')
@@ -173,8 +176,6 @@ def main():
                     # for now, only used as a placeholder
                     memory_init = model.init_memory(B, n_particle + n_shape)
                     loss = 0
-                    if args.curriculum and (epoch + 1) % 25 == 0:
-                        args.sequence_length += 1
                     for j in range(args.sequence_length - args.n_his):
                         with torch.set_grad_enabled(phase == 'train'):
                             # state_cur (unnormalized): B x n_his x (n_p + n_s) x state_dim
