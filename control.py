@@ -518,7 +518,7 @@ class Planner(object):
         #     os.path.join(self.rollout_path, f'plot_max_loss_{self.sample_iter_cur}'))
 
         # [-1, action_dim]
-        return init_pose_seqs[-1], act_seqs[-1], state_cur_seqs[-1]
+        return init_pose_seqs[idx[-1]], act_seqs[idx[-1]], state_cur_seqs[idx[-1]]
 
     def optimize_action_CEM(    # Cross Entropy Method (CEM)
         self,
@@ -684,7 +684,10 @@ def main():
     if len(args.outf_control) > 0:
         args.outf = args.outf_control
 
-    test_name = f'sim_{args.use_sim}+{args.rewardtype}+sample_iter_{args.sample_iter}+opt_{args.opt_algo}_{args.opt_iter}'
+    if args.gt_action:
+        test_name = f'sim_{args.use_sim}+{args.rewardtype}+gt_action_{args.gt_action}'
+    else:
+        test_name = f'sim_{args.use_sim}+{args.rewardtype}+sample_iter_{args.sample_iter}+opt_{args.opt_algo}_{args.opt_iter}'
     control_out_dir = os.path.join(args.outf, 'control', '000', test_name)
     os.system('mkdir -p ' + control_out_dir)
 
@@ -730,6 +733,7 @@ def main():
     n_shapes_floor = 9
     n_shapes_per_gripper = 11
 
+    gripper_mid_pt = int((n_shapes_per_gripper - 1) / 2)
 
     # load dynamics model
     model = Model(args, use_gpu)
@@ -820,7 +824,8 @@ def main():
 
     init_pose_gt = np.expand_dims(init_pose_gt, axis=0)
     act_seq_gt = np.expand_dims(act_seq_gt, axis=0)
-    print(act_seq_gt)
+    # print(init_pose_gt)
+    # print(act_seq_gt)
     print(f"GT: init pose: {init_pose_gt.shape}; actions: {act_seq_gt.shape}")
 
     planner = Planner(taichi_env=env, env_init_state=state, args=args, n_his=args.n_his, n_particle=n_particle, n_shape=n_shape, 
@@ -890,12 +895,12 @@ def main():
                     init_pose_seq = np.concatenate(init_pose_seq, axis=0)
                     act_seq = np.concatenate(act_seq, axis=0)
 
+            print(init_pose_seq[:, gripper_mid_pt, :7])
             print(init_pose_seq.shape, act_seq.shape)
 
 
     env.set_state(**state)
 
-    gripper_mid_pt = int((n_shapes_per_gripper - 1) / 2)
     for i in range(act_seq.shape[0]):
         env.primitives.primitives[0].set_state(0, init_pose_seq[i, gripper_mid_pt, :7])
         env.primitives.primitives[1].set_state(0, init_pose_seq[i, gripper_mid_pt, 7:])
