@@ -55,6 +55,7 @@ class Planner(object):
         self.gripper_mid_pt = int((self.n_shapes_per_gripper - 1) / 2)
 
         self.sample_iter_cur = 0
+        self.opt_iter_cur = 0
     
     def trajectory_optimization(
         self,
@@ -74,6 +75,8 @@ class Planner(object):
         n_batch = int(self.n_sample / self.batch_size)
 
         for i in range(n_opt_iter):
+            self.opt_iter_cur = i
+
             init_pose_seqs_batch = []
             act_seqs_batch = []
             reward_seqs_batch = []
@@ -84,11 +87,12 @@ class Planner(object):
                 if i == 0 or self.args.opt_algo == 'max':
                     init_pose_seqs, act_seqs = self.sample_action_params(n_grips)
                 else:
+                    # import pdb; pdb.set_trace()
                     init_pose_seqs = init_pose_seqs_sample[j*self.batch_size:(j+1)*self.batch_size]
                     act_seqs = act_seqs_sample[j*self.batch_size:(j+1)*self.batch_size]
 
-                print(f"Init poses: {init_pose_seqs.shape}")
-                print(f"Actions: {act_seqs.shape}")
+                # print(f"Init poses: {init_pose_seqs.shape}")
+                # print(f"Actions: {act_seqs.shape}")
                 
                 # act_seqs = self.sample_action_sequences(
                 #     act_seq,
@@ -116,7 +120,7 @@ class Planner(object):
             state_cur_seqs_batch = torch.cat(state_cur_seqs_batch, 0)
 
             print('update_iter %d/%d, max: %.4f, mean: %.4f, std: %.4f' % (
-                i, n_opt_iter, np.max(reward_seqs_batch), np.mean(reward_seqs_batch), np.std(reward_seqs_batch)))
+                i+1, n_opt_iter, np.max(reward_seqs_batch), np.mean(reward_seqs_batch), np.std(reward_seqs_batch)))
 
             if self.args.opt_algo == 'max':
                 init_pose_seq_opt, act_seq_opt, state_cur_seq_opt = self.optimize_action_max(init_pose_seqs_batch, act_seqs_batch, reward_seqs_batch, state_cur_seqs_batch)
@@ -124,7 +128,7 @@ class Planner(object):
                 if i == n_opt_iter - 1:
                     init_pose_seq_opt, act_seq_opt, state_cur_seq_opt = self.optimize_action_max(init_pose_seqs_batch, act_seqs_batch, reward_seqs_batch, state_cur_seqs_batch)
                 else:
-                    init_pose_seqs_sample, act_seqs_sample = self.optimize_action_CEM(init_pose_seqs_batch, reward_seqs_batch)
+                    init_pose_seqs_sample, act_seqs_sample = self.optimize_action_CEM(init_pose_seqs_batch, act_seqs_batch, reward_seqs_batch)
             elif self.args.opt_algo == 'MPPI':
                 init_pose_seq_opt, act_seq_opt = self.optimize_action_MPPI(init_pose_seqs_batch, act_seqs_batch, reward_seqs_batch)
             else:
@@ -189,19 +193,20 @@ class Planner(object):
 
         return actions
 
-    def get_rot_from_pose(self, init_pose_seq):
-        mid_point_x = np.full(init_pose_seq.shape[0], self.mid_point[0])
+    def get_center_and_rot_from_pose(self, init_pose_seq):
+        # import pdb; pdb.set_trace()
+        mid_point_seq = (init_pose_seq[:, self.gripper_mid_pt, :3] + init_pose_seq[:, self.gripper_mid_pt, 7:10]) / 2
+        # mid_point_x = np.full(init_pose_seq.shape[0], self.mid_point[0])
         
-        cos = (init_pose_seq[:, self.gripper_mid_pt, 0] - mid_point_x) / self.sample_radius
-        if cos.min() < -1.0 or cos.max() > 1.0:
-            raise ValueError
-        # print(f"pose: {init_pose_seq[:, gripper_mid_pt, 0]}; cos: {cos}")
-        rot_noise_seq = np.arccos(cos)
-        # print(f"rot_noise_seq: {rot_noise_seq}")
-        return rot_noise_seq
+        angle_seq = np.arctan2(init_pose_seq[:, self.gripper_mid_pt, 2] - mid_point_seq[:, 2], \
+            init_pose_seq[:, self.gripper_mid_pt, 0] - mid_point_seq[:, 0])
+
+        angle_seq = np.full(angle_seq.shape, np.pi) - angle_seq
+        
+        return mid_point_seq, angle_seq
 
     def get_action_seq_from_pose(self, init_pose_seq):
-        rot_noise_seq = self.get_rot_from_pose(init_pose_seq)
+        _, rot_noise_seq = self.get_center_and_rot_from_pose(init_pose_seq)
         act_seq = []
         for rot_noise in rot_noise_seq:
             act_seq.append(self.get_action_seq(rot_noise))
@@ -504,35 +509,60 @@ class Planner(object):
     def optimize_action_CEM(    # Cross Entropy Method (CEM)
         self,
         init_pose_seqs,
+        act_seqs,
         reward_seqs,    # [n_sample]
         best_k_ratio=0.05
     ):
-        best_k = max(5, int(init_pose_seqs.shape[0] * best_k_ratio))
+        best_k = max(3, int(init_pose_seqs.shape[0] * best_k_ratio))
         idx = np.argsort(reward_seqs)
-        print(f"Selected top seqs: {reward_seqs[idx[-best_k:]]}")
+        print(f"Selected top reward seqs: {reward_seqs[idx[-best_k:]]}")
+        # print(f"Selected top init pose seqs: {init_pose_seqs[idx[-best_k:], :, self.gripper_mid_pt, :7]}")
 
         self.visualize_sampled_init_pos(init_pose_seqs, reward_seqs, idx, \
-            os.path.join(self.rollout_path, f'plot_cem_{self.sample_iter_cur}'))
-
-        init_pose_seqs_mean = np.mean(init_pose_seqs[idx[-best_k:]], axis=0)
-        init_pose_seqs_std = np.std(init_pose_seqs[idx[-best_k:]], axis=0)
+            os.path.join(self.rollout_path, f'plot_cem_s{self.sample_iter_cur}_o{self.opt_iter_cur}'))
 
         init_pose_seqs_sample = []
         act_seqs_sample = []
-        i = 0
-        while i < init_pose_seqs.shape[0]:
-            init_pose_seq_sample = np.random.normal(init_pose_seqs_mean, init_pose_seqs_std)
-            try:
-                act_seq_sample = self.get_action_seq_from_pose(init_pose_seq_sample)
-            except ValueError:
-                # print("Invalid init pose sample!")
-                continue    
-            init_pose_seqs_sample.append(init_pose_seq_sample)
-            act_seqs_sample.append(act_seq_sample)
-            i += 1
+        for i in range(best_k, 0, -1):
+            init_pose_seq = init_pose_seqs[idx[-i]]
+            # print(f"Selected init pose seq: {init_pose_seq[:, self.gripper_mid_pt, :7]}")
+            init_pose_seqs_sample.append(init_pose_seq)
+            act_seqs_sample.append(act_seqs[idx[-i]])
+            j = 1
 
+            if i > 1:
+                n_samples = int(init_pose_seqs.shape[0] / (2**i))
+            else:
+                n_samples = init_pose_seqs.shape[0] - len(init_pose_seqs_sample) + 1
+            
+            while j < n_samples:
+                mid_point_seq, angle_seq = self.get_center_and_rot_from_pose(init_pose_seq)
+                init_pose_seq_sample = []
+                for k in range(init_pose_seq.shape[0]):
+                    p_noise = np.clip(np.array([0, 0, np.random.randn()*0.03]), a_max=0.1, a_min=-0.1)
+                    rot_noise = np.clip(np.random.randn() * np.pi / 36, a_max=0.1, a_min=-0.1)
+                
+                    new_mid_point = mid_point_seq[k, :3] + p_noise
+                    new_angle = angle_seq[k] + rot_noise
+                    init_pose = self.get_pose(new_mid_point, new_angle)
+                    init_pose_seq_sample.append(init_pose)
+
+                    # import pdb; pdb.set_trace()
+
+                init_pose_seq_sample = np.stack(init_pose_seq_sample)
+                act_seq_sample = self.get_action_seq_from_pose(init_pose_seq_sample)
+
+                init_pose_seqs_sample.append(init_pose_seq_sample)
+                act_seqs_sample.append(act_seq_sample)
+                
+                # print(f"Selected init pose seq: {init_pose_seq_sample[:, self.gripper_mid_pt, :7]}")
+
+                j += 1
+
+        # import pdb; pdb.set_trace()
         init_pose_seqs_sample = np.stack(init_pose_seqs_sample)
         act_seqs_sample = np.stack(act_seqs_sample)
+
         return init_pose_seqs_sample, act_seqs_sample
 
     def optimize_action_MPPI(   # Model-Predictive Path Integral (MPPI)
