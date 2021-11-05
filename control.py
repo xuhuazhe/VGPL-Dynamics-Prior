@@ -796,19 +796,32 @@ def main():
                 action = np.concatenate([(states[g1_idx] - prev_states[g1_idx]) / 0.02, np.zeros(3),
                                         (states[g2_idx] - prev_states[g2_idx]) / 0.02, np.zeros(3)])
             
-                actions.append(action)
+                if len(actions) == len_per_grip - 1:
+                    actions.insert(0, actions[0])
+                elif len(actions) == len_per_grip + len_per_grip_back - 1:
+                    actions.append(actions[-1])
+                else:
+                    actions.append(action)
 
                 if t == 1: actions.insert(0, actions[0])
                 if t == args.time_step - 1: actions.append(actions[-1])
+
             prev_states = states
 
             if t % (len_per_grip + len_per_grip_back) == 0:
                 init_pose_gt.append(np.concatenate((states[g1_idx: g2_idx], unit_quat_pad, states[g2_idx:], unit_quat_pad), axis=1))
             
             if len(actions) == len_per_grip + len_per_grip_back:
-                # print(f"Action length: {len(actions)}")
+                # print(f"Actions: {actions}")
                 act_seq_gt.append(actions)
+                # import pdb; pdb.set_trace()
+                # hard code
+                init_pose_gt[-1] = np.concatenate((init_pose_gt[-1][:, :3] - 2 * 0.02 * np.tile(actions[0][:3], (init_pose_gt[-1].shape[0], 1)), unit_quat_pad, \
+                    init_pose_gt[-1][:, 7:10] - 2 * 0.02 * np.tile(actions[0][6:9], (init_pose_gt[-1].shape[0], 1)), unit_quat_pad), axis=1)
                 actions = []
+
+            prev_states = states
+
 
     # actions = act_seq_gt[:args.n_his - 1]
     # # duplicate the last action #n_look_ahead times
@@ -819,14 +832,12 @@ def main():
     # action_lower_lim, action_upper_lim, action_lower_delta_lim, action_upper_delta_lim = \
     #     set_action_limit(all_actions=act_seq_gt, ctrl_init_idx=ctrl_init_idx)
 
-    st_idx = ctrl_init_idx
-    ed_idx = ctrl_init_idx + 1 # + n_look_ahead
-
     init_pose_gt = np.expand_dims(init_pose_gt, axis=0)
     act_seq_gt = np.expand_dims(act_seq_gt, axis=0)
-    # print(init_pose_gt)
+
+    print(f"GT shape: init pose: {init_pose_gt.shape}; actions: {act_seq_gt.shape}")
+    print(f"GT init pose: {init_pose_gt[0, :, gripper_mid_pt, :7]}")
     # print(act_seq_gt)
-    print(f"GT: init pose: {init_pose_gt.shape}; actions: {act_seq_gt.shape}")
 
     planner = Planner(taichi_env=env, env_init_state=state, args=args, n_his=args.n_his, n_particle=n_particle, n_shape=n_shape, 
                     scene_params=scene_params, model=model, dist_func=args.rewardtype, use_gpu=use_gpu, use_sim=use_sim,
@@ -834,6 +845,9 @@ def main():
                     n_shapes_per_gripper=n_shapes_per_gripper, n_shapes_floor=n_shapes_floor,
                     rollout_path=control_out_dir)
     planner.prepare_rollout()
+
+    st_idx = ctrl_init_idx
+    ed_idx = ctrl_init_idx + 1 # + n_look_ahead
     
     ### We now have n_his states, n_his - 1 actions
     for i in range(st_idx, ed_idx):

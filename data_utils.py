@@ -1035,7 +1035,7 @@ def p2v(xyz):
     # import pdb; pdb.set_trace()
     # print(xyz.shape)
     pcd.points = o3d.utility.Vector3dVector(xyz.cpu().numpy())
-    voxel_grid = o3d.geometry.VoxelGrid.create_from_point_cloud(pcd, voxel_size=0.03)
+    voxel_grid = o3d.geometry.VoxelGrid.create_from_point_cloud(pcd, voxel_size=0.05)
     # data = voxel_grid.create_dense(origin=[0,0,0], color=[0,0,0], voxel_size=0.03, width=1, height=1, depth=1)
     my_voxel = np.zeros((32, 32, 32))
     for j, d in enumerate(voxel_grid.get_voxels()):
