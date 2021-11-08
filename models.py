@@ -173,7 +173,10 @@ class DynamicsPredictor(nn.Module):
         # [0, n_his - 1): state_residual
         # [n_his - 1, n_his): the current position
         state_res_norm = (state[:, 1:] - state[:, :-1] - mean_d) / std_d
-        state_res_norm[:, :, :301, :] = 0
+        if args.noisy_his:
+            state_res_norm = (state[:, :-1] - mean_p) / std_p
+        else:
+            state_res_norm[:, :, :301, :] = 0
         state_cur_norm = (state[:, -1:] - mean_p) / std_p
         state_norm = torch.cat([state_res_norm, state_cur_norm], 1)
         # state_norm_t (normalized): B x N x (n_his * state_dim)

@@ -248,7 +248,8 @@ def main():
                                 if args.clip_weight > 0:
                                     loss += args.clip_weight * clip_loss(pred_pos_p, pred_pos_p)
                             elif args.losstype == 'emd_chamfer_uh_clip':
-                                loss = 0
+                                if args.curriculum:
+                                    loss = 0
                                 if args.emd_weight > 0:
                                     emd_l = args.emd_weight * emd_loss(pred_pos_p, gt_pos_p)
                                     loss += emd_l
