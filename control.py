@@ -56,7 +56,13 @@ class Planner(object):
 
         self.sample_iter_cur = 0
         self.opt_iter_cur = 0
+
+        self.init_pose_sample_size = 100
+        self.delta_g_sample_size = 10
+
+        self.n_epochs_GD = 50
     
+    @profile
     def trajectory_optimization(
         self,
         state_cur,      # [n_his, state_dim]
@@ -102,8 +108,7 @@ class Planner(object):
                 if self.use_sim:
                     state_seqs = self.sim_rollout(init_pose_seqs, act_seqs)
                 else:
-                    state_seqs = self.model_rollout(
-                        state_cur, init_pose_seqs, act_seqs, n_look_ahead)
+                    state_seqs = self.model_rollout(state_cur, init_pose_seqs, act_seqs, n_look_ahead)
                     print(state_seqs.shape)
                 reward_seqs = reward_scale_factor * self.evaluate_traj(state_seqs, state_goal)
                 print(f"reward seqs: {reward_seqs}")
@@ -129,6 +134,7 @@ class Planner(object):
                     init_pose_seq_opt, act_seq_opt, state_cur_seq_opt = self.optimize_action_max(init_pose_seqs_batch, act_seqs_batch, reward_seqs_batch, state_cur_seqs_batch)
                 else:
                     init_pose_seqs_sample, act_seqs_sample = self.optimize_action_CEM(init_pose_seqs_batch, act_seqs_batch, reward_seqs_batch)
+                    n_batch = int(init_pose_seqs_sample.shape[0] / self.batch_size)
             elif self.args.opt_algo == 'MPPI':
                 init_pose_seq_opt, act_seq_opt = self.optimize_action_MPPI(init_pose_seqs_batch, act_seqs_batch, reward_seqs_batch)
             else:
@@ -165,8 +171,7 @@ class Planner(object):
 
         return init_pose
 
-    def get_action_seq(self, rot_noise):
-        delta_g = np.random.uniform(0.27, 0.35)
+    def get_action_seq(self, rot_noise, delta_g):
         counter = 0
         actions = []
         
@@ -205,11 +210,11 @@ class Planner(object):
         
         return mid_point_seq, angle_seq
 
-    def get_action_seq_from_pose(self, init_pose_seq):
+    def get_action_seq_from_pose(self, init_pose_seq, delta_g):
         _, rot_noise_seq = self.get_center_and_rot_from_pose(init_pose_seq)
         act_seq = []
         for rot_noise in rot_noise_seq:
-            act_seq.append(self.get_action_seq(rot_noise))
+            act_seq.append(self.get_action_seq(rot_noise, delta_g))
 
         act_seq = np.stack(act_seq)
 
@@ -231,7 +236,8 @@ class Planner(object):
                 # print(init_pose.shape)
                 init_pose_seq.append(init_pose)
 
-                actions = self.get_action_seq(rot_noise)
+                delta_g = np.random.uniform(0.27, 0.35)
+                actions = self.get_action_seq(rot_noise, delta_g)
                 # print(actions.shape)
                 act_seq.append(actions)
 
@@ -334,6 +340,7 @@ class Planner(object):
             inputs_new.append(infos)
         return inputs_new
 
+    @profile
     def sim_rollout(self, init_pose_seqs, act_seqs):
         state_seq_batch = []
         for t in range(act_seqs.shape[0]):
@@ -365,6 +372,7 @@ class Planner(object):
 
         return state_seq_batch
 
+    @profile
     def model_rollout(
         self,
         state_cur,      # [1, n_his, state_dim]
@@ -513,29 +521,29 @@ class Planner(object):
         reward_seqs,    # [n_sample]
         best_k_ratio=0.05
     ):
-        best_k = max(3, int(init_pose_seqs.shape[0] * best_k_ratio))
+        best_k = max(5, int(init_pose_seqs.shape[0] * best_k_ratio))
         idx = np.argsort(reward_seqs)
         print(f"Selected top reward seqs: {reward_seqs[idx[-best_k:]]}")
         # print(f"Selected top init pose seqs: {init_pose_seqs[idx[-best_k:], :, self.gripper_mid_pt, :7]}")
 
+        # delta_g_seqs = act_seqs[]
         self.visualize_sampled_init_pos(init_pose_seqs, reward_seqs, idx, \
             os.path.join(self.rollout_path, f'plot_cem_s{self.sample_iter_cur}_o{self.opt_iter_cur}'))
 
-        init_pose_seqs_sample = []
-        act_seqs_sample = []
+        init_pose_seqs_pool = []
+        act_seqs_pool = []
         for i in range(best_k, 0, -1):
             init_pose_seq = init_pose_seqs[idx[-i]]
             # print(f"Selected init pose seq: {init_pose_seq[:, self.gripper_mid_pt, :7]}")
-            init_pose_seqs_sample.append(init_pose_seq)
-            act_seqs_sample.append(act_seqs[idx[-i]])
+            init_pose_seqs_pool.append(init_pose_seq)
             j = 1
 
             if i > 1:
-                n_samples = int(init_pose_seqs.shape[0] / (2**i))
+                n_init_pose_samples = int(self.init_pose_sample_size / (2**i))
             else:
-                n_samples = init_pose_seqs.shape[0] - len(init_pose_seqs_sample) + 1
+                n_init_pose_samples = self.init_pose_sample_size - len(init_pose_seqs_pool) + 1
             
-            while j < n_samples:
+            while j < n_init_pose_samples:
                 mid_point_seq, angle_seq = self.get_center_and_rot_from_pose(init_pose_seq)
                 init_pose_seq_sample = []
                 for k in range(init_pose_seq.shape[0]):
@@ -550,60 +558,51 @@ class Planner(object):
                     # import pdb; pdb.set_trace()
 
                 init_pose_seq_sample = np.stack(init_pose_seq_sample)
-                act_seq_sample = self.get_action_seq_from_pose(init_pose_seq_sample)
-
-                init_pose_seqs_sample.append(init_pose_seq_sample)
-                act_seqs_sample.append(act_seq_sample)
-                
+                init_pose_seqs_pool.append(init_pose_seq_sample)
                 # print(f"Selected init pose seq: {init_pose_seq_sample[:, self.gripper_mid_pt, :7]}")
 
                 j += 1
+        
+        for init_pose_seq_sample in init_pose_seqs_pool:
+            for i in range(self.delta_g_sample_size):
+                delta_g_sample = np.random.uniform(0.27, 0.35)
+                act_seq_sample = self.get_action_seq_from_pose(init_pose_seq_sample, delta_g_sample)
+
+                act_seqs_pool.append(act_seq_sample)
 
         # import pdb; pdb.set_trace()
-        init_pose_seqs_sample = np.stack(init_pose_seqs_sample)
-        act_seqs_sample = np.stack(act_seqs_sample)
+        init_pose_seqs_pool = np.stack(init_pose_seqs_pool)
+        init_pose_seqs_pool = np.repeat(init_pose_seqs_pool, self.delta_g_sample_size, axis=0)
+        act_seqs_pool = np.stack(act_seqs_pool)
+        print(f"Init pose seq pool: {init_pose_seqs_pool.shape}; Act seq pool: {act_seqs_pool.shape}")
 
-        return init_pose_seqs_sample, act_seqs_sample
+        return init_pose_seqs_pool, act_seqs_pool
 
-    def optimize_action_MPPI(   # Model-Predictive Path Integral (MPPI)
-        self,
-        init_pose_seqs,
-        act_seqs,       # [n_sample, -1, action_dim]
-        reward_seqs     # [n_sample]
-    ):
-        print(f"reward_seqs: {reward_seqs}")
-        # [n_sample, 1, 1]
-        # reward_seqs_exp = np.exp(self.reward_weight * (reward_seqs - np.mean(reward_seqs)))
-        reward_seqs = (reward_seqs - np.mean(reward_seqs)) / np.var(reward_seqs)
-        reward_seqs_norm = reward_seqs / np.linalg.norm(reward_seqs)
-        reward_seqs_exp = np.exp(self.reward_weight * reward_seqs_norm)
-        print(f"reward_seqs_exp: {reward_seqs_exp}")
+    # def optimize_action_GD(
+    #     self,
+    #     init_pose_seqs,
+    #     act_seqs,
+    #     lr=1e-4
+    # ):
+    #     optimizer = torch.optim.Adam([mid_point_seq, angle_seq], lr=lr)
+    #     for epoch in range(self.n_epochs_GD):
+    #         progress_bar = tqdm(init_pose_seqs, desc=f"Epoch {epoch}")
+    #         for init_pose_seq in progress_bar:
+    #             mid_point_seq, angle_seq = self.get_center_and_rot_from_pose(init_pose_seq)
+    
+    #             total_loss = 0
+    #             batch_count = 0
+    #             for data in progress_bar:
+    #                 optimizer.zero_grad()
+    #                 if self.use_gpu:
+    #                     data = data.cuda()
+    #                 state_seq = self.model_rollout
+    #                 loss = loss_fn(pred, data.y)
+    #                 loss.backward()
+                
+    #             progress_bar.set_postfix({"loss": loss.item()})
 
-        # [-1, action_dim]
-        eps = 1e-8
-        mid_point_x = np.full((self.n_sample, init_pose_seqs.shape[1]), self.mid_point[0])
-        
-        rot_noise_seqs = np.arccos((init_pose_seqs[:, :, self.gripper_mid_pt, 0] - mid_point_x) / self.sample_radius)
-        print(rot_noise_seqs)
-        print(reward_seqs_exp.reshape(-1, 1))
-        print(reward_seqs_exp.reshape(-1, 1) * rot_noise_seqs)
-
-        rot_noise_seq = np.sum(reward_seqs_exp.reshape(-1, 1) * rot_noise_seqs, axis=0) / (np.sum(reward_seqs_exp) + eps)
-        # act_seq = np.sum(reward_seqs_exp.reshape(-1, 1, 1, 1) * act_seqs, axis=0) / (np.sum(reward_seqs_exp) + eps)
-
-        print(f"rot_noise_seq: {rot_noise_seq}")
-
-        init_pose_seq = []
-        act_seq = []
-        for rot_noise in rot_noise_seq:
-            init_pose_seq.append(self.get_pose(self.mid_point, rot_noise))
-            act_seq.append(self.get_action_seq(rot_noise))
-
-        init_pose_seq = np.stack(init_pose_seq)
-        act_seq = np.stack(act_seq)
-        
-        # [-1, action_dim]
-        return init_pose_seq, act_seq
+    #             total_batch += 1
 
     def visualize_sampled_init_pos(self, init_pose_seqs, reward_seqs, idx, path):
         n_subplots = init_pose_seqs.shape[1]

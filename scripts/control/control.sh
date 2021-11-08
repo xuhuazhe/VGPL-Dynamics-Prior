@@ -25,8 +25,8 @@ kernprof -l control.py \
 	--opt_iter 3 \
 	--sample_iter 3 \
 	--rewardtype emd \
-	--use_sim 1 \
+	--use_sim 0 \
 	--gt_action 0 \
-	--gt_state_goal 1 \
-	--control_sample_size 20 \
+	--gt_state_goal 0 \
+	--control_sample_size 200 \
 	--control_batch_size 4
