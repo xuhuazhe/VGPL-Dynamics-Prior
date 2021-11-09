@@ -19,225 +19,281 @@ from plb.config import load
 
 from sys import platform
 
+
+task_params = {
+    "mid_point": np.array([0.5, 0.4, 0.5, 0, 0, 0]),
+    "default_h": 0.14,
+    "sample_radius": 0.25,
+    "n_grips": 3,
+    "gripper_rate": 0.01,
+    "len_per_grip": 20,
+    "len_per_grip_back": 10,
+    "n_shapes_floor": 9,
+    "n_shapes_per_gripper": 11,
+    "gripper_mid_pt": int((11 - 1) / 2)
+}
+
+
+def get_pose(new_mid_point, rot_noise):
+    x1 = new_mid_point[0] - task_params["sample_radius"] * np.cos(rot_noise)
+    y1 = new_mid_point[2] + task_params["sample_radius"] * np.sin(rot_noise)
+    x2 = new_mid_point[0] + task_params["sample_radius"] * np.cos(rot_noise)
+    y2 = new_mid_point[2] - task_params["sample_radius"] * np.sin(rot_noise)
+
+    prim1 = [x1, task_params["default_h"], y1, 1, 0, 0, 0] 
+    prim2 = [x2, task_params["default_h"], y2, 1, 0, 0, 0]
+
+    new_prim1 = []
+    for j in range(task_params["n_shapes_per_gripper"]):
+        prim1_tmp = np.concatenate(([prim1[0], prim1[1] + 0.018 * (j-5), prim1[2]], prim1[3:]), axis=None)
+        new_prim1.append(prim1_tmp)
+    new_prim1 = np.stack(new_prim1)
+
+    new_prim2 = []
+    for j in range(task_params["n_shapes_per_gripper"]):
+        prim2_tmp = np.concatenate(([prim2[0], prim2[1] + 0.018 * (j-5), prim2[2]], prim2[3:]), axis=None)
+        new_prim2.append(prim2_tmp)
+    new_prim2 = np.stack(new_prim2)
+
+    init_pose = np.concatenate((new_prim1, new_prim2), axis=1)
+
+    return init_pose
+
+
+def get_action_seq(rot_noise, delta_g):
+    counter = 0
+    actions = []
+    
+    while delta_g > 0 and counter < task_params["len_per_grip"]:
+        x = task_params["gripper_rate"] * np.cos(rot_noise)
+        y = - task_params["gripper_rate"] * np.sin(rot_noise)
+        delta_g -= 2 * task_params["gripper_rate"]
+        actions.append(np.concatenate([np.array([x/0.02,0,y/0.02]), np.zeros(3), 
+                                        np.array([-x/0.02,0,-y/0.02]), np.zeros(3)]))
+        counter += 1
+
+    actions = actions[:task_params["len_per_grip"]]
+
+    for _ in range(task_params["len_per_grip"] - len(actions)):
+        actions.append(np.concatenate([np.zeros(3), np.zeros(3), np.zeros(3), np.zeros(3)]))
+
+    counter = 0
+    while counter <task_params["len_per_grip_back"]:
+        x = - task_params["gripper_rate"] * np.cos(rot_noise)
+        y = task_params["gripper_rate"] * np.sin(rot_noise)
+        actions.append(np.concatenate([np.array([x/0.02,0,y/0.02]), np.zeros(3), 
+                                        np.array([-x/0.02,0,-y/0.02]), np.zeros(3)]))
+        counter += 1
+
+    return actions
+
+
+def get_center_and_rot_from_pose(init_pose_seq):
+    # import pdb; pdb.set_trace()
+    mid_point_seq = (init_pose_seq[:, task_params["gripper_mid_pt"], :3] + init_pose_seq[:, task_params["gripper_mid_pt"], 7:10]) / 2
+
+    angle_seq = np.arctan2(init_pose_seq[:, task_params["gripper_mid_pt"], 2] - mid_point_seq[:, 2], \
+        init_pose_seq[:, task_params["gripper_mid_pt"], 0] - mid_point_seq[:, 0])
+
+    angle_seq = np.full(angle_seq.shape, np.pi) - angle_seq
+    
+    return mid_point_seq, angle_seq
+
+
+def get_action_seq_from_pose(init_pose_seq, delta_g):
+    _, rot_noise_seq = get_center_and_rot_from_pose(init_pose_seq)
+    act_seq = []
+    for rot_noise in rot_noise_seq:
+        act_seq.append(get_action_seq(rot_noise, delta_g))
+
+    act_seq = np.stack(act_seq)
+
+    return act_seq
+
+
+def expand(batch_size, info):
+    length = len(info.shape)
+    if length == 2:
+        info = info.expand([batch_size, -1])
+    elif length == 3:
+        info = info.expand([batch_size, -1, -1])
+    elif length == 4:
+        info = info.expand([batch_size, -1, -1, -1])
+    return info
+
+
+def visualize_sampled_init_pos(init_pose_seqs, reward_seqs, idx, path):
+    n_subplots = init_pose_seqs.shape[1]
+    fig, axs = plt.subplots(1, n_subplots)
+    fig.set_size_inches(8 * n_subplots, 4.8)
+    for i in range(n_subplots):
+        if n_subplots == 1:
+            ax = axs
+        else:
+            ax = axs[i]
+        ax.scatter(init_pose_seqs[:, i, task_params["gripper_mid_pt"], 0], 
+            init_pose_seqs[:, i, task_params["gripper_mid_pt"], 2],
+            c=reward_seqs, cmap=cm.jet)
+
+        ax.set_title(f"GRIP {i+1}")
+        ax.set_xlabel('x coordinate')
+        ax.set_ylabel('z coordinate')
+
+    color_map = cm.ScalarMappable(cmap=cm.jet)
+    color_map.set_array(reward_seqs[idx])
+    plt.colorbar(color_map, ax=axs)
+
+    plt.savefig(path)
+    # plt.show()
+
+
 class Planner(object):
-    def __init__(self, taichi_env, env_init_state, args, n_his, n_particle, n_shape, scene_params, model, dist_func, 
-                use_gpu, use_sim, len_per_grip, len_per_grip_back, n_shapes_per_gripper, n_shapes_floor, 
-                rollout_path, beta_filter=1, env="gripper"):
+    def __init__(self, args, taichi_env, env_init_state, scene_params, n_particle, n_shape, model, all_p, 
+                task_params, use_gpu, rollout_path, env="gripper"):
+        self.args = args
         self.taichi_env = taichi_env
         self.env_init_state = env_init_state
-        self.args = args
-        self.n_his = n_his
+        self.scene_params = scene_params
         self.n_particle = n_particle
         self.n_shape = n_shape
-        self.scene_params = scene_params
-        self.beta_filter = beta_filter
-        self.env = env
         self.model = model
+        self.all_p = all_p
+        self.task_params = task_params
         self.use_gpu = use_gpu
-        self.use_sim = use_sim
-        self.reward_weight = 10.0
-        self.dist_func = dist_func
-
-        self.len_per_grip = len_per_grip
-        self.len_per_grip_back = len_per_grip_back
-        self.n_shapes_per_gripper = n_shapes_per_gripper
-        self.n_shapes_floor = n_shapes_floor
-
         self.rollout_path = rollout_path
+        self.env = env
 
+        self.n_his = args.n_his
+        self.use_sim = args.use_sim
+        self.dist_func = args.rewardtype
         self.n_sample = args.control_sample_size
         self.batch_size = args.control_batch_size
-
-        self.mid_point = np.array([0.5, 0.4, 0.5, 0, 0, 0])
-        self.default_h = 0.14
-        self.sample_radius = 0.25
-        self.gripper_rate = 0.01
-        self.gripper_mid_pt = int((self.n_shapes_per_gripper - 1) / 2)
-
+        self.sample_iter = args.sample_iter
         self.sample_iter_cur = 0
+        self.opt_iter = args.opt_iter
         self.opt_iter_cur = 0
 
-        self.init_pose_sample_size = 100
-        self.delta_g_sample_size = 10
+        self.mid_point = task_params["mid_point"]
+        self.default_h = task_params["default_h"]
+        self.sample_radius = task_params["sample_radius"]
+        self.n_grips = task_params["n_grips"]
+        self.gripper_rate = task_params["gripper_rate"]
+        self.len_per_grip = task_params["len_per_grip"]
+        self.len_per_grip_back = task_params["len_per_grip_back"]
+        self.n_shapes_per_gripper = task_params["n_shapes_per_gripper"]
+        self.n_shapes_floor = task_params["n_shapes_floor"]
+        self.gripper_mid_pt = task_params["gripper_mid_pt"]
 
-        self.n_epochs_GD = 50
-    
+        if args.debug:
+            self.n_sample = 8
+            self.init_pose_sample_size = 4
+            self.delta_g_sample_size = 4
+            self.n_epochs_GD = 3
+        else:
+            self.init_pose_sample_size = 80
+            self.delta_g_sample_size = 4
+            self.n_epochs_GD = 20
+
+
     @profile
-    def trajectory_optimization(
-        self,
-        state_cur,      # [n_his, state_dim]
-        state_goal,     # [state_dim]
-        # act_seq,        # [n_his + n_look_ahead - 1, action_dim]
-        n_look_ahead,
-        n_opt_iter,
-        # action_lower_lim,
-        # action_upper_lim,
-        # action_lower_delta_lim,
-        # action_upper_delta_lim,
-        n_grips,
-        reward_scale_factor=1.0
-    ):
+    def trajectory_optimization(self):
+        init_pose_seq = []
+        act_seq = []
+        state_cur = None
+        for i in range(self.sample_iter):
+            self.sample_iter_cur = i
+
+            n_grips_per_iter = int(self.n_grips / self.sample_iter)
+            start_idx = i * n_grips_per_iter * (self.len_per_grip + self.len_per_grip_back)
+            state_cur_gt = torch.FloatTensor(np.stack(self.all_p[start_idx:start_idx+self.args.n_his]))
+
+            end_idx = min((i + 1) *  n_grips_per_iter * (self.len_per_grip + self.len_per_grip_back) - 1, len(self.all_p) - 1)
+            state_goal = torch.FloatTensor(self.all_p[end_idx]).unsqueeze(0)[:, :self.n_particle, :]
+
+            if state_cur == None:
+                state_cur = state_cur_gt
+            else:
+                if self.use_gpu:
+                    state_cur = state_cur.cuda() 
+                    state_cur_gt = state_cur_gt.cuda()
+
+                state_cur = torch.cat((state_cur_seq_opt, state_cur_gt[:, self.n_particle:, :]), 1)
+        
+            print(f"state_cur: {state_cur.shape}, state_goal: {state_goal.shape}")
+
+            init_pose_seqs_pool, act_seqs_pool = self.sample_action_params(n_grips_per_iter)
+            reward_seqs, state_cur_seqs = self.rollout(init_pose_seqs_pool, act_seqs_pool, state_cur, state_goal)
             
-        n_batch = int(self.n_sample / self.batch_size)
-
-        for i in range(n_opt_iter):
-            self.opt_iter_cur = i
-
-            init_pose_seqs_batch = []
-            act_seqs_batch = []
-            reward_seqs_batch = []
-            state_cur_seqs_batch = []
-            
-            for j, _ in enumerate(tqdm(range(n_batch), total=n_batch)):
-                # print(f"Batch: {j}/{n_batch}")
-                if i == 0 or self.args.opt_algo == 'max':
-                    init_pose_seqs, act_seqs = self.sample_action_params(n_grips)
-                else:
-                    # import pdb; pdb.set_trace()
-                    init_pose_seqs = init_pose_seqs_sample[j*self.batch_size:(j+1)*self.batch_size]
-                    act_seqs = act_seqs_sample[j*self.batch_size:(j+1)*self.batch_size]
-
-                # print(f"Init poses: {init_pose_seqs.shape}")
-                # print(f"Actions: {act_seqs.shape}")
-                
-                # act_seqs = self.sample_action_sequences(
-                #     act_seq,
-                #     action_lower_lim, action_upper_lim,
-                #     action_lower_delta_lim, action_upper_delta_lim)
-
-                if self.use_sim:
-                    state_seqs = self.sim_rollout(init_pose_seqs, act_seqs)
-                else:
-                    state_seqs = self.model_rollout(state_cur, init_pose_seqs, act_seqs, n_look_ahead)
-                    print(state_seqs.shape)
-                reward_seqs = reward_scale_factor * self.evaluate_traj(state_seqs, state_goal)
-                print(f"reward seqs: {reward_seqs}")
-                reward_seqs = reward_seqs.data.cpu().numpy()
-
-                init_pose_seqs_batch.append(init_pose_seqs)
-                act_seqs_batch.append(act_seqs)
-                reward_seqs_batch.append(reward_seqs)
-                state_cur_seqs_batch.append(state_seqs[:, -self.n_his:, :, :])
-
-            init_pose_seqs_batch = np.concatenate(init_pose_seqs_batch, axis=0)
-            act_seqs_batch = np.concatenate(act_seqs_batch, axis=0)
-            reward_seqs_batch = np.concatenate(reward_seqs_batch, axis=0)
-            state_cur_seqs_batch = torch.cat(state_cur_seqs_batch, 0)
-
-            print('update_iter %d/%d, max: %.4f, mean: %.4f, std: %.4f' % (
-                i+1, n_opt_iter, np.max(reward_seqs_batch), np.mean(reward_seqs_batch), np.std(reward_seqs_batch)))
+            print('sampling: max: %.4f, mean: %.4f, std: %.4f' % (np.max(reward_seqs), np.mean(reward_seqs), np.std(reward_seqs)))
 
             if self.args.opt_algo == 'max':
-                init_pose_seq_opt, act_seq_opt, state_cur_seq_opt = self.optimize_action_max(init_pose_seqs_batch, act_seqs_batch, reward_seqs_batch, state_cur_seqs_batch)
+                init_pose_seq_opt, act_seq_opt, state_cur_seq_opt = self.optimize_action_max(init_pose_seqs_pool, act_seqs_pool, reward_seqs, state_cur_seqs)
             elif self.args.opt_algo == 'CEM':
-                if i == n_opt_iter - 1:
-                    init_pose_seq_opt, act_seq_opt, state_cur_seq_opt = self.optimize_action_max(init_pose_seqs_batch, act_seqs_batch, reward_seqs_batch, state_cur_seqs_batch)
-                else:
-                    init_pose_seqs_sample, act_seqs_sample = self.optimize_action_CEM(init_pose_seqs_batch, act_seqs_batch, reward_seqs_batch)
-                    n_batch = int(init_pose_seqs_sample.shape[0] / self.batch_size)
-            elif self.args.opt_algo == 'MPPI':
-                init_pose_seq_opt, act_seq_opt = self.optimize_action_MPPI(init_pose_seqs_batch, act_seqs_batch, reward_seqs_batch)
+                for i in range(self.opt_iter):
+                    self.opt_iter_cur = i
+                    if i == self.opt_iter - 1:
+                        init_pose_seq_opt, act_seq_opt, state_cur_seq_opt = self.optimize_action_max(init_pose_seqs_pool, act_seqs_pool, reward_seqs, state_cur_seqs)
+                    else:
+                        init_pose_seqs_pool, act_seqs_pool = self.optimize_action_CEM(init_pose_seqs_pool, act_seqs_pool, reward_seqs)
+                        reward_seqs, state_cur_seqs = self.rollout(init_pose_seqs_pool, act_seqs_pool, state_cur, state_goal)
             else:
                 raise NotImplementedError
 
-        # act_seq: [n_his + n_look_ahead - 1, action_dim]
-
-        self.sample_iter_cur += 1
-
-        return init_pose_seq_opt, act_seq_opt, state_cur_seq_opt
-
-    def get_pose(self, new_mid_point, rot_noise):
-        x1 = new_mid_point[0] - self.sample_radius * np.cos(rot_noise)
-        y1 = new_mid_point[2] + self.sample_radius * np.sin(rot_noise)
-        x2 = new_mid_point[0] + self.sample_radius * np.cos(rot_noise)
-        y2 = new_mid_point[2] - self.sample_radius * np.sin(rot_noise)
-
-        prim1 = [x1, self.default_h, y1, 1, 0, 0, 0] 
-        prim2 = [x2, self.default_h, y2, 1, 0, 0, 0]
-
-        new_prim1 = []
-        for j in range(self.n_shapes_per_gripper):
-            prim1_tmp = np.concatenate(([prim1[0], prim1[1] + 0.018 * (j-5), prim1[2]], prim1[3:]), axis=None)
-            new_prim1.append(prim1_tmp)
-        new_prim1 = np.stack(new_prim1)
-    
-        new_prim2 = []
-        for j in range(self.n_shapes_per_gripper):
-            prim2_tmp = np.concatenate(([prim2[0], prim2[1] + 0.018 * (j-5), prim2[2]], prim2[3:]), axis=None)
-            new_prim2.append(prim2_tmp)
-        new_prim2 = np.stack(new_prim2)
-
-        init_pose = np.concatenate((new_prim1, new_prim2), axis=1)
-
-        return init_pose
-
-    def get_action_seq(self, rot_noise, delta_g):
-        counter = 0
-        actions = []
+            # print(init_pose.shape, actions.shape)
+            init_pose_seq.append(init_pose_seq_opt)
+            act_seq.append(act_seq_opt)
         
-        while delta_g > 0 and counter < self.len_per_grip:
-            x = self.gripper_rate * np.cos(rot_noise)
-            y = - self.gripper_rate * np.sin(rot_noise)
-            delta_g -= 2 * self.gripper_rate
-            actions.append(np.concatenate([np.array([x/0.02,0,y/0.02]), np.zeros(3), 
-                                            np.array([-x/0.02,0,-y/0.02]), np.zeros(3)]))
-            counter += 1
+        init_pose_seq = np.concatenate(init_pose_seq, axis=0)
+        act_seq = np.concatenate(act_seq, axis=0)
 
-        actions = actions[:self.len_per_grip]
+        return init_pose_seq, act_seq
 
-        for _ in range(self.len_per_grip - len(actions)):
-            actions.append(np.concatenate([np.zeros(3), np.zeros(3), np.zeros(3), np.zeros(3)]))
 
-        counter = 0
-        while counter < self.len_per_grip_back:
-            x = - self.gripper_rate * np.cos(rot_noise)
-            y = self.gripper_rate * np.sin(rot_noise)
-            actions.append(np.concatenate([np.array([x/0.02,0,y/0.02]), np.zeros(3), 
-                                            np.array([-x/0.02,0,-y/0.02]), np.zeros(3)]))
-            counter += 1
-
-        return actions
-
-    def get_center_and_rot_from_pose(self, init_pose_seq):
-        # import pdb; pdb.set_trace()
-        mid_point_seq = (init_pose_seq[:, self.gripper_mid_pt, :3] + init_pose_seq[:, self.gripper_mid_pt, 7:10]) / 2
-        # mid_point_x = np.full(init_pose_seq.shape[0], self.mid_point[0])
+    def rollout(self, init_pose_seqs_pool, act_seqs_pool, state_cur, state_goal):
+        reward_seqs_rollout = []
+        state_cur_seqs_rollout = []
         
-        angle_seq = np.arctan2(init_pose_seq[:, self.gripper_mid_pt, 2] - mid_point_seq[:, 2], \
-            init_pose_seq[:, self.gripper_mid_pt, 0] - mid_point_seq[:, 0])
+        n_batch = int(init_pose_seqs_pool.shape[0] / self.batch_size)
+        for i, _ in enumerate(tqdm(range(n_batch), total=n_batch)):
+            # print(f"Batch: {i}/{n_batch}")
+            init_pose_seqs = init_pose_seqs_pool[i*self.batch_size:(i+1)*self.batch_size]
+            act_seqs = act_seqs_pool[i*self.batch_size:(i+1)*self.batch_size]
 
-        angle_seq = np.full(angle_seq.shape, np.pi) - angle_seq
-        
-        return mid_point_seq, angle_seq
+            if self.use_sim:
+                state_seqs = self.sim_rollout(init_pose_seqs, act_seqs)
+            else:
+                state_seqs = self.model_rollout(state_cur, init_pose_seqs, act_seqs)
+            reward_seqs = self.evaluate_traj(state_seqs, state_goal)
+            print(f"reward seqs: {reward_seqs}")
+            reward_seqs = reward_seqs.data.cpu().numpy()
 
-    def get_action_seq_from_pose(self, init_pose_seq, delta_g):
-        _, rot_noise_seq = self.get_center_and_rot_from_pose(init_pose_seq)
-        act_seq = []
-        for rot_noise in rot_noise_seq:
-            act_seq.append(self.get_action_seq(rot_noise, delta_g))
+            reward_seqs_rollout.append(reward_seqs)
+            state_cur_seqs_rollout.append(state_seqs[:, -self.n_his:, :, :])
 
-        act_seq = np.stack(act_seq)
+        reward_seqs_rollout = np.concatenate(reward_seqs_rollout, axis=0)
+        state_cur_seqs_rollout = torch.cat(state_cur_seqs_rollout, 0)
 
-        return act_seq
+        return reward_seqs_rollout, state_cur_seqs_rollout
+
 
     def sample_action_params(self, n_grips):
         init_pose_seqs = []
         act_seqs = []
         n_sampled = 0
-        while n_sampled < self.batch_size:
+        while n_sampled < self.n_sample:
             init_pose_seq = []
             act_seq = []
             for i in range(n_grips):
                 p_noise = np.clip(np.array([0, 0, np.random.randn()*0.06]), a_max=0.1, a_min=-0.1)
                 new_mid_point = self.mid_point[:3] + p_noise
                 rot_noise = np.random.uniform(0, np.pi)
-                
-                init_pose = self.get_pose(new_mid_point, rot_noise)
+
+                init_pose = get_pose(new_mid_point, rot_noise)
                 # print(init_pose.shape)
                 init_pose_seq.append(init_pose)
 
                 delta_g = np.random.uniform(0.27, 0.35)
-                actions = self.get_action_seq(rot_noise, delta_g)
+                actions = get_action_seq(rot_noise, delta_g)
                 # print(actions.shape)
                 act_seq.append(actions)
 
@@ -251,94 +307,12 @@ class Planner(object):
 
         return np.stack(init_pose_seqs), np.stack(act_seqs)
 
-    def sample_action_sequences(
-        self,
-        init_act_seq,   # [n_his + n_look_ahead - 1, action_dim]
-        action_lower_lim,
-        action_upper_lim,
-        action_lower_delta_lim,
-        action_upper_delta_lim,
-        noise_type='normal'):
-        action_dim = init_act_seq.shape[-1]
-        beta_filter = self.beta_filter
-
-        # act_seqs: [n_sample, N, action_dim]
-        # act_seqs_delta: [n_sample, N - 1, action_dim]
-        act_seqs = np.stack([init_act_seq] * self.n_sample)
-        act_seqs_delta = np.stack([init_act_seq[1:] - init_act_seq[:-1]] * self.n_sample)
-
-        # [n_sample, action_dim]
-        act_residual = np.zeros([self.n_sample, action_dim])
-
-        # only add noise to future actions
-        # init_act_seq[:(n_his - 1)] are past actions
-        # The action we are optimizing for the current timestep is act_seq[n_his - 1]
-
-        # actions that go as input to the dynamics network
-        for i in range(self.n_his - 2, init_act_seq.shape[0] - 1):
-            if noise_type == "normal":
-                sigma = 0.01
-                noise_sample = np.random.normal(0, sigma, (self.n_sample, 3))
-            else:
-                raise ValueError("unknown noise type: %s" % (noise_type))
-
-            act_residual = beta_filter * noise_sample + act_residual * (1. - beta_filter)
-            act_seqs_delta[:, i] += act_residual
-
-            # clip delta lim
-            act_seqs_delta[:, i] = np.clip(
-                act_seqs_delta[:, i], action_lower_delta_lim, action_upper_delta_lim)
-
-            act_seqs[:, i + 1] = act_seqs[:, i] + act_seqs_delta[:, i]
-
-            # clip absolute lim
-            act_seqs[:, i + 1] = np.clip(
-                act_seqs[:, i + 1], action_lower_lim, action_upper_lim)
-
-        # act_seqs: [n_sample, -1, action_dim]
-        # print(act_seqs.shape)
-        return act_seqs
-
-    def expand(self, info):
-        length = len(info.shape)
-        if length == 2:
-            info = info.expand([self.batch_size, -1])
-        elif length == 3:
-            info = info.expand([self.batch_size, -1, -1])
-        elif length == 4:
-            info = info.expand([self.batch_size, -1, -1, -1])
-        return info
-
-    def state_action(self, state_cur, act_cur):
-        state = state_cur[1]  # n_sample x n_his x (n_particle + n_shape) x state_dim
-        if self.env == "gripper":
-            shapes = state[:, :, self.n_particle+1:, :] ### TODO: This is for gripper
-        else:
-            raise NotImplementedError
-        shapes_diff = shapes[:, 1:, :, :] - shapes[:, :-1, :, :]
-        shapes_diff_act = act_cur * 0.02
-        pdb.set_trace()
 
     def prepare_rollout(self):
-        B = self.batch_size
         self.scene_params = self.scene_params.expand(self.batch_size, -1)
         self.group_gt = get_env_group(self.args, self.n_particle, self.scene_params, use_gpu=self.use_gpu)
-        self.memory_init = self.model.init_memory(B, self.n_particle + self.n_shape)
+        self.memory_init = self.model.init_memory(self.batch_size, self.n_particle + self.n_shape)
 
-    def expand_inputs(self, inputs):
-        inputs_new = []
-        for infos in inputs:
-            if infos is not None:
-                if isinstance(infos, list):
-                    my_info = []
-                    for info in infos:
-                        info = self.expand(info)
-                        my_info.append(info)
-                    infos = my_info
-                else:
-                    infos = self.expand(infos)
-            inputs_new.append(infos)
-        return inputs_new
 
     @profile
     def sim_rollout(self, init_pose_seqs, act_seqs):
@@ -372,13 +346,14 @@ class Planner(object):
 
         return state_seq_batch
 
+
     @profile
     def model_rollout(
         self,
         state_cur,      # [1, n_his, state_dim]
         init_pose_seqs_np,
         act_seqs_np,    # [n_sample, -1, action_dim]
-        n_look_ahead):
+    ):
 
         init_pose_seqs = torch.FloatTensor(init_pose_seqs_np).float()
         act_seqs = torch.FloatTensor(act_seqs_np).float()
@@ -386,14 +361,11 @@ class Planner(object):
             act_seqs = act_seqs.cuda()
             init_pose_seqs = init_pose_seqs.cuda()
 
-        # states_cur: [n_sample, n_his, state_dim]
-
         states_pred_list = []
-        # assert n_look_ahead == act_seqs.shape[1] - self.n_his + 1
         if self.use_gpu:
-            state_cur = self.expand(state_cur.unsqueeze(0)).cuda()
+            state_cur = expand(self.batch_size, state_cur.unsqueeze(0)).cuda()
         else:
-            state_cur = self.expand(state_cur.unsqueeze(0))
+            state_cur = expand(self.batch_size, state_cur.unsqueeze(0))
 
         # print(state_cur.shape)
 
@@ -441,11 +413,7 @@ class Planner(object):
                 Rs_curs = torch.cat(Rs_curs, dim=0)
 
                 inputs = [attrs, state_cur, Rr_curs, Rs_curs, self.memory_init, self.group_gt, None]
-                # inputs = self.expand_inputs(inputs)
 
-                # act_cur = act_seqs[:, i:i + self.n_his]
-                # state_cur_act = self.state_action(state_new, act_cur)
-                # states_pred: [n_sample, state_dim]
                 pred_pos, pred_motion_norm, std_cluster  = self.model.predict_dynamics(inputs)
                 
                 shape1 += act_seqs[:, i, j, :3].unsqueeze(1).expand(-1, self.n_shapes_per_gripper, -1) * 0.02
@@ -467,6 +435,7 @@ class Planner(object):
         states_pred_tensor = torch.stack(states_pred_list, dim=1)
 
         return states_pred_tensor #.data.cpu().numpy()
+
 
     def evaluate_traj(
         self,
@@ -494,6 +463,7 @@ class Planner(object):
         # print(reward_seqs)
         return reward_seqs
 
+
     def optimize_action_max(
         self,
         init_pose_seqs,
@@ -505,7 +475,7 @@ class Planner(object):
         idx = np.argsort(reward_seqs)
         print(f"Selected idx: {idx[-1]} with loss {reward_seqs[idx[-1]]}")
 
-        self.visualize_sampled_init_pos(init_pose_seqs, reward_seqs, idx, \
+        visualize_sampled_init_pos(init_pose_seqs, reward_seqs, idx, \
             os.path.join(self.rollout_path, f'plot_max_{self.sample_iter_cur}'))
 
         # self.visualize_sample_and_loss(init_pose_seqs, reward_seqs, idx, 1, \
@@ -527,7 +497,7 @@ class Planner(object):
         # print(f"Selected top init pose seqs: {init_pose_seqs[idx[-best_k:], :, self.gripper_mid_pt, :7]}")
 
         # delta_g_seqs = act_seqs[]
-        self.visualize_sampled_init_pos(init_pose_seqs, reward_seqs, idx, \
+        visualize_sampled_init_pos(init_pose_seqs, reward_seqs, idx, \
             os.path.join(self.rollout_path, f'plot_cem_s{self.sample_iter_cur}_o{self.opt_iter_cur}'))
 
         init_pose_seqs_pool = []
@@ -544,7 +514,7 @@ class Planner(object):
                 n_init_pose_samples = self.init_pose_sample_size - len(init_pose_seqs_pool) + 1
             
             while j < n_init_pose_samples:
-                mid_point_seq, angle_seq = self.get_center_and_rot_from_pose(init_pose_seq)
+                mid_point_seq, angle_seq = get_center_and_rot_from_pose(init_pose_seq)
                 init_pose_seq_sample = []
                 for k in range(init_pose_seq.shape[0]):
                     p_noise = np.clip(np.array([0, 0, np.random.randn()*0.03]), a_max=0.1, a_min=-0.1)
@@ -552,7 +522,7 @@ class Planner(object):
                 
                     new_mid_point = mid_point_seq[k, :3] + p_noise
                     new_angle = angle_seq[k] + rot_noise
-                    init_pose = self.get_pose(new_mid_point, new_angle)
+                    init_pose = get_pose(new_mid_point, new_angle)
                     init_pose_seq_sample.append(init_pose)
 
                     # import pdb; pdb.set_trace()
@@ -566,7 +536,7 @@ class Planner(object):
         for init_pose_seq_sample in init_pose_seqs_pool:
             for i in range(self.delta_g_sample_size):
                 delta_g_sample = np.random.uniform(0.27, 0.35)
-                act_seq_sample = self.get_action_seq_from_pose(init_pose_seq_sample, delta_g_sample)
+                act_seq_sample = get_action_seq_from_pose(init_pose_seq_sample, delta_g_sample)
 
                 act_seqs_pool.append(act_seq_sample)
 
@@ -588,7 +558,7 @@ class Planner(object):
     #     for epoch in range(self.n_epochs_GD):
     #         progress_bar = tqdm(init_pose_seqs, desc=f"Epoch {epoch}")
     #         for init_pose_seq in progress_bar:
-    #             mid_point_seq, angle_seq = self.get_center_and_rot_from_pose(init_pose_seq)
+    #             mid_point_seq, angle_seq = get_center_and_rot_from_pose(init_pose_seq)
     
     #             total_loss = 0
     #             batch_count = 0
@@ -604,88 +574,6 @@ class Planner(object):
 
     #             total_batch += 1
 
-    def visualize_sampled_init_pos(self, init_pose_seqs, reward_seqs, idx, path):
-        n_subplots = init_pose_seqs.shape[1]
-        fig, axs = plt.subplots(1, n_subplots)
-        fig.set_size_inches(8 * n_subplots, 4.8)
-        for i in range(n_subplots):
-            if n_subplots == 1:
-                ax = axs
-            else:
-                ax = axs[i]
-            ax.scatter(init_pose_seqs[:, i, self.gripper_mid_pt, 0], 
-                init_pose_seqs[:, i, self.gripper_mid_pt, 2],
-                c=reward_seqs, cmap=cm.jet)
-
-            ax.set_title(f"GRIP {i+1}")
-            ax.set_xlabel('x coordinate')
-            ax.set_ylabel('z coordinate')
-
-        color_map = cm.ScalarMappable(cmap=cm.jet)
-        color_map.set_array(reward_seqs[idx])
-        plt.colorbar(color_map, ax=axs)
-
-        plt.savefig(path)
-        # plt.show()
-
-    def visualize_sample_and_loss(self, init_pose_seqs, reward_seqs, idx, best_k, path):
-        rot_seqs = []
-        for seq in init_pose_seqs:
-            rot_seq = self.get_rot_from_pose(seq)
-            rot_seqs.append(rot_seq)
-        rot_seqs = np.stack(rot_seqs)
-        print(f"selected rot_seqs: {rot_seqs[idx[-best_k:]].shape}")
-
-        color = reward_seqs
-
-        # creating figures
-        fig = plt.figure(figsize=(10, 10))
-        ax = fig.add_subplot(111, projection='3d')
-
-        # setting color bar
-        color_map = cm.ScalarMappable(cmap=cm.jet)
-        color_map.set_array(color)
-
-        # creating the heatmap
-        # ax.scatter(rot_seqs[idx[-best_k:], 0], rot_seqs[idx[-best_k:], 1], rot_seqs[idx[-best_k:], 2], 
-        #                 marker='o', s=200, color=color)
-        ax.scatter(rot_seqs[:, 0], rot_seqs[:, 1], rot_seqs[:, 2], marker='o', s=200, c=color)
-        plt.colorbar(color_map)
-
-        # adding title and labels
-        ax.set_title("3D Heatmap")
-        ax.set_xlabel('1st grip')
-        ax.set_ylabel('2nd grip')
-        ax.set_zlabel('3rd grip')
-        
-        # plt.savefig(path)
-        plt.show()
-
-def set_parameters(env: TaichiEnv, yield_stress, E, nu):
-        env.simulator.yield_stress.fill(yield_stress)
-        _mu, _lam = E / (2 * (1 + nu)), E * nu / ((1 + nu) * (1 - 2 * nu))  # Lame parameters
-        env.simulator.mu.fill(_mu)
-        env.simulator.lam.fill(_lam)
-
-def set_action_limit(all_actions, ctrl_init_idx):
-    action_lower_lim = np.min(np.array(all_actions[ctrl_init_idx - 1:]), 0)
-    action_upper_lim = np.max(np.array(all_actions[ctrl_init_idx - 1:]), 0)
-    action_lim_range = action_upper_lim - action_lower_lim
-    action_lower_lim -= action_lim_range * 0.1
-    action_upper_lim += action_lim_range * 0.1
-    print('action_lower_lim', action_lower_lim)
-    print('action_upper_lim', action_upper_lim)
-    action_lower_delta_lim = np.min(np.array(all_actions[ctrl_init_idx:]) - np.array(all_actions[ctrl_init_idx - 1:-1]),
-                                    0)
-    action_upper_delta_lim = np.max(np.array(all_actions[ctrl_init_idx:]) - np.array(all_actions[ctrl_init_idx - 1:-1]),
-                                    0)
-    action_delta_lim_range = action_upper_delta_lim - action_lower_delta_lim
-    action_lower_delta_lim -= action_delta_lim_range * 0.1
-    action_upper_delta_lim += action_delta_lim_range * 0.1
-    print('action_lower_delta_lim', action_lower_delta_lim)
-    print('action_upper_delta_lim', action_upper_delta_lim)
-
-    return action_lower_lim, action_upper_lim, action_lower_delta_lim, action_upper_delta_lim
 
 @profile
 def main():
@@ -699,8 +587,12 @@ def main():
         test_name = f'sim_{args.use_sim}+{args.rewardtype}+gt_action_{args.gt_action}'
     else:
         test_name = f'sim_{args.use_sim}+{args.rewardtype}+sample_iter_{args.sample_iter}+opt_{args.opt_algo}_{args.opt_iter}'
-    control_out_dir = os.path.join(args.outf, 'control', '000', test_name)
+
+    vid_idx = 20
+    control_out_dir = os.path.join(args.outf, 'control', str(vid_idx).zfill(3), test_name)
     os.system('mkdir -p ' + control_out_dir)
+
+    use_gpu = True
 
     tee = Tee(os.path.join(control_out_dir, 'control.log'), 'w')
 
@@ -726,25 +618,14 @@ def main():
         env.primitives.primitives[0].set_state(0, [0.3, 0.4, 0.5, 1, 0, 0, 0])
         env.primitives.primitives[1].set_state(0, [0.7, 0.4, 0.5, 1, 0, 0, 0])
         
+        def set_parameters(env: TaichiEnv, yield_stress, E, nu):
+            env.simulator.yield_stress.fill(yield_stress)
+            _mu, _lam = E / (2 * (1 + nu)), E * nu / ((1 + nu) * (1 - 2 * nu))  # Lame parameters
+            env.simulator.mu.fill(_mu)
+            env.simulator.lam.fill(_lam)
+
         set_parameters(env, yield_stress=200, E=5e3, nu=0.2) # 200， 5e3, 0.2
 
-        # env.render('plt')
-    
-    use_gpu = True
-    use_sim = args.use_sim
-    task_name = 'gripper'
-    n_look_ahead = 20
-
-    rollout_dir = f"./data/data_ngrip_new/train/"
-    n_vid = 1
-    data_names = ['positions', 'shape_quats', 'scene_params']
-
-    len_per_grip = 20
-    len_per_grip_back = 10
-    n_shapes_floor = 9
-    n_shapes_per_gripper = 11
-
-    gripper_mid_pt = int((n_shapes_per_gripper - 1) / 2)
 
     # load dynamics model
     model = Model(args, use_gpu)
@@ -767,168 +648,108 @@ def main():
 
 
     # load data (state, actions)
-    unit_quat_pad = np.tile([1, 0, 0, 0], (n_shapes_per_gripper, 1))
-    ctrl_init_idx = args.n_his
-    # n_update_delta = 1
-    # n_update_iter_init = 1
-    # n_update_iter = 1
+    unit_quat_pad = np.tile([1, 0, 0, 0], (task_params["n_shapes_per_gripper"], 1))
+    task_name = 'gripper'
+    data_names = ['positions', 'shape_quats', 'scene_params']
+    rollout_dir = f"./data/data_ngrip_new/train/"
+    steps_per_grip = task_params["len_per_grip"] + task_params["len_per_grip_back"]
 
-    for i in range(n_vid):
-        B = 1
-        n_particle, n_shape = 0, 0
-        init_pose_gt = []
-        all_p = []
-        all_s = []
-        act_seq_gt = []
-        actions = []
-        for t in range(args.time_step):
-            if task_name == "gripper":
-                frame_name = str(t) + '.h5'
-                if args.gt_state_goal:
-                    frame_name = 'gt_' + frame_name
-                if args.shape_aug:
-                    frame_name = 'shape_' + frame_name
-                frame_path = os.path.join(rollout_dir, str(i).zfill(3), frame_name)
+    init_pose_gt = []
+    all_p = []
+    all_s = []
+    act_seq_gt = []
+    actions = []
+    for t in range(args.time_step):
+        if task_name == "gripper":
+            frame_name = str(t) + '.h5'
+            if args.gt_state_goal:
+                frame_name = 'gt_' + frame_name
+            if args.shape_aug:
+                frame_name = 'shape_' + frame_name
+            frame_path = os.path.join(rollout_dir, str(vid_idx).zfill(3), frame_name)
+        else:
+            raise NotImplementedError
+        this_data = load_data(data_names, frame_path)
+
+        n_particle, n_shape, scene_params = get_scene_info(this_data)
+        scene_params = torch.FloatTensor(scene_params).unsqueeze(0)
+        g1_idx = n_particle + task_params["n_shapes_floor"]
+        g2_idx = g1_idx + task_params["n_shapes_per_gripper"]
+
+        states = this_data[0]
+        
+        if t >= 1:
+            all_p.append(states)
+            all_s.append(this_data[1])
+
+            action = np.concatenate([(states[g1_idx] - prev_states[g1_idx]) / 0.02, np.zeros(3),
+                                    (states[g2_idx] - prev_states[g2_idx]) / 0.02, np.zeros(3)])
+        
+            if len(actions) == task_params["len_per_grip"] - 1:
+                actions.insert(0, actions[0])
+            elif len(actions) == steps_per_grip - 1:
+                actions.append(actions[-1])
             else:
-                raise NotImplementedError
-            this_data = load_data(data_names, frame_path)
-            if n_particle == 0 and n_shape == 0:
-                n_particle, n_shape, scene_params = get_scene_info(this_data)
-                scene_params = torch.FloatTensor(scene_params).unsqueeze(0)
-                g1_idx = n_particle + n_shapes_floor
-                g2_idx = g1_idx + n_shapes_per_gripper
+                actions.append(action)
 
-            states = this_data[0]
-            
-            if t >= 1:
-                all_p.append(states)
-                all_s.append(this_data[1])
+            if t == 1: actions.insert(0, actions[0])
+            if t == args.time_step - 1: actions.append(actions[-1])
 
-                action = np.concatenate([(states[g1_idx] - prev_states[g1_idx]) / 0.02, np.zeros(3),
-                                        (states[g2_idx] - prev_states[g2_idx]) / 0.02, np.zeros(3)])
-            
-                if len(actions) == len_per_grip - 1:
-                    actions.insert(0, actions[0])
-                elif len(actions) == len_per_grip + len_per_grip_back - 1:
-                    actions.append(actions[-1])
-                else:
-                    actions.append(action)
+        prev_states = states
 
-                if t == 1: actions.insert(0, actions[0])
-                if t == args.time_step - 1: actions.append(actions[-1])
+        if t % steps_per_grip == 0:
+            init_pose_gt.append(np.concatenate((states[g1_idx: g2_idx], unit_quat_pad, states[g2_idx:], unit_quat_pad), axis=1))
+        
+        if len(actions) == steps_per_grip:
+            # print(f"Actions: {actions}")
+            act_seq_gt.append(actions)
+            # import pdb; pdb.set_trace()
+            # hard code
+            init_pose_gt[-1] = np.concatenate((init_pose_gt[-1][:, :3] - 2 * 0.02 * np.tile(actions[0][:3], (init_pose_gt[-1].shape[0], 1)), unit_quat_pad, \
+                init_pose_gt[-1][:, 7:10] - 2 * 0.02 * np.tile(actions[0][6:9], (init_pose_gt[-1].shape[0], 1)), unit_quat_pad), axis=1)
+            actions = []
 
-            prev_states = states
-
-            if t % (len_per_grip + len_per_grip_back) == 0:
-                init_pose_gt.append(np.concatenate((states[g1_idx: g2_idx], unit_quat_pad, states[g2_idx:], unit_quat_pad), axis=1))
-            
-            if len(actions) == len_per_grip + len_per_grip_back:
-                # print(f"Actions: {actions}")
-                act_seq_gt.append(actions)
-                # import pdb; pdb.set_trace()
-                # hard code
-                init_pose_gt[-1] = np.concatenate((init_pose_gt[-1][:, :3] - 2 * 0.02 * np.tile(actions[0][:3], (init_pose_gt[-1].shape[0], 1)), unit_quat_pad, \
-                    init_pose_gt[-1][:, 7:10] - 2 * 0.02 * np.tile(actions[0][6:9], (init_pose_gt[-1].shape[0], 1)), unit_quat_pad), axis=1)
-                actions = []
-
-            prev_states = states
-
-
-    # actions = act_seq_gt[:args.n_his - 1]
-    # # duplicate the last action #n_look_ahead times
-    # for i in range(n_look_ahead):
-    #     actions.append(actions[-1])
-    # actions = np.array(actions)
-
-    # action_lower_lim, action_upper_lim, action_lower_delta_lim, action_upper_delta_lim = \
-    #     set_action_limit(all_actions=act_seq_gt, ctrl_init_idx=ctrl_init_idx)
+        prev_states = states
 
     init_pose_gt = np.expand_dims(init_pose_gt, axis=0)
     act_seq_gt = np.expand_dims(act_seq_gt, axis=0)
 
     print(f"GT shape: init pose: {init_pose_gt.shape}; actions: {act_seq_gt.shape}")
-    print(f"GT init pose: {init_pose_gt[0, :, gripper_mid_pt, :7]}")
+    print(f"GT init pose: {init_pose_gt[0, :, task_params['gripper_mid_pt'], :7]}")
     # print(act_seq_gt)
 
-    planner = Planner(taichi_env=env, env_init_state=state, args=args, n_his=args.n_his, n_particle=n_particle, n_shape=n_shape, 
-                    scene_params=scene_params, model=model, dist_func=args.rewardtype, use_gpu=use_gpu, use_sim=use_sim,
-                    len_per_grip=len_per_grip, len_per_grip_back=len_per_grip_back, 
-                    n_shapes_per_gripper=n_shapes_per_gripper, n_shapes_floor=n_shapes_floor,
-                    rollout_path=control_out_dir)
+
+    planner = Planner(args=args, taichi_env=env, env_init_state=state, scene_params=scene_params, n_particle=n_particle, 
+                    n_shape=n_shape, model=model, all_p=all_p, task_params=task_params, use_gpu=use_gpu, rollout_path=control_out_dir)
+
     planner.prepare_rollout()
 
-    st_idx = ctrl_init_idx
-    ed_idx = ctrl_init_idx + 1 # + n_look_ahead
-    
-    ### We now have n_his states, n_his - 1 actions
-    for i in range(st_idx, ed_idx):
-        # print("\n### Step %d/%d" % (i, ed_idx))
-        if i == st_idx:
-            # update the action sequence every n_update_delta iterations
-            with torch.set_grad_enabled(False):
-                if args.gt_action:
-                    state_cur = torch.FloatTensor(np.stack(all_p[:args.n_his]))
-                    state_goal = torch.FloatTensor(all_p[-1]).unsqueeze(0)[:, :n_particle, :]
-                    if use_sim:
-                        state_seqs = planner.sim_rollout(init_pose_gt, act_seq_gt)
-                    else:
-                        state_seqs = planner.model_rollout(state_cur, init_pose_gt, act_seq_gt, n_look_ahead)
-                    reward_seqs = planner.evaluate_traj(state_seqs, state_goal)
-                    print(f"GT reward: {reward_seqs}")
-                    init_pose_seq = init_pose_gt[0]
-                    act_seq = act_seq_gt[0]
-                else:
-                    init_pose_seq = []
-                    act_seq = []
-                    state_cur = None
-                    for i in range(args.sample_iter):
-                        n_grips_per_iter = int(args.n_grips / args.sample_iter)
-                        start_idx = i * n_grips_per_iter * (len_per_grip + len_per_grip_back)
-                        state_cur_gt = torch.FloatTensor(np.stack(all_p[start_idx:start_idx+args.n_his]))
+    with torch.set_grad_enabled(False):
+        if args.gt_action:
+            state_cur = torch.FloatTensor(np.stack(all_p[:args.n_his]))
+            state_goal = torch.FloatTensor(all_p[-1]).unsqueeze(0)[:, :n_particle, :]
+            if args.use_sim:
+                state_seqs = planner.sim_rollout(init_pose_gt, act_seq_gt)
+            else:
+                init_pose_gt_batch = np.repeat(init_pose_gt, args.control_batch_size, axis=0)
+                act_seq_gt_batch = np.repeat(act_seq_gt, args.control_batch_size, axis=0)
+                state_seqs = planner.model_rollout(state_cur, init_pose_gt_batch, act_seq_gt_batch)
+            reward_seqs = planner.evaluate_traj(state_seqs, state_goal)
+            print(f"GT reward: {reward_seqs}")
+            init_pose_seq = init_pose_gt[0]
+            act_seq = act_seq_gt[0]
+        else:
+            init_pose_seq, act_seq = planner.trajectory_optimization()
 
-                        end_idx = min((i + 1) *  n_grips_per_iter * (len_per_grip + len_per_grip_back) - 1, len(all_p) - 1)
-                        state_goal = torch.FloatTensor(all_p[end_idx]).unsqueeze(0)[:, :n_particle, :]
-
-                        if state_cur == None:
-                            state_cur = state_cur_gt
-                        else:
-                            if use_gpu:
-                                state_cur = state_cur.cuda() 
-                                state_cur_gt = state_cur_gt.cuda()
-
-                            state_cur = torch.cat((state_cur, state_cur_gt[:, n_particle:, :]), 1)
-                    
-                        print(f"state_cur: {state_cur.shape}, state_goal: {state_goal.shape}")
-
-                        init_pose, actions, state_cur = planner.trajectory_optimization(
-                            state_cur=state_cur,
-                            state_goal=state_goal,
-                            # act_seq=actions[i-args.n_his:],
-                            n_look_ahead=n_look_ahead - (i - ctrl_init_idx),
-                            n_opt_iter=args.opt_iter,
-                            # action_lower_lim=action_lower_lim,
-                            # action_upper_lim=action_upper_lim,
-                            # action_lower_delta_lim=action_lower_delta_lim,
-                            # action_upper_delta_lim=action_upper_delta_lim,
-                            n_grips=n_grips_per_iter
-                        )
-
-                        # print(init_pose.shape, actions.shape)
-                        init_pose_seq.append(init_pose)
-                        act_seq.append(actions)
-                    
-                    init_pose_seq = np.concatenate(init_pose_seq, axis=0)
-                    act_seq = np.concatenate(act_seq, axis=0)
-
-            print(init_pose_seq[:, gripper_mid_pt, :7])
-            print(init_pose_seq.shape, act_seq.shape)
+    print(init_pose_seq[:, task_params["gripper_mid_pt"], :7])
+    print(init_pose_seq.shape, act_seq.shape)
 
 
     env.set_state(**state)
 
     for i in range(act_seq.shape[0]):
-        env.primitives.primitives[0].set_state(0, init_pose_seq[i, gripper_mid_pt, :7])
-        env.primitives.primitives[1].set_state(0, init_pose_seq[i, gripper_mid_pt, 7:])
+        env.primitives.primitives[0].set_state(0, init_pose_seq[i, task_params["gripper_mid_pt"], :7])
+        env.primitives.primitives[1].set_state(0, init_pose_seq[i, task_params["gripper_mid_pt"], 7:])
         for j in range(act_seq.shape[1]):
             true_idx = i * act_seq.shape[1] + j
             env.step(act_seq[i][j])
