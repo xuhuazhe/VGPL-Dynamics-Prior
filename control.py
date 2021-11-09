@@ -237,7 +237,8 @@ class Planner(object):
                         init_pose_seqs_pool, act_seqs_pool = self.optimize_action_CEM(init_pose_seqs_pool, act_seqs_pool, reward_seqs)
                         reward_seqs, state_cur_seqs = self.rollout(init_pose_seqs_pool, act_seqs_pool, state_cur, state_goal)
             elif self.args.opt_algo == "GD":
-                init_pose_seq_opt, act_seq_opt = self.optimize_action_GD(init_pose_seqs_pool, act_seqs_pool, reward_seqs, state_cur, state_goal)
+                with torch.set_grad_enabled(True):
+                    init_pose_seq_opt, act_seq_opt = self.optimize_action_GD(init_pose_seqs_pool, act_seqs_pool, reward_seqs, state_cur, state_goal)
             else:
                 raise NotImplementedError
 
@@ -385,7 +386,8 @@ class Planner(object):
                 max_n_rel = 0
                 for k in range(self.batch_size):
                     # pdb.set_trace()
-                    attr, _, Rr_cur, Rs_cur, cluster_onehot = prepare_input(state_cur[k][-1].detach().cpu().numpy(), self.n_particle,
+                    state_cur_last = state_cur[k][-1]
+                    attr, _, Rr_cur, Rs_cur, cluster_onehot = prepare_input(state_cur_last.cpu().numpy(), self.n_particle,
                                                                             self.n_shape, self.args, stdreg=self.args.stdreg)
                     if self.use_gpu:
                         attr = attr.cuda()
@@ -575,14 +577,14 @@ class Planner(object):
         # import pdb; pdb.set_trace()
         best_gap = np.linalg.norm(prim_1_pos - prim_2_pos, axis=1)
 
-        mid_point = torch.tensor(best_mid_point_seq, requires_grad=True)
-        angle = torch.tensor(best_angle_seq, requires_grad=True)
-        gap = torch.tensor(best_gap, requires_grad=True)
-
         if self.use_gpu:
-            mid_point = mid_point.cuda()
-            angle = angle.cuda()
-            gap = gap.cuda()
+            device = "cuda"
+        else:
+            device = "cpu"
+
+        mid_point = torch.tensor(best_mid_point_seq, requires_grad=True, device=device)
+        angle = torch.tensor(best_angle_seq, requires_grad=True, device=device)
+        gap = torch.tensor(best_gap, requires_grad=True, device=device)
 
         optimizer = torch.optim.Adam([mid_point, angle, gap], lr=lr)
 
@@ -592,7 +594,8 @@ class Planner(object):
         for epoch in range(self.n_epochs_GD):
             progress_bar = tqdm(init_pose_seqs, desc=f"Epoch {epoch}")
             for i, init_pose_seq in enumerate(progress_bar):
-                _, state_seqs = self.rollout(init_pose_seq, act_seqs[i], state_cur, state_goal)
+                with torch.no_grad():
+                    _, state_seqs = self.rollout(init_pose_seq, act_seqs[i], state_cur, state_goal)
 
                 # import pdb; pdb.set_trace()
                 state_goal_expanded = expand(self.batch_size, state_goal)
@@ -764,7 +767,7 @@ def main():
 
     planner.prepare_rollout()
 
-    with torch.set_grad_enabled(args.opt_algo == 'GD'):
+    with torch.set_grad_enabled(False):
         if args.gt_action:
             state_cur = torch.FloatTensor(np.stack(all_p[:args.n_his]))
             state_goal = torch.FloatTensor(all_p[-1]).unsqueeze(0)[:, :n_particle, :]
