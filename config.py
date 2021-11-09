@@ -32,6 +32,7 @@ parser.add_argument('--emd_weight', type=float, default=0.0)
 parser.add_argument('--chamfer_weight', type=float, default=0.0)
 parser.add_argument('--curriculum', type=int, default=0)
 parser.add_argument('--noisy_his', type=int, default=0)
+parser.add_argument('--special_noise_weight', type=float, default=0.0)
 
 parser.add_argument('--outf', default='files')
 parser.add_argument('--outf_eval', default='')

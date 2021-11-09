@@ -49,7 +49,8 @@ python train.py \
 	--ckp_per_iter 10000 \
 	--curriculum 0 \
 	--noisy_his 0 \
-	--pstep 3 \
+	--pstep 2 \
+	--special_noise_weight 0.05 \
 	--losstype $1 \
 	--sequence_length $2 \
 	--emd_weight $3 \

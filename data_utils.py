@@ -888,8 +888,16 @@ class PhysicsFleXDataset(Dataset):
 
                 if t < args.n_his:
                     # add noise to observation frames - idx smaller than n_his
-                    noise = np.random.randn(n_particle, 3) * args.std_d * args.augment_ratio
-                    particles[t][:n_particle] += noise
+                    if args.special_noise_weight > 0:
+                        target_index = np.random.randint(n_particle)
+                        change_index = np.random.randint(n_particle, size=50)
+                        vector_dist = particles[t][:n_particle] - particles[t][target_index]
+                        particles[t][change_index] += vector_dist[change_index] * args.special_noise_weight
+                        print(vector_dist[change_index[0]] * args.special_noise_weight)
+                        print(np.linalg.norm(vector_dist[change_index[0]] * args.special_noise_weight, 1))
+                    else:
+                        noise = np.random.randn(n_particle, 3) * args.std_d * args.augment_ratio
+                        particles[t][:n_particle] += noise
 
                 else:
                     # for augmenting rigid object,
