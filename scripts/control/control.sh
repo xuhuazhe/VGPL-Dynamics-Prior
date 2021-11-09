@@ -21,7 +21,7 @@ kernprof -l control.py \
 	--augment_ratio 0.05 \
 	--shape_aug 1 \
 	--n_grips 3 \
-	--opt_algo CEM \
+	--opt_algo GD \
 	--opt_iter 3 \
 	--sample_iter 3 \
 	--rewardtype emd \

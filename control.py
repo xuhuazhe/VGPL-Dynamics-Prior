@@ -236,6 +236,8 @@ class Planner(object):
                     else:
                         init_pose_seqs_pool, act_seqs_pool = self.optimize_action_CEM(init_pose_seqs_pool, act_seqs_pool, reward_seqs)
                         reward_seqs, state_cur_seqs = self.rollout(init_pose_seqs_pool, act_seqs_pool, state_cur, state_goal)
+            elif self.args.opt_algo == "GD":
+                init_pose_seq_opt, act_seq_opt = self.optimize_action_GD(init_pose_seqs_pool, act_seqs_pool, reward_seqs, state_cur, state_goal)
             else:
                 raise NotImplementedError
 
@@ -383,7 +385,7 @@ class Planner(object):
                 max_n_rel = 0
                 for k in range(self.batch_size):
                     # pdb.set_trace()
-                    attr, _, Rr_cur, Rs_cur, cluster_onehot = prepare_input(state_cur[k][-1].cpu().numpy(), self.n_particle,
+                    attr, _, Rr_cur, Rs_cur, cluster_onehot = prepare_input(state_cur[k][-1].detach().cpu().numpy(), self.n_particle,
                                                                             self.n_shape, self.args, stdreg=self.args.stdreg)
                     if self.use_gpu:
                         attr = attr.cuda()
@@ -548,31 +550,69 @@ class Planner(object):
 
         return init_pose_seqs_pool, act_seqs_pool
 
-    # def optimize_action_GD(
-    #     self,
-    #     init_pose_seqs,
-    #     act_seqs,
-    #     lr=1e-4
-    # ):
-    #     optimizer = torch.optim.Adam([mid_point_seq, angle_seq], lr=lr)
-    #     for epoch in range(self.n_epochs_GD):
-    #         progress_bar = tqdm(init_pose_seqs, desc=f"Epoch {epoch}")
-    #         for init_pose_seq in progress_bar:
-    #             mid_point_seq, angle_seq = get_center_and_rot_from_pose(init_pose_seq)
-    
-    #             total_loss = 0
-    #             batch_count = 0
-    #             for data in progress_bar:
-    #                 optimizer.zero_grad()
-    #                 if self.use_gpu:
-    #                     data = data.cuda()
-    #                 state_seq = self.model_rollout
-    #                 loss = loss_fn(pred, data.y)
-    #                 loss.backward()
-                
-    #             progress_bar.set_postfix({"loss": loss.item()})
+    def optimize_action_GD(
+        self,
+        init_pose_seqs,
+        act_seqs,
+        reward_seqs,
+        state_cur,
+        state_goal,
+        lr=1e-4
+    ):
+        if self.use_gpu:
+            state_goal = state_goal.cuda()
 
-    #             total_batch += 1
+        idx = np.argsort(reward_seqs)
+        print(f"Selected idx: {idx[-1]} with loss {reward_seqs[idx[-1]]}")
+
+        best_mid_point_seq, best_angle_seq = get_center_and_rot_from_pose(init_pose_seqs[idx[-1]])
+        
+        prim_1_pos = init_pose_seqs[idx[-1], :, self.gripper_mid_pt, :3] 
+        prim_2_pos = init_pose_seqs[idx[-1], :, self.gripper_mid_pt, 7:10]
+        for i in range(self.len_per_grip):
+            prim_1_pos += act_seqs[idx[-1], :, i, :3] * 0.02
+            prim_2_pos += act_seqs[idx[-1], :, i, 6:9] * 0.02
+        # import pdb; pdb.set_trace()
+        best_gap = np.linalg.norm(prim_1_pos - prim_2_pos, axis=1)
+
+        mid_point = torch.tensor(best_mid_point_seq, requires_grad=True)
+        angle = torch.tensor(best_angle_seq, requires_grad=True)
+        gap = torch.tensor(best_gap, requires_grad=True)
+
+        if self.use_gpu:
+            mid_point = mid_point.cuda()
+            angle = angle.cuda()
+            gap = gap.cuda()
+
+        optimizer = torch.optim.Adam([mid_point, angle, gap], lr=lr)
+
+        n_batch = int(init_pose_seqs.shape[0] / self.batch_size)
+        init_pose_seqs = np.reshape(init_pose_seqs, (n_batch, self.batch_size, init_pose_seqs.shape[1], init_pose_seqs.shape[2], -1))
+        act_seqs = np.reshape(act_seqs, (n_batch, self.batch_size, act_seqs.shape[1], act_seqs.shape[2], -1))
+        for epoch in range(self.n_epochs_GD):
+            progress_bar = tqdm(init_pose_seqs, desc=f"Epoch {epoch}")
+            for i, init_pose_seq in enumerate(progress_bar):
+                _, state_seqs = self.rollout(init_pose_seq, act_seqs[i], state_cur, state_goal)
+
+                # import pdb; pdb.set_trace()
+                state_goal_expanded = expand(self.batch_size, state_goal)
+                if self.dist_func == "emd":
+                    dist_func = EarthMoverLoss()
+                    loss = dist_func(state_seqs[:, -1], state_goal_expanded)
+                elif self.dist_func == "l1shape":
+                    dist_func = L1ShapeLoss()
+                    loss = dist_func(state_seqs[:, -1], state_goal_expanded)
+
+                progress_bar.set_postfix({"loss": loss.item()})
+
+                optimizer.zero_grad()
+                loss.backward()
+                optimizer.step()
+
+        init_pose_seq_opt = get_pose(mid_point, angle)
+        act_seq_opt = get_action_seq(angle, gap)
+
+        return init_pose_seq_opt, act_seq_opt
 
 
 @profile
@@ -588,7 +628,7 @@ def main():
     else:
         test_name = f'sim_{args.use_sim}+{args.rewardtype}+sample_iter_{args.sample_iter}+opt_{args.opt_algo}_{args.opt_iter}'
 
-    vid_idx = 20
+    vid_idx = 0
     control_out_dir = os.path.join(args.outf, 'control', str(vid_idx).zfill(3), test_name)
     os.system('mkdir -p ' + control_out_dir)
 
@@ -724,7 +764,7 @@ def main():
 
     planner.prepare_rollout()
 
-    with torch.set_grad_enabled(False):
+    with torch.set_grad_enabled(args.opt_algo == 'GD'):
         if args.gt_action:
             state_cur = torch.FloatTensor(np.stack(all_p[:args.n_his]))
             state_goal = torch.FloatTensor(all_p[-1]).unsqueeze(0)[:, :n_particle, :]
