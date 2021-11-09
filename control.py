@@ -586,31 +586,51 @@ class Planner(object):
         angle = torch.tensor(best_angle_seq, requires_grad=True, device=device)
         gap = torch.tensor(best_gap, requires_grad=True, device=device)
 
+        # best_init_pose_seq = torch.tensor(init_pose_seqs[idx[-1]], requires_grad=True, device=device)
+        # best_act_seq = torch.tensor(act_seqs[idx[-1]], requires_grad=True, device=device)
+
         optimizer = torch.optim.Adam([mid_point, angle, gap], lr=lr)
+
+        # optimizer = torch.optim.Adam([best_init_pose_seq, best_act_seq], lr=lr)
 
         n_batch = int(init_pose_seqs.shape[0] / self.batch_size)
         init_pose_seqs = np.reshape(init_pose_seqs, (n_batch, self.batch_size, init_pose_seqs.shape[1], init_pose_seqs.shape[2], -1))
         act_seqs = np.reshape(act_seqs, (n_batch, self.batch_size, act_seqs.shape[1], act_seqs.shape[2], -1))
         for epoch in range(self.n_epochs_GD):
-            progress_bar = tqdm(init_pose_seqs, desc=f"Epoch {epoch}")
-            for i, init_pose_seq in enumerate(progress_bar):
-                with torch.no_grad():
-                    _, state_seqs = self.rollout(init_pose_seq, act_seqs[i], state_cur, state_goal)
+            # progress_bar = tqdm(init_pose_seqs, desc=f"Epoch {epoch}")
+            # for i, init_pose_seq in enumerate(progress_bar):
+            
+            init_pose_seq_sample = []
+            for k in range(init_pose_seqs.shape[1]):
+                p_noise = torch.tensor(np.clip(np.array([0, 0, np.random.randn()*0.03]), a_max=0.1, a_min=-0.1), device=device)
+                rot_noise = torch.tensor(np.clip(np.random.randn() * np.pi / 36, a_max=0.1, a_min=-0.1), device=device)
+            
+                new_mid_point = mid_point[k, :3] + p_noise
+                new_angle = angle[k] + rot_noise
+                init_pose = get_pose(new_mid_point, new_angle)
+                init_pose_seq_sample.append(init_pose)
 
-                # import pdb; pdb.set_trace()
-                state_goal_expanded = expand(self.batch_size, state_goal)
-                if self.dist_func == "emd":
-                    dist_func = EarthMoverLoss()
-                    loss = dist_func(state_seqs[:, -1], state_goal_expanded)
-                elif self.dist_func == "l1shape":
-                    dist_func = L1ShapeLoss()
-                    loss = dist_func(state_seqs[:, -1], state_goal_expanded)
+            # import pdb; pdb.set_trace()
+            init_pose_seq_sample = torch.stack(init_pose_seq_sample)
+            act_seq_sample = get_action_seq_from_pose(init_pose_seq_sample, gap)
 
-                progress_bar.set_postfix({"loss": loss.item()})
+            with torch.no_grad():
+                _, state_seqs = self.rollout(init_pose_seq_sample, act_seq_sample, state_cur, state_goal)
 
-                optimizer.zero_grad()
-                loss.backward()
-                optimizer.step()
+            # import pdb; pdb.set_trace()
+            state_goal_expanded = expand(self.batch_size, state_goal)
+            if self.dist_func == "emd":
+                dist_func = EarthMoverLoss()
+                loss = dist_func(state_seqs[:, -1], state_goal_expanded)
+            elif self.dist_func == "l1shape":
+                dist_func = L1ShapeLoss()
+                loss = dist_func(state_seqs[:, -1], state_goal_expanded)
+
+            print(f"loss: {loss.item()}")
+
+            optimizer.zero_grad()
+            loss.backward()
+            optimizer.step()
 
         init_pose_seq_opt = get_pose(mid_point, angle)
         act_seq_opt = get_action_seq(angle, gap)
