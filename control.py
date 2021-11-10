@@ -387,6 +387,8 @@ class Planner(object):
                 for k in range(self.batch_size):
                     # pdb.set_trace()
                     state_cur_last = state_cur[k][-1]
+                    if state_cur_last.requires_grad:
+                        state_cur_last = state_cur_last.detach()
                     attr, _, Rr_cur, Rs_cur, cluster_onehot = prepare_input(state_cur_last.cpu().numpy(), self.n_particle,
                                                                             self.n_shape, self.args, stdreg=self.args.stdreg)
                     if self.use_gpu:
@@ -601,21 +603,19 @@ class Planner(object):
             # for i, init_pose_seq in enumerate(progress_bar):
             
             init_pose_seq_sample = []
-            for k in range(init_pose_seqs.shape[1]):
-                p_noise = torch.tensor(np.clip(np.array([0, 0, np.random.randn()*0.03]), a_max=0.1, a_min=-0.1), device=device)
-                rot_noise = torch.tensor(np.clip(np.random.randn() * np.pi / 36, a_max=0.1, a_min=-0.1), device=device)
-            
-                new_mid_point = mid_point[k, :3] + p_noise
-                new_angle = angle[k] + rot_noise
-                init_pose = get_pose(new_mid_point, new_angle)
+            for i in range(init_pose_seqs.shape[1]):
+                # p_noise = torch.tensor(np.clip(np.array([0, 0, np.random.randn()*0.03]), a_max=0.1, a_min=-0.1), device=device)
+                # rot_noise = torch.tensor(np.clip(np.random.randn() * np.pi / 36, a_max=0.1, a_min=-0.1), device=device)
+                # new_mid_point = mid_point[k, :3] + p_noise
+                # new_angle = angle[k] + rot_noise
+                init_pose = get_pose(mid_point[i, :3], angle[i])
                 init_pose_seq_sample.append(init_pose)
 
             # import pdb; pdb.set_trace()
-            init_pose_seq_sample = torch.stack(init_pose_seq_sample)
+            init_pose_seq_sample = np.stack(init_pose_seq_sample)
             act_seq_sample = get_action_seq_from_pose(init_pose_seq_sample, gap)
 
-            with torch.no_grad():
-                _, state_seqs = self.rollout(init_pose_seq_sample, act_seq_sample, state_cur, state_goal)
+            _, state_seqs = self.rollout(init_pose_seq_sample, act_seq_sample, state_cur, state_goal)
 
             # import pdb; pdb.set_trace()
             state_goal_expanded = expand(self.batch_size, state_goal)
