@@ -35,27 +35,33 @@ task_params = {
 
 
 def get_pose(new_mid_point, rot_noise):
-    x1 = new_mid_point[0] - task_params["sample_radius"] * np.cos(rot_noise)
-    y1 = new_mid_point[2] + task_params["sample_radius"] * np.sin(rot_noise)
-    x2 = new_mid_point[0] + task_params["sample_radius"] * np.cos(rot_noise)
-    y2 = new_mid_point[2] - task_params["sample_radius"] * np.sin(rot_noise)
+    if not torch.is_tensor(new_mid_point):
+        new_mid_point = torch.tensor(new_mid_point)
+    
+    if not torch.is_tensor(rot_noise):
+        rot_noise = torch.tensor(rot_noise)
 
-    prim1 = [x1, task_params["default_h"], y1, 1, 0, 0, 0] 
-    prim2 = [x2, task_params["default_h"], y2, 1, 0, 0, 0]
+    x1 = new_mid_point[0] - task_params["sample_radius"] * torch.cos(rot_noise)
+    y1 = new_mid_point[2] + task_params["sample_radius"] * torch.sin(rot_noise)
+    x2 = new_mid_point[0] + task_params["sample_radius"] * torch.cos(rot_noise)
+    y2 = new_mid_point[2] - task_params["sample_radius"] * torch.sin(rot_noise)
 
+    unit_quat = torch.tensor([1.0, 0.0, 0.0, 0.0])
+
+    # import pdb; pdb.set_trace()
     new_prim1 = []
     for j in range(task_params["n_shapes_per_gripper"]):
-        prim1_tmp = np.concatenate(([prim1[0], prim1[1] + 0.018 * (j-5), prim1[2]], prim1[3:]), axis=None)
+        prim1_tmp = torch.cat((torch.tensor([x1, task_params["default_h"] + 0.018 * (j-5), y1]), unit_quat))
         new_prim1.append(prim1_tmp)
-    new_prim1 = np.stack(new_prim1)
+    new_prim1 = torch.stack(new_prim1)
 
     new_prim2 = []
     for j in range(task_params["n_shapes_per_gripper"]):
-        prim2_tmp = np.concatenate(([prim2[0], prim2[1] + 0.018 * (j-5), prim2[2]], prim2[3:]), axis=None)
+        prim2_tmp = torch.cat((torch.tensor([x2, task_params["default_h"] + 0.018 * (j-5), y2]), unit_quat))
         new_prim2.append(prim2_tmp)
-    new_prim2 = np.stack(new_prim2)
+    new_prim2 = torch.stack(new_prim2)
 
-    init_pose = np.concatenate((new_prim1, new_prim2), axis=1)
+    init_pose = torch.cat((new_prim1, new_prim2), 1)
 
     return init_pose
 
@@ -596,23 +602,24 @@ class Planner(object):
         # optimizer = torch.optim.Adam([best_init_pose_seq, best_act_seq], lr=lr)
 
         n_batch = int(init_pose_seqs.shape[0] / self.batch_size)
-        init_pose_seqs = np.reshape(init_pose_seqs, (n_batch, self.batch_size, init_pose_seqs.shape[1], init_pose_seqs.shape[2], -1))
-        act_seqs = np.reshape(act_seqs, (n_batch, self.batch_size, act_seqs.shape[1], act_seqs.shape[2], -1))
+        # init_pose_seqs = np.reshape(init_pose_seqs, (n_batch, self.batch_size, init_pose_seqs.shape[1], init_pose_seqs.shape[2], -1))
+        # act_seqs = np.reshape(act_seqs, (n_batch, self.batch_size, act_seqs.shape[1], act_seqs.shape[2], -1))
         for epoch in range(self.n_epochs_GD):
             # progress_bar = tqdm(init_pose_seqs, desc=f"Epoch {epoch}")
             # for i, init_pose_seq in enumerate(progress_bar):
             
             init_pose_seq_sample = []
-            for i in range(init_pose_seqs.shape[1]):
+            for i in range(mid_point.shape[0]):
                 # p_noise = torch.tensor(np.clip(np.array([0, 0, np.random.randn()*0.03]), a_max=0.1, a_min=-0.1), device=device)
                 # rot_noise = torch.tensor(np.clip(np.random.randn() * np.pi / 36, a_max=0.1, a_min=-0.1), device=device)
                 # new_mid_point = mid_point[k, :3] + p_noise
                 # new_angle = angle[k] + rot_noise
+                # import pdb; pdb.set_trace()
                 init_pose = get_pose(mid_point[i, :3], angle[i])
                 init_pose_seq_sample.append(init_pose)
 
             # import pdb; pdb.set_trace()
-            init_pose_seq_sample = np.stack(init_pose_seq_sample)
+            init_pose_seq_sample = torch.stack(init_pose_seq_sample)
             act_seq_sample = get_action_seq_from_pose(init_pose_seq_sample, gap)
 
             _, state_seqs = self.rollout(init_pose_seq_sample, act_seq_sample, state_cur, state_goal)
@@ -655,7 +662,7 @@ def main():
     control_out_dir = os.path.join(args.outf, 'control', str(vid_idx).zfill(3), test_name)
     os.system('mkdir -p ' + control_out_dir)
 
-    use_gpu = True
+    use_gpu = False
 
     tee = Tee(os.path.join(control_out_dir, 'control.log'), 'w')
 
