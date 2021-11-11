@@ -30,4 +30,4 @@ kernprof -l control.py \
 	--gt_state_goal 0 \
 	--control_sample_size 200 \
 	--control_batch_size 4 \
-	--debug 1
+	--debug 0
