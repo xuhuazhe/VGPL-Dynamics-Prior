@@ -21,13 +21,13 @@ kernprof -l control.py \
 	--augment_ratio 0.05 \
 	--shape_aug 1 \
 	--n_grips 3 \
-	--opt_algo GD \
+	--opt_algo CEM_GD \
 	--opt_iter 3 \
 	--sample_iter 3 \
 	--rewardtype emd \
 	--use_sim 0 \
 	--gt_action 0 \
 	--gt_state_goal 0 \
-	--control_sample_size 200 \
+	--control_sample_size 100 \
 	--control_batch_size 4 \
 	--debug 0
