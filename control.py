@@ -174,6 +174,21 @@ def visualize_sampled_init_pos(init_pose_seqs, reward_seqs, idx, path):
     # plt.show()
 
 
+def visualize_loss(loss_list, path):
+    iters, loss = map(list, zip(*loss_list))
+    plt.figure(figsize=[16, 9])
+    plt.plot(iters, loss, linewidth=6, label='EMD')
+    plt.xlabel('epochs', fontsize=30)
+    plt.ylabel('loss', fontsize=30)
+    plt.title('Test Loss', fontsize=35)
+    plt.legend(fontsize=30)
+    plt.xticks(fontsize=25)
+    plt.yticks(fontsize=25)
+
+    plt.savefig(path)
+    # plt.show()
+
+
 class Planner(object):
     def __init__(self, args, taichi_env, env_init_state, scene_params, n_particle, n_shape, model, all_p, 
                 task_params, use_gpu, rollout_path, env="gripper"):
@@ -215,8 +230,8 @@ class Planner(object):
             self.n_sample = 8
             self.init_pose_sample_size = 4
             self.gripper_rate_sample_size = 4
-            self.n_epochs_GD = 4
-            self.best_k_GD = 2
+            self.n_epochs_GD = 10
+            self.best_k_GD = 1
         else:
             self.init_pose_sample_size = 8
             self.gripper_rate_sample_size = 4
@@ -515,6 +530,7 @@ class Planner(object):
         # [-1, action_dim]
         return init_pose_seqs[idx[-1]], act_seqs[idx[-1]], state_cur_seqs[idx[-1]]
 
+
     def optimize_action_CEM(    # Cross Entropy Method (CEM)
         self,
         init_pose_seqs,
@@ -616,7 +632,9 @@ class Planner(object):
 
         # import pdb; pdb.set_trace()
         optimizer = torch.optim.Adam([mid_points, angles, gripper_rates], lr=lr)
+        # scheduler = torch.optim.lr_scheduler.ReduceLROnPlateau(optimizer, 'min', factor=0.8, patience=3, verbose=True)
 
+        loss_list = []
         for epoch in range(self.n_epochs_GD):
             init_pose_seq_samples = []
             act_seq_samples = []
@@ -636,15 +654,19 @@ class Planner(object):
             init_pose_seq_samples = torch.stack(init_pose_seq_samples)
             act_seq_samples = torch.stack(act_seq_samples)
 
-            reward_seqs, state_seqs = self.rollout(init_pose_seq_samples, act_seq_samples, state_cur, state_goal)
+            # import pdb; pdb.set_trace()
+            reward_seqs, state_seqs = self.rollout(init_pose_seq_samples, act_seq_samples[:, :, :task_params["len_per_grip"]], state_cur, state_goal)
 
             loss = torch.min(torch.neg(reward_seqs))
 
             print(f"Epoch: {epoch}; Loss: {loss.item()}")
+            loss_list.append([epoch, loss.item()])
 
             optimizer.zero_grad()
             loss.backward()
             optimizer.step()
+
+        visualize_loss(loss_list, os.path.join(self.rollout_path, 'plot_GD_loss'))
 
         # import pdb; pdb.set_trace()
         idx = torch.argsort(reward_seqs)
