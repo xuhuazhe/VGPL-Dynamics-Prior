@@ -5,7 +5,7 @@ import torch.nn as nn
 import torch.nn.functional as F
 from torch.autograd import Variable
 
-from data_utils import p2g, compute_sdf
+from data_utils import p2g, compute_sdf, p2v
 import scipy
 from scipy import optimize
 
@@ -505,7 +505,7 @@ class EarthMoverLoss(torch.nn.Module):
             # y[i] = y[i, ind2]
         new_x = torch.stack(x_list)
         new_y = torch.stack(y_list)
-        # print(f"EMD New_x shape: {new_x.shape}")
+        # print(f"EMD new_x shape: {new_x.shape}")
         # print(f"MAX: {torch.max(torch.norm(torch.add(new_x, -new_y), 2, dim=2))}")
         emd = torch.mean(torch.norm(torch.add(new_x, -new_y), 2, dim=2))
         return emd
@@ -516,20 +516,19 @@ class EarthMoverLoss(torch.nn.Module):
         return self.em_distance(pred, label)
 
 
-class L2ShapeLoss(torch.nn.Module):
+class L1ShapeLoss(torch.nn.Module):
     def __init__(self):
-        super(L2ShapeLoss, self).__init__()
+        super(L1ShapeLoss, self).__init__()
 
-    def __call__(self, x, y, sdf):
+    def __call__(self, x, y):
         c1 = 0.0001
-        c2 = 0.01
-        grid1 = p2g(x)
-        grid2 = p2g(y)
+        # grid1 = p2g(x)
+        # grid2 = p2g(y)
+        grid1 = p2v(x)
+        grid2 = p2v(y)
         l1 = torch.abs(grid1 - grid2).sum()
-        sdf = (grid1 * sdf).sum()
-        # print(f"L1: {l1}")
-        # print(f"SDF: {sdf}")
-        return c1 * l1 + c2 * sdf
+        # print(f"L1: {l1.shape}")
+        return c1 * l1
 
 
 if __name__ == "__main__":

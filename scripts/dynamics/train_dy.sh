@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 #SBATCH --job-name=VGPL-Gripper
-#SBATCH --partition=viscam
+#SBATCH --partition=svl
 #SBATCH --gres=gpu:1
 #SBATCH --mem=20G
 #SBATCH --time=3-00:00:00
@@ -26,7 +26,7 @@ python train.py \
 	--gen_data 0 \
 	--gen_stat 0 \
 	--gen_vision 0 \
-	--num_workers 8 \
+	--num_workers 4 \
 	--resume 0 \
 	--resume_epoch 0 \
 	--resume_iter 0 \

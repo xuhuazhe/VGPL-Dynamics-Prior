@@ -2,13 +2,12 @@
 # cd /viscam/u/hxu/projects/deformable/VGPL-Dynamics-Prior
 # cd /viscam/u/hshi74/projects/deformable/VGPL-Dynamics-Prior
 
-declare -a arr=("emd_chamfer_uh_clip")
-declare -a arr2=("6")
-declare -a arr3=("0.3")
-declare -a arr4=("0.7")
-declare -a arr5=("0.1")
-declare -a arr6=("0.0")
-declare -a arr7=("0.05")
+# currently a placeholder
+declare -a arr=("emd") # rewardtype: emd, l1shape
+declare -a arr2=("1") # use_sim: 0, 1
+declare -a arr2=("0") # gt_action: 0, 1
+declare -a arr3=("1") # gt_state_goal: 0, 1
+# declare -a arr4=("0.7") # use_sim: 0, 1
 for i in "${arr[@]}"
 do
     for j in "${arr2[@]}"

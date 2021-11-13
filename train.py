@@ -17,7 +17,7 @@ from torch.utils.data import DataLoader
 from config import gen_args
 from data_utils import PhysicsFleXDataset
 from data_utils import prepare_input, get_scene_info, get_env_group
-from models import Model, ChamferLoss, HausdorfLoss, EarthMoverLoss, UpdatedHausdorffLoss, ClipLoss, L2ShapeLoss
+from models import Model, ChamferLoss, HausdorfLoss, EarthMoverLoss, UpdatedHausdorffLoss, ClipLoss, L1ShapeLoss
 from utils import make_graph, check_gradient, set_seed, AverageMeter, get_lr, Tee
 from utils import count_parameters, my_collate, matched_motion
 
@@ -110,7 +110,7 @@ def main():
     emd_loss = EarthMoverLoss()
     uh_loss = UpdatedHausdorffLoss()
     clip_loss = ClipLoss()
-    shape_loss = L2ShapeLoss()
+    shape_loss = L1ShapeLoss()
 
     if use_gpu:
         model = model.cuda()
@@ -261,8 +261,8 @@ def main():
                                     clip_l = args.clip_weight * clip_loss(pred_pos_p, pred_pos_p)
                                     loss += clip_l
                                 # print(f"EMD: {emd_l.item()}; Chamfer: {chamfer_l.item()}; UH: {uh_l.item()}; Clip: {clip_l.item()}")
-                            elif args.losstype == 'L2Shape':
-                                loss += shape_loss(pred_pos_p, gt_pos_p, gt_sdf)
+                            elif args.losstype == 'l1shape':
+                                loss += shape_loss(pred_pos_p, gt_pos_p)
                             else:
                                 raise NotImplementedError
 

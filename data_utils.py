@@ -18,6 +18,7 @@ from utils import rand_int, rand_float
 from sklearn.cluster import KMeans
 
 from itertools import product
+import open3d as o3d
 
 ### from DPI
 
@@ -986,6 +987,7 @@ def p2g(x, size=64, p_mass=1.):
                 target = (base + torch.tensor(np.array([i, j, k]), dtype=torch.long, device='cuda:0')).clamp(0, size-1)
                 idx = (target[..., 0] * size + target[..., 1]) * size + target[..., 2]
                 grid_m.scatter_add_(1, idx, weight)
+    grid_m = (grid_m > 0.0001).float()
     return grid_m.reshape(batch, size, size, size)
 
 
@@ -1024,3 +1026,23 @@ def compute_sdf(density, eps=1e-4, inf=1e10):
                 mask = mask[..., None]
                 nearest_points[to] = (1-mask) * nearest_points[to] + mask * nearest_points[fr]
         return sdf
+
+def p2v(xyz):
+    # fig = plt.figure()
+    # ax = fig.add_subplot(111, projection='3d')
+    # for i in range(xyz.shape[0]):
+    pcd = o3d.geometry.PointCloud()
+    # import pdb; pdb.set_trace()
+    # print(xyz.shape)
+    pcd.points = o3d.utility.Vector3dVector(xyz.cpu().numpy())
+    voxel_grid = o3d.geometry.VoxelGrid.create_from_point_cloud(pcd, voxel_size=0.04)
+    # o3d.visualization.draw_geometries([voxel_grid])
+    # data = voxel_grid.create_dense(origin=[0,0,0], color=[0,0,0], voxel_size=0.03, width=1, height=1, depth=1)
+    my_voxel = np.zeros((32, 32, 32))
+    for j, d in enumerate(voxel_grid.get_voxels()):
+        # print(j)
+        my_voxel[d.grid_index[0], d.grid_index[1], d.grid_index[2]] = 1
+        # z, x, y = my_voxel.nonzero()
+        # ax.scatter(x, y, z, c=z, alpha=1)
+        # plt.show()
+    return torch.from_numpy(my_voxel).cuda()

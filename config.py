@@ -21,24 +21,11 @@ parser.add_argument('--nf_pos', type=int, default=150)
 parser.add_argument('--nf_memory', type=int, default=150)
 parser.add_argument('--mem_nlayer', type=int, default=2)
 parser.add_argument('--nf_effect', type=int, default=150)
-parser.add_argument('--losstype', type=str, default='l1')
+
 parser.add_argument('--stdreg', type=int, default=0)
 parser.add_argument('--stdreg_weight', type=float, default=0.0)
 parser.add_argument('--matched_motion', type=int, default=0)
 parser.add_argument('--matched_motion_weight', type=float, default=0.0)
-parser.add_argument('--uh_weight', type=float, default=0.0)
-parser.add_argument('--clip_weight', type=float, default=0.0)
-parser.add_argument('--emd_weight', type=float, default=0.0)
-parser.add_argument('--chamfer_weight', type=float, default=0.0)
-
-parser.add_argument('--outf', default='files')
-parser.add_argument('--outf_eval', default='')
-parser.add_argument('--outf_control', default='')
-parser.add_argument('--evalf', default='eval')
-parser.add_argument('--dataf', default='data')
-parser.add_argument('--data_type', type=str, default='none')
-parser.add_argument('--gt_particles', type=int, default=0)
-parser.add_argument('--shape_aug', type=int, default=0)
 
 parser.add_argument('--valid', type=int, default=0)
 parser.add_argument('--eval', type=int, default=0)
@@ -46,13 +33,17 @@ parser.add_argument('--verbose_data', type=int, default=0)
 parser.add_argument('--verbose_model', type=int, default=0)
 parser.add_argument('--eps', type=float, default=1e-6)
 
+# file paths
+parser.add_argument('--outf', default='files')
+parser.add_argument('--outf_eval', default='')
+parser.add_argument('--outf_control', default='')
+parser.add_argument('--evalf', default='eval')
+parser.add_argument('--dataf', default='data')
+parser.add_argument('--gripperf', default='')
+
 # for ablation study
 parser.add_argument('--neighbor_radius', type=float, default=-1)
 parser.add_argument('--neighbor_k', type=float, default=-1)
-
-# use a flexible number of frames for each training iteration
-parser.add_argument('--n_his', type=int, default=4)
-parser.add_argument('--sequence_length', type=int, default=0)
 
 # shape state:
 # [x, y, z, x_last, y_last, z_last, quat(4), quat_last(4)]
@@ -78,6 +69,19 @@ parser.add_argument('--vis_height', type=int, default=120)
 '''
 train
 '''
+parser.add_argument('--data_type', type=str, default='none')
+parser.add_argument('--gt_particles', type=int, default=0)
+parser.add_argument('--shape_aug', type=int, default=0)
+
+parser.add_argument('--losstype', type=str, default='l1')
+parser.add_argument('--uh_weight', type=float, default=0.0)
+parser.add_argument('--clip_weight', type=float, default=0.0)
+parser.add_argument('--emd_weight', type=float, default=0.0)
+parser.add_argument('--chamfer_weight', type=float, default=0.0)
+
+# use a flexible number of frames for each training iteration
+parser.add_argument('--n_his', type=int, default=4)
+parser.add_argument('--sequence_length', type=int, default=0)
 
 parser.add_argument('--n_rollout', type=int, default=0)
 parser.add_argument('--train_valid_ratio', type=float, default=0.9)
@@ -116,6 +120,21 @@ parser.add_argument('--eval_set', default='train')
 parser.add_argument('--pyflex', type=int, default=1)
 parser.add_argument('--vispy', type=int, default=1)
 
+
+'''
+control
+'''
+parser.add_argument('--opt_algo', type=str, default='max')
+parser.add_argument('--control_sample_size', type=int, default=8)
+parser.add_argument('--control_batch_size', type=int, default=4)
+parser.add_argument('--rewardtype', type=str, default='emd')
+parser.add_argument('--use_sim', type=int, default=0)
+parser.add_argument('--gt_action', type=int, default=0)
+parser.add_argument('--gt_state_goal', type=int, default=0)
+parser.add_argument('--opt_iter', type=int, default=1)
+parser.add_argument('--sample_iter', type=int, default=1)
+parser.add_argument('--n_grips', type=int, default=3)
+parser.add_argument('--debug', type=int, default=0)
 
 def gen_args():
     args = parser.parse_args()
@@ -294,8 +313,8 @@ def gen_args():
     args.outf += f'_gt{args.gt_particles}'
     # args.outf += f'_{args.losstype}'
     args.outf += f'_seqlen{args.sequence_length}'
-    if args.losstype == 'L2Shape':
-        args.outf += f'_l2shape'
+    if args.losstype == 'l1shape':
+        args.outf += f'_l1shape'
     else:
         args.outf += f'_emd{args.emd_weight}'
         args.outf += f'_chamfer{args.chamfer_weight}'
