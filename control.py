@@ -631,7 +631,8 @@ class Planner(object):
         gripper_rates = best_gripper_rates.requires_grad_()
 
         # import pdb; pdb.set_trace()
-        optimizer = torch.optim.Adam([mid_points, angles, gripper_rates], lr=lr)
+        # optimizer = torch.optim.Adam([mid_points, angles, gripper_rates], lr=lr)
+        optimizer = torch.optim.SGD([mid_points, angles, gripper_rates], lr=lr)
         # scheduler = torch.optim.lr_scheduler.ReduceLROnPlateau(optimizer, 'min', factor=0.8, patience=3, verbose=True)
 
         loss_list = []
@@ -666,7 +667,7 @@ class Planner(object):
             loss.backward()
             optimizer.step()
 
-        visualize_loss(loss_list, os.path.join(self.rollout_path, 'plot_GD_loss'))
+        visualize_loss(loss_list, os.path.join(self.rollout_path, 'plot_GD_loss_{self.sample_iter_cur}'))
 
         # import pdb; pdb.set_trace()
         idx = torch.argsort(reward_seqs)
