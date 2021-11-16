@@ -135,6 +135,7 @@ parser.add_argument('--opt_iter', type=int, default=1)
 parser.add_argument('--sample_iter', type=int, default=1)
 parser.add_argument('--n_grips', type=int, default=3)
 parser.add_argument('--debug', type=int, default=0)
+parser.add_argument('--goal_shape_name', type=str, default='')
 
 def gen_args():
     args = parser.parse_args()
