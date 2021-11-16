@@ -31,4 +31,4 @@ kernprof -l control.py \
 	--control_sample_size 200 \
 	--control_batch_size 4 \
 	--goal_shape_name none \
-	--debug 1
+	--debug 0

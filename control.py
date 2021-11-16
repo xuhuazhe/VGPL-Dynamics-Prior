@@ -336,8 +336,7 @@ class Planner(object):
                     # for s in range(state_cur_sim.shape[0]):
                     #     visualize_points(state_cur_sim[s].cpu().numpy())
                     #     visualize_points(state_cur_seq_opt[s].cpu().numpy())
-
-                    state_cur_opt = state_cur_sim
+                    state_cur_opt = state_cur_sim.clone()
 
                 state_cur = torch.cat((state_cur_opt, state_cur_gt[:, self.n_particle:, :]), 1)
 
@@ -455,7 +454,7 @@ class Planner(object):
         for t in range(act_seqs.shape[0]):
             self.taichi_env.set_state(**self.env_init_state)
             state_seq = []
-            state_seq_gt = []
+            # state_seq_gt = []
             for i in range(act_seqs.shape[1]):
                 self.taichi_env.primitives.primitives[0].set_state(0, init_pose_seqs[t, i, self.gripper_mid_pt, :7])
                 self.taichi_env.primitives.primitives[1].set_state(0, init_pose_seqs[t, i, self.gripper_mid_pt, 7:])
@@ -469,11 +468,15 @@ class Planner(object):
                     # print(f"x after: {x.shape}")
                     state_seq.append(particles)
 
-                    if sim_correction and i == act_seqs.shape[1] - 1 and j >= act_seqs.shape[2] - self.n_his:
-                        gt_particles = sample_particles(self.taichi_env, self.cam_params, self.n_particle)
-                        state_seq_gt.append(gt_particles[:self.n_particle])
+                    # if sim_correction and i == act_seqs.shape[1] - 1 and j >= act_seqs.shape[2] - self.n_his:
+                    #     gt_particles = sample_particles(self.taichi_env, self.cam_params, self.n_particle)
+                    #     state_seq_gt.append(gt_particles[:self.n_particle])
 
             if sim_correction:
+                gt_particles = sample_particles(self.taichi_env, self.cam_params, self.n_particle)
+                state_seq_gt = []
+                for i in range(self.n_his):
+                    state_seq_gt.append(gt_particles[:self.n_particle])
                 state_seq_gt = np.stack(state_seq_gt)
                 state_seq_batch.append(state_seq_gt)
             else:
