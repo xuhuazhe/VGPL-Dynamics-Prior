@@ -28,7 +28,7 @@ kernprof -l control.py \
 	--use_sim 0 \
 	--gt_action 0 \
 	--gt_state_goal 0 \
-	--control_sample_size 100 \
+	--control_sample_size 200 \
 	--control_batch_size 4 \
-	--goal_shape_name I \
-	--debug 0
+	--goal_shape_name none \
+	--debug 1
