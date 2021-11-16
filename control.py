@@ -156,57 +156,30 @@ def get_act_delta_from_action_seq(act_seq):
     return act_delta_seq
 
 
-def sample_particles():
-    shape_name = 'I'
-    data_path = f"/home/haochen/projects/deformable/PlasticineLab/interactive/shapes/{shape_name}"
-    rollout_path = data_path
-    n_frame = 1
-    n_cam = 4
-    n_particles = 3000
-    k_fps_particles = 300
-    task_name = "gripper"
-    if task_name == 'gripper':
-        n_shapes = 3
-    else:
-        n_shapes = 2
+def sample_particles(env, cam_params, n_shape, k_fps_particles):
     data_names = ['positions', 'shape_quats', 'scene_params']
     scene_params = np.zeros(3)
-    n_frames = 3
+    shape_quats = np.zeros((n_shape, 4), dtype=np.float32)
 
-    for i in range(n_frames):
-        rgb = []
-        for j in range(n_cam):
-            rgb.append(cv2.imread(data_path + f"/{shape_name}_{i}_rgb_{j}.png", cv2.IMREAD_COLOR)[..., ::-1])
-        d_and_p = np.load(data_path + f"/{shape_name}_{i}_depth_prim.npy", allow_pickle=True)
-        cam_params = np.load(data_path + f"/cam_params.npy", allow_pickle=True)
-        gt_pos = np.load(data_path + f"/{shape_name}_{i}_gtp.npy", allow_pickle=True)
-        depth = d_and_p[:4]
+    prim_pos1 = env.primitives.primitives[0].get_state(0)
+    prim_pos2 = env.primitives.primitives[1].get_state(0)
+    prim_pos = [prim_pos1[:3], prim_pos2[:3]]
 
-        if task_name == 'gripper':
-            prim_pos1 = np.array(d_and_p[-2][:3])
-            prim_rot1 = np.array(d_and_p[-2][3:])
-            prim_pos2 = np.array(d_and_p[-1][:3])
-            prim_rot2 = np.array(d_and_p[-1][3:])
-            prim_pos = [prim_pos1, prim_pos2]
-        else:
-            prim_pos = np.array(d_and_p[-1][:3])
-            prim_rot = np.array(d_and_p[-1][3:])
+    img = env.render_multi(mode='rgb_array', spp=3)
+    rgb, depth = img[0], img[1]
 
-        floor_pos = np.array([0.5, 0, 0.5])
+    n_particles = 3000
 
-        sampled_points = sample_data.gen_data_one_frame(rgb, depth, cam_params, prim_pos, n_particles, k_fps_particles)
+    sampled_points = sample_data.gen_data_one_frame(rgb, depth, cam_params, prim_pos, n_particles, k_fps_particles)
 
-        positions = sample_data.update_position(n_shapes, prim_pos, pts=sampled_points, floor=floor_pos, k_fps_particles=k_fps_particles)
-        shape_positions = sample_data.shape_aug(positions, k_fps_particles)
+    floor_pos = np.array([0.5, 0, 0.5])
+    positions = sample_data.update_position(n_shape, prim_pos, pts=sampled_points, floor=floor_pos, k_fps_particles=k_fps_particles)
+    shape_positions = sample_data.shape_aug(positions, k_fps_particles)
 
-        shape_quats = np.zeros((n_shapes, 4), dtype=np.float32)
-        data = [positions, shape_quats, scene_params]
-        shape_data = [shape_positions, shape_quats, scene_params]
+    data = [positions, shape_quats, scene_params]
+    shape_data = [shape_positions, shape_quats, scene_params]
 
-        os.makedirs(os.path.join(rollout_path), exist_ok=True)
-        sample_data.store_data(data_names, data, os.path.join(rollout_path, f'{shape_name}_{i}.h5'))
-        sample_data.store_data(data_names, shape_data, os.path.join(rollout_path, f'shape_{shape_name}_{i}.h5'))
-
+    return shape_data
 
 
 def expand(batch_size, info):
@@ -266,7 +239,7 @@ def visualize_loss(loss_list, path):
 
 class Planner(object):
     def __init__(self, args, taichi_env, env_init_state, scene_params, n_particle, n_shape, model, all_p, 
-                goal_shapes, task_params, use_gpu, rollout_path, env="gripper"):
+                cam_params, goal_shapes, task_params, use_gpu, rollout_path, env="gripper"):
         self.args = args
         self.taichi_env = taichi_env
         self.env_init_state = env_init_state
@@ -275,6 +248,7 @@ class Planner(object):
         self.n_shape = n_shape
         self.model = model
         self.all_p = all_p
+        self.cam_params = cam_params
         self.goal_shapes = goal_shapes
         self.task_params = task_params
         self.use_gpu = use_gpu
@@ -409,7 +383,8 @@ class Planner(object):
             else:
                 # pdb.set_trace()
                 if self.sim_correction:
-                    state_seqs_gt = self.sim_rollout(init_pose_seqs, act_seqs)
+                    self.sim_rollout(init_pose_seqs, act_seqs)
+                    state_seqs_gt = sample_particles(self.taichi_env, self.cam_params, self.n_shape, self.n_particle)
                     state_seqs = self.model_rollout(state_cur, init_pose_seqs, act_seqs)
                 else:
                     state_seqs = self.model_rollout(state_cur, init_pose_seqs, act_seqs)
@@ -945,6 +920,7 @@ def main():
     print(f"GT init pose: {init_pose_gt[0, :, task_params['gripper_mid_pt'], :7]}")
     # print(act_seq_gt)
 
+    cam_params = np.load(rollout_dir + "../cam_params.npy", allow_pickle=True)
 
     # load goal shape
     if len(args.goal_shape_name) > 0 and args.goal_shape_name != 'none':
@@ -963,7 +939,7 @@ def main():
 
 
     planner = Planner(args=args, taichi_env=env, env_init_state=state, scene_params=scene_params, n_particle=n_particle, 
-                    n_shape=n_shape, model=model, all_p=all_p, goal_shapes=goal_shapes, task_params=task_params, use_gpu=use_gpu, 
+                    n_shape=n_shape, model=model, all_p=all_p, cam_params=cam_params, goal_shapes=goal_shapes, task_params=task_params, use_gpu=use_gpu, 
                     rollout_path=control_out_dir)
 
     with torch.set_grad_enabled(False):
