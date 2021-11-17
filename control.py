@@ -23,6 +23,9 @@ from plb.algorithms import sample_data
 from sys import platform
 import gc
 
+import taichi as ti
+ti.init(arch=ti.cpu)
+
 use_gpu = True
 device = torch.device("cuda" if torch.cuda.is_available() and use_gpu else "cpu")
 
@@ -257,6 +260,7 @@ class Planner(object):
         self.args = args
         self.taichi_env = taichi_env
         self.env_init_state = env_init_state
+        self.scene_params = scene_params
         self.n_particle = n_particle
         self.n_shape = n_shape
         self.model = model
@@ -289,18 +293,14 @@ class Planner(object):
         self.n_shapes_floor = task_params["n_shapes_floor"]
         self.gripper_mid_pt = task_params["gripper_mid_pt"]
 
-        self.memory_init = self.model.init_memory(self.batch_size, self.n_particle + self.n_shape)
-        self.scene_params = scene_params.expand(self.batch_size, -1)
-        self.group_gt = get_env_group(self.args, self.n_particle, self.scene_params, use_gpu=self.use_gpu)
-
         self.act_delta_limits = (0.13, 0.17)
         self.sim_correction = True
 
         if args.debug:
-            self.n_sample = 8
+            self.n_sample = 4
             self.init_pose_sample_size = 4
-            self.act_delta_sample_size = 4
-            self.n_epochs_GD = 10
+            self.act_delta_sample_size = 2
+            self.n_epochs_GD = 8
             self.best_k_GD = 1
         else:
             self.init_pose_sample_size = 40
@@ -460,8 +460,8 @@ class Planner(object):
 
     @profile
     def sim_rollout(self, init_pose_seqs, act_seqs, sim_correction=False):
-        init_pose_seqs = init_pose_seqs.detach().cpu().numpy()
-        act_seqs = act_seqs.detach().cpu().numpy()
+        # init_pose_seqs = init_pose_seqs.detach().cpu().numpy()
+        # act_seqs = act_seqs.detach().cpu().numpy()
         state_seq_batch = []
         for t in range(act_seqs.shape[0]):
             self.taichi_env.set_state(**self.env_init_state)
@@ -524,6 +524,10 @@ class Planner(object):
             act_seqs = act_seqs.to(device)
             state_cur = state_cur.to(device)
 
+        memory_init = self.model.init_memory(init_pose_seqs.shape[0], self.n_particle + self.n_shape)
+        scene_params = self.scene_params.expand(init_pose_seqs.shape[0], -1)
+        group_gt = get_env_group(self.args, self.n_particle, scene_params, use_gpu=self.use_gpu)
+
         # print(state_cur.shape)
         
         # import pdb; pdb.set_trace()
@@ -567,7 +571,7 @@ class Planner(object):
                 Rr_curs = torch.cat(Rr_curs, dim=0)
                 Rs_curs = torch.cat(Rs_curs, dim=0)
 
-                inputs = [attrs, state_cur, Rr_curs, Rs_curs, self.memory_init, self.group_gt, None]
+                inputs = [attrs, state_cur, Rr_curs, Rs_curs, memory_init, group_gt, None]
 
                 # pdb.set_trace()
                 pred_pos, pred_motion_norm, std_cluster  = self.model.predict_dynamics(inputs)
