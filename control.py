@@ -84,7 +84,8 @@ def get_action_seq(rot_noise, act_delta):
     if not torch.is_tensor(act_delta):
         act_delta = torch.tensor(act_delta)
 
-    n_actions = (act_delta - torch.remainder(act_delta, task_params["gripper_rate"])) / task_params["gripper_rate"]
+    # n_actions = (act_delta - torch.remainder(act_delta, task_params["gripper_rate"])) / task_params["gripper_rate"]
+    n_actions = act_delta / task_params["gripper_rate"]
     zero_pad = torch.zeros(3)
     actions = []
     counter = 0
@@ -155,7 +156,7 @@ def get_act_delta_from_action_seq(act_seq):
             act_delta += act_delta_per_step
         act_delta_seq.append(act_delta)
     
-    act_delta_seq = torch.stack(act_delta_seq)
+    act_delta_seq = torch.stack(act_delta_seq) - 0.5 * task_params["gripper_rate"]
 
     return act_delta_seq
 
@@ -300,12 +301,12 @@ class Planner(object):
             self.n_sample = 4
             self.init_pose_sample_size = 4
             self.act_delta_sample_size = 2
-            self.n_epochs_GD = 8
+            self.n_epochs_GD = 10
             self.best_k_GD = 1
         else:
             self.init_pose_sample_size = 40
             self.act_delta_sample_size = 8
-            self.n_epochs_GD = 60
+            self.n_epochs_GD = 100
             self.best_k_GD = 1
 
 
@@ -595,6 +596,7 @@ class Planner(object):
         states_pred_array = torch.stack(states_pred_list, dim=1).cpu()
 
         print(f"torch mem allocated: {torch.cuda.memory_allocated()}; torch mem reserved: {torch.cuda.memory_reserved()}")
+        
         # for obj in gc.get_objects():
         #     try:
         #         if torch.is_tensor(obj) or (hasattr(obj, 'data') and torch.is_tensor(obj.data)):
@@ -679,14 +681,15 @@ class Planner(object):
             init_pose_seq = init_pose_seqs[idx[-i]]
             mid_point_seq, angle_seq = get_center_and_rot_from_pose(init_pose_seq)
             act_seq = act_seqs[idx[-i]]
-            act_delta_seq = get_act_delta_from_action_seq(act_seq)
+            # act_delta_seq = get_act_delta_from_action_seq(act_seq)
             # print(f"Selected init pose seq: {init_pose_seq[:, self.gripper_mid_pt, :7]}")
             init_pose_seqs_pool.append(init_pose_seq)
             act_seqs_pool.append(act_seq)
 
             for k in range(self.act_delta_sample_size - 1):
-                act_delta_noise = torch.clamp(torch.tensor(np.random.randn(init_pose_seq.shape[0])*0.02), max=0.05, min=-0.05)
-                act_delta_sample = act_delta_seq + act_delta_noise
+                # act_delta_noise = torch.clamp(torch.tensor(np.random.randn(init_pose_seq.shape[0])*0.02), max=0.05, min=-0.05)
+                # act_delta_sample = act_delta_seq + act_delta_noise
+                act_delta_sample = torch.tensor([np.random.uniform(*self.act_delta_limits)])
                 # print(f"{i} act_delta_sample: {act_delta_sample}")
                 act_seq_sample = get_action_seq_from_pose(init_pose_seq, act_delta_sample)
 
@@ -718,7 +721,7 @@ class Planner(object):
                     # act_delta_noise = torch.tensor(np.random.randn(init_pose_seq.shape[0])*0.01).to(device)
                     # act_delta_sample = torch.clamp(act_delta_seq + act_delta_noise, max=self.act_delta_limits[1], min=self.act_delta_limits[0])
                     act_delta_sample = torch.tensor([np.random.uniform(*self.act_delta_limits)])
-                    print(f"act_delta_sample: {act_delta_sample}")
+                    # print(f"act_delta_sample: {act_delta_sample}")
                     act_seq_sample = get_action_seq_from_pose(init_pose_seq_sample, act_delta_sample)
 
                     init_pose_seqs_pool.append(init_pose_seq_sample)
@@ -765,10 +768,10 @@ class Planner(object):
 
         mid_points = best_mid_point_seqs.requires_grad_()
         angles = best_angle_seqs.requires_grad_()
-        act_deltas = best_act_delta_seqs.requires_grad_()
+        act_deltas = best_act_delta_seqs
 
-        # optimizer = torch.optim.Adam([mid_points, angles, act_deltas], lr=lr)
-        optimizer = torch.optim.SGD([mid_points, angles, act_deltas], lr=lr)
+        # optimizer = torch.optim.Adam([mid_points, angles], lr=lr)
+        optimizer = torch.optim.SGD([mid_points, angles], lr=lr)
         # scheduler = torch.optim.lr_scheduler.ReduceLROnPlateau(optimizer, 'min', factor=0.8, patience=3, verbose=True)
 
         loss_list = []
@@ -781,7 +784,7 @@ class Planner(object):
                     init_pose = get_pose(best_mid_point_seqs[i, j, :3], angles[i, j])
                     init_pose_seq_sample.append(init_pose)
 
-                # import pdb; pdb.set_trace()
+                # pdb.set_trace()
                 init_pose_seq_sample = torch.stack(init_pose_seq_sample)
                 act_seq_sample = get_action_seq_from_pose(init_pose_seq_sample, act_deltas[i])
 
@@ -791,8 +794,17 @@ class Planner(object):
             init_pose_seq_samples = torch.stack(init_pose_seq_samples)
             act_seq_samples = torch.stack(act_seq_samples)
 
+            non_static_idx = []
+            for i in range(act_seq_samples.shape[0]):
+                for j in range(act_seq_samples.shape[1]):
+                    for k in range(task_params["len_per_grip"]):
+                        if torch.linalg.norm(act_seq_samples[i, j, k]) == 0:
+                            non_static_idx.append(k)
+                            break
+            print(f"The length of non-static act seq is: {non_static_idx}")
+
             # pdb.set_trace()
-            reward_seqs, state_cur_seqs = self.rollout(init_pose_seq_samples, act_seq_samples[:, :, :task_params["len_per_grip"], :], state_cur, state_goal)
+            reward_seqs, state_cur_seqs = self.rollout(init_pose_seq_samples, act_seq_samples[:, :, :max(non_static_idx), :], state_cur, state_goal)
             loss = torch.min(torch.neg(reward_seqs))
 
             print(f"Epoch: {epoch}; Loss: {loss.item()}")
@@ -1029,6 +1041,8 @@ def main():
 
     torch.cuda.empty_cache()
 
+    # ti.reset()
+    # ti.init(arch=ti.cuda)
     env.set_state(**state)
 
     for i in range(act_seq.shape[0]):
