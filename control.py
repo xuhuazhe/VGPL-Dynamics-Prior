@@ -331,8 +331,9 @@ class Planner(object):
 
                 # pdb.set_trace()
                 if self.sim_correction:
-                    # torch.cuda.empty_cache()
                     state_cur_sim = self.sim_rollout(init_pose_seq_opt.unsqueeze(0), act_seq_opt.unsqueeze(0), sim_correction=True).squeeze()
+                    sim_diff = self.evaluate_traj(state_cur_opt.unsqueeze(0), state_cur_sim[-1].unsqueeze(0))
+                    print(f"Sim correction diff: {sim_diff}")
                     # for s in range(state_cur_sim.shape[0]):
                     #     visualize_points(state_cur_sim[s].cpu().numpy())
                     #     visualize_points(state_cur_seq_opt[s].cpu().numpy())
