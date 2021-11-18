@@ -436,6 +436,8 @@ class Planner(object):
 
 
     def sample_action_params(self, n_grips):
+        np.random.seed(0)
+
         init_pose_seqs = []
         act_seqs = []
         n_sampled = 0
