@@ -301,7 +301,7 @@ class Planner(object):
             self.n_sample = 4
             self.init_pose_sample_size = 4
             self.act_delta_sample_size = 2
-            self.n_epochs_GD = 10
+            self.n_epochs_GD = 20
             self.best_k_GD = 1
         else:
             self.init_pose_sample_size = 40
@@ -328,27 +328,35 @@ class Planner(object):
             if len(self.args.goal_shape_name) > 0 and self.args.goal_shape_name != 'none':
                 state_goal = self.goal_shapes[i]
 
-            if state_cur == None:
-                state_cur = state_cur_gt
-            else:
-                state_cur = state_cur 
-                state_cur_gt = state_cur_gt
+            state_cur = state_cur_gt
+
+            # if state_cur == None:
+            #     state_cur = state_cur_gt
+            # else:
+            #     pdb.set_trace()
+            #     state_cur_sim = self.sim_rollout(init_pose_seq_opt.unsqueeze(0), act_seq_opt.unsqueeze(0), snapshot=True).squeeze()
+            #     state_cur_sim_copy = state_cur_sim.clone()
+            
+            #     if self.sim_correction:
+            #         state_cur = state_cur_sim_copy
+            #     else:
+            #         state_cur_opt_copy = state_cur_opt.clone()
+            #         state_cur = torch.cat((state_cur_opt_copy, state_cur_sim_copy[:, self.n_particle:, :]), 1)
 
                 # pdb.set_trace()
-                if self.sim_correction:
-                    state_cur_sim = self.sim_rollout(init_pose_seq_opt.unsqueeze(0), act_seq_opt.unsqueeze(0), sim_correction=True).squeeze()
-                    sim_diff = self.evaluate_traj(state_cur_opt.unsqueeze(0), state_cur_sim[-1].unsqueeze(0))
-                    print(f"Sim correction diff: {sim_diff}")
-                    
-                    # for s in range(state_cur_sim.shape[0]):
-                    #     visualize_points(state_cur_sim[s].cpu().numpy())
-                    #     visualize_points(state_cur_seq_opt[s].cpu().numpy())
+                # if self.sim_correction:
+                #     sim_diff = self.evaluate_traj(state_cur_opt.unsqueeze(0), state_cur_sim[-1].unsqueeze(0))
+                #     print(f"Sim correction diff: {sim_diff}")
 
-                    state_cur_sim_copy = state_cur_sim.clone()
-                    state_cur = torch.cat((state_cur_sim_copy, state_cur_gt[:, self.n_particle:, :]), 1)
-                else:
-                    state_cur_opt_copy = state_cur_opt.clone()
-                    state_cur = torch.cat((state_cur_opt_copy, state_cur_gt[:, self.n_particle:, :]), 1)
+                #     # for s in range(state_cur_sim.shape[0]):
+                #     #     visualize_points(state_cur_sim[s].cpu().numpy())
+                #     #     visualize_points(state_cur_seq_opt[s].cpu().numpy())
+
+                #     state_cur_sim_copy = state_cur_sim.clone()
+                #     state_cur = torch.cat((state_cur_sim_copy, state_cur_gt[:, self.n_particle:, :]), 1)
+                # else:
+                #     state_cur_opt_copy = state_cur_opt.clone()
+                #     state_cur = torch.cat((state_cur_opt_copy, state_cur_gt[:, self.n_particle:, :]), 1)
 
             print(f"state_cur: {state_cur.shape}, state_goal: {state_goal.shape}")
 
@@ -361,9 +369,9 @@ class Planner(object):
                 init_pose_seq_opt, act_seq_opt, state_cur_opt = self.optimize_action_max(
                     init_pose_seqs_pool, act_seqs_pool, reward_seqs, state_cur_seqs)
             elif self.args.opt_algo == 'CEM':
-                for i in range(self.opt_iter):
-                    self.opt_iter_cur = i
-                    if i == self.opt_iter - 1:
+                for j in range(self.opt_iter):
+                    self.opt_iter_cur = j
+                    if j == self.opt_iter - 1:
                         init_pose_seq_opt, act_seq_opt, state_cur_opt = self.optimize_action_max(
                             init_pose_seqs_pool, act_seqs_pool, reward_seqs, state_cur_seqs)
                     else:
@@ -374,9 +382,9 @@ class Planner(object):
                     init_pose_seq_opt, act_seq_opt, state_cur_opt = self.optimize_action_GD(init_pose_seqs_pool, act_seqs_pool, reward_seqs, state_cur, state_goal)
                 # torch.set_grad_enabled(False)
             elif self.args.opt_algo == "CEM_GD":
-                for i in range(self.opt_iter):
-                    self.opt_iter_cur = i
-                    if i == self.opt_iter - 1:
+                for j in range(self.opt_iter):
+                    self.opt_iter_cur = j
+                    if j == self.opt_iter - 1:
                         # state_cur = state_cur.clone()
                         with torch.set_grad_enabled(True):
                             init_pose_seq_opt, act_seq_opt, state_cur_opt = self.optimize_action_GD(init_pose_seqs_pool, act_seqs_pool, reward_seqs, state_cur, state_goal)
@@ -428,6 +436,8 @@ class Planner(object):
 
 
     def sample_action_params(self, n_grips):
+        np.random.seed(0)
+
         init_pose_seqs = []
         act_seqs = []
         n_sampled = 0
@@ -460,7 +470,7 @@ class Planner(object):
 
 
     @profile
-    def sim_rollout(self, init_pose_seqs, act_seqs, sim_correction=False):
+    def sim_rollout(self, init_pose_seqs, act_seqs, snapshot=False):
         # init_pose_seqs = init_pose_seqs.detach().cpu().numpy()
         # act_seqs = act_seqs.detach().cpu().numpy()
         state_seq_batch = []
@@ -485,11 +495,11 @@ class Planner(object):
                     #     gt_particles = sample_particles(self.taichi_env, self.cam_params, self.n_particle)
                     #     state_seq_gt.append(gt_particles[:self.n_particle])
 
-            if sim_correction:
-                gt_particles = sample_particles(self.taichi_env, self.cam_params, self.n_particle)
+            if snapshot:
+                gt_state = sample_particles(self.taichi_env, self.cam_params, self.n_particle)
                 state_seq_gt = []
                 for i in range(self.n_his):
-                    state_seq_gt.append(gt_particles[:self.n_particle])
+                    state_seq_gt.append(gt_state)
                 state_seq_gt = np.stack(state_seq_gt)
                 state_seq_batch.append(state_seq_gt)
             else:
@@ -743,7 +753,7 @@ class Planner(object):
         reward_seqs,
         state_cur,
         state_goal,
-        lr=1e-2
+        lr=1e-1
     ):
         # state_goal = state_goal.to(device)
         best_k = self.best_k_GD
