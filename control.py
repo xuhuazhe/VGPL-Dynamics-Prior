@@ -276,7 +276,6 @@ class Planner(object):
         self.n_his = args.n_his
         self.use_sim = args.use_sim
         self.dist_func = args.rewardtype
-        self.n_sample = args.control_sample_size
         self.batch_size = args.control_batch_size
         self.sample_iter = args.sample_iter
         self.sample_iter_cur = 0
@@ -302,12 +301,13 @@ class Planner(object):
             self.init_pose_sample_size = 4
             self.act_delta_sample_size = 2
             self.n_epochs_GD = 20
-            self.best_k_GD = 1
+            self.GD_batch_size = 2
         else:
-            self.init_pose_sample_size = 40
-            self.act_delta_sample_size = 8
-            self.n_epochs_GD = 100
-            self.best_k_GD = 1
+            self.n_sample = args.control_sample_size
+            self.init_pose_sample_size = args.CEM_init_pose_sample_size
+            self.act_delta_sample_size = args.CEM_act_delta_sample_size
+            self.n_epochs_GD = args.GD_epochs
+            self.GD_batch_size = args.GD_batch_size
 
 
     @profile
@@ -436,7 +436,7 @@ class Planner(object):
 
 
     def sample_action_params(self, n_grips):
-        np.random.seed(0)
+        # np.random.seed(0)
 
         init_pose_seqs = []
         act_seqs = []
@@ -756,7 +756,7 @@ class Planner(object):
         lr=1e-1
     ):
         # state_goal = state_goal.to(device)
-        best_k = self.best_k_GD
+        best_k = self.GD_batch_size
         idx = torch.argsort(reward_seqs)
         # print(f"Selected idx: {idx[-1]} with loss {reward_seqs[idx[-1]]}")
         print(f"Selected top reward seqs: {reward_seqs[idx[-best_k:]]}")
@@ -815,7 +815,7 @@ class Planner(object):
 
             # pdb.set_trace()
             reward_seqs, state_cur_seqs = self.rollout(init_pose_seq_samples, act_seq_samples[:, :, :max(non_static_idx), :], state_cur, state_goal)
-            loss = torch.min(torch.neg(reward_seqs))
+            loss = torch.sum(torch.neg(reward_seqs))
 
             print(f"Epoch: {epoch}; Loss: {loss.item()}")
             print(f"Params:\nmid_point: {mid_points}\nangle: {angles}\nact_delta: {act_deltas}")
@@ -1051,20 +1051,11 @@ def main():
 
     torch.cuda.empty_cache()
 
-    # ti.reset()
-    # ti.init(arch=ti.cuda)
-    env.set_state(**state)
+    with open(f"{control_out_dir}/init_pose_seq_opt.npy", 'wb') as f:
+        np.save(f, init_pose_seq)
 
-    for i in range(act_seq.shape[0]):
-        env.primitives.primitives[0].set_state(0, init_pose_seq[i, task_params["gripper_mid_pt"], :7])
-        env.primitives.primitives[1].set_state(0, init_pose_seq[i, task_params["gripper_mid_pt"], 7:])
-        for j in range(act_seq.shape[1]):
-            true_idx = i * act_seq.shape[1] + j
-            env.step(act_seq[i][j])
-            rgb_img, depth_img = env.render(mode='get')
-            imageio.imwrite(f"{control_out_dir}/{true_idx:03d}_rgb.png", rgb_img)
-
-    os.system(f'ffmpeg -y -i {control_out_dir}/%03d_rgb.png -c:v libx264 -vf fps=25 -pix_fmt yuv420p {control_out_dir}/vid000.mp4')
+    with open(f"{control_out_dir}/act_seq_opt.npy", 'wb') as f:
+        np.save(f, act_seq)
 
 
 if __name__ == '__main__':
