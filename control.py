@@ -320,7 +320,7 @@ class Planner(object):
             self.sample_iter_cur = i
 
             start_idx = i * n_grips_per_iter * (self.len_per_grip + self.len_per_grip_back)
-            # state_cur_gt = torch.FloatTensor(np.stack(self.all_p[start_idx:start_idx+self.args.n_his]))
+            state_cur_gt = torch.FloatTensor(np.stack(self.all_p[start_idx:start_idx+self.args.n_his]))
 
             end_idx = min((i + 1) *  n_grips_per_iter * (self.len_per_grip + self.len_per_grip_back) - 1, len(self.all_p) - 1)
             state_goal = torch.FloatTensor(self.all_p[end_idx]).unsqueeze(0)[:, :self.n_particle, :]
@@ -331,10 +331,10 @@ class Planner(object):
             if state_cur == None:
                 state_cur = state_cur_gt
             else:
+                pdb.set_trace()
                 state_cur_sim = self.sim_rollout(init_pose_seq_opt.unsqueeze(0), act_seq_opt.unsqueeze(0), snapshot=True).squeeze()
                 state_cur_sim_copy = state_cur_sim.clone()
-                
-                pdb.set_trace()
+            
                 if self.sim_correction:
                     state_cur = state_cur_sim_copy
                 else:
