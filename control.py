@@ -297,9 +297,9 @@ class Planner(object):
         self.sim_correction = True
 
         if args.debug:
-            self.n_sample = 4
-            self.init_pose_sample_size = 4
-            self.act_delta_sample_size = 2
+            self.n_sample = 40
+            self.init_pose_sample_size = 20
+            self.act_delta_sample_size = 4
             self.n_epochs_GD = 20
             self.GD_batch_size = 2
         else:
@@ -817,9 +817,9 @@ class Planner(object):
             reward_seqs, state_cur_seqs = self.rollout(init_pose_seq_samples, act_seq_samples[:, :, :max(non_static_idx), :], state_cur, state_goal)
             loss = torch.sum(torch.neg(reward_seqs))
 
-            print(f"Epoch: {epoch}; Loss: {loss.item()}")
+            print(f"Epoch: {epoch}; Loss: {torch.min(torch.neg(reward_seqs))}")
             print(f"Params:\nmid_point: {mid_points}\nangle: {angles}\nact_delta: {act_deltas}")
-            loss_list.append([epoch, loss.item()])
+            loss_list.append([epoch, torch.min(torch.neg(reward_seqs))])
 
             optimizer.zero_grad()
             loss.backward()
