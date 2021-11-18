@@ -328,18 +328,20 @@ class Planner(object):
             if len(self.args.goal_shape_name) > 0 and self.args.goal_shape_name != 'none':
                 state_goal = self.goal_shapes[i]
 
-            if state_cur == None:
-                state_cur = state_cur_gt
-            else:
-                pdb.set_trace()
-                state_cur_sim = self.sim_rollout(init_pose_seq_opt.unsqueeze(0), act_seq_opt.unsqueeze(0), snapshot=True).squeeze()
-                state_cur_sim_copy = state_cur_sim.clone()
+            state_cur = state_cur_gt
+
+            # if state_cur == None:
+            #     state_cur = state_cur_gt
+            # else:
+            #     pdb.set_trace()
+            #     state_cur_sim = self.sim_rollout(init_pose_seq_opt.unsqueeze(0), act_seq_opt.unsqueeze(0), snapshot=True).squeeze()
+            #     state_cur_sim_copy = state_cur_sim.clone()
             
-                if self.sim_correction:
-                    state_cur = state_cur_sim_copy
-                else:
-                    state_cur_opt_copy = state_cur_opt.clone()
-                    state_cur = torch.cat((state_cur_opt_copy, state_cur_sim_copy[:, self.n_particle:, :]), 1)
+            #     if self.sim_correction:
+            #         state_cur = state_cur_sim_copy
+            #     else:
+            #         state_cur_opt_copy = state_cur_opt.clone()
+            #         state_cur = torch.cat((state_cur_opt_copy, state_cur_sim_copy[:, self.n_particle:, :]), 1)
 
                 # pdb.set_trace()
                 # if self.sim_correction:
@@ -367,9 +369,9 @@ class Planner(object):
                 init_pose_seq_opt, act_seq_opt, state_cur_opt = self.optimize_action_max(
                     init_pose_seqs_pool, act_seqs_pool, reward_seqs, state_cur_seqs)
             elif self.args.opt_algo == 'CEM':
-                for i in range(self.opt_iter):
-                    self.opt_iter_cur = i
-                    if i == self.opt_iter - 1:
+                for j in range(self.opt_iter):
+                    self.opt_iter_cur = j
+                    if j == self.opt_iter - 1:
                         init_pose_seq_opt, act_seq_opt, state_cur_opt = self.optimize_action_max(
                             init_pose_seqs_pool, act_seqs_pool, reward_seqs, state_cur_seqs)
                     else:
@@ -380,9 +382,9 @@ class Planner(object):
                     init_pose_seq_opt, act_seq_opt, state_cur_opt = self.optimize_action_GD(init_pose_seqs_pool, act_seqs_pool, reward_seqs, state_cur, state_goal)
                 # torch.set_grad_enabled(False)
             elif self.args.opt_algo == "CEM_GD":
-                for i in range(self.opt_iter):
-                    self.opt_iter_cur = i
-                    if i == self.opt_iter - 1:
+                for j in range(self.opt_iter):
+                    self.opt_iter_cur = j
+                    if j == self.opt_iter - 1:
                         # state_cur = state_cur.clone()
                         with torch.set_grad_enabled(True):
                             init_pose_seq_opt, act_seq_opt, state_cur_opt = self.optimize_action_GD(init_pose_seqs_pool, act_seqs_pool, reward_seqs, state_cur, state_goal)
