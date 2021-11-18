@@ -21,6 +21,10 @@ from plb.config import load
 from plb.algorithms import sample_data
 
 from sys import platform
+import gc
+
+import taichi as ti
+ti.init(arch=ti.cpu)
 
 use_gpu = True
 device = torch.device("cuda" if torch.cuda.is_available() and use_gpu else "cpu")
@@ -41,29 +45,29 @@ task_params = {
 
 def get_pose(new_mid_point, rot_noise):
     if not torch.is_tensor(new_mid_point):
-        new_mid_point = torch.tensor(new_mid_point).to(device)
+        new_mid_point = torch.tensor(new_mid_point)
     
     if not torch.is_tensor(rot_noise):
-        rot_noise = torch.tensor(rot_noise).to(device)
+        rot_noise = torch.tensor(rot_noise)
 
     x1 = new_mid_point[0] - task_params["sample_radius"] * torch.cos(rot_noise)
     y1 = new_mid_point[2] + task_params["sample_radius"] * torch.sin(rot_noise)
     x2 = new_mid_point[0] + task_params["sample_radius"] * torch.cos(rot_noise)
     y2 = new_mid_point[2] - task_params["sample_radius"] * torch.sin(rot_noise)
 
-    unit_quat = torch.tensor([1.0, 0.0, 0.0, 0.0]).to(device)
+    unit_quat = torch.tensor([1.0, 0.0, 0.0, 0.0])
 
     # import pdb; pdb.set_trace()
     new_prim1 = []
     for j in range(task_params["n_shapes_per_gripper"]):
-        prim1_pos = torch.stack([x1, torch.tensor(task_params["default_h"] + 0.018 * (j-5)).to(device), y1])
+        prim1_pos = torch.stack([x1, torch.tensor(task_params["default_h"] + 0.018 * (j-5)), y1])
         prim1_tmp = torch.cat((prim1_pos, unit_quat))
         new_prim1.append(prim1_tmp)
     new_prim1 = torch.stack(new_prim1)
 
     new_prim2 = []
     for j in range(task_params["n_shapes_per_gripper"]):
-        prim2_pos = torch.stack([x2, torch.tensor(task_params["default_h"] + 0.018 * (j-5)).to(device), y2])
+        prim2_pos = torch.stack([x2, torch.tensor(task_params["default_h"] + 0.018 * (j-5)), y2])
         prim2_tmp = torch.cat((prim2_pos, unit_quat))
         new_prim2.append(prim2_tmp)
     new_prim2 = torch.stack(new_prim2)
@@ -75,20 +79,21 @@ def get_pose(new_mid_point, rot_noise):
 
 def get_action_seq(rot_noise, act_delta):
     if not torch.is_tensor(rot_noise):
-        rot_noise = torch.tensor(rot_noise).to(device)
+        rot_noise = torch.tensor(rot_noise)
     
     if not torch.is_tensor(act_delta):
-        act_delta = torch.tensor(act_delta).to(device)
+        act_delta = torch.tensor(act_delta)
 
-    n_actions = (act_delta - torch.remainder(act_delta, task_params["gripper_rate"])) / task_params["gripper_rate"]
-    zero_pad = torch.zeros(3).to(device)
+    # n_actions = (act_delta - torch.remainder(act_delta, task_params["gripper_rate"])) / task_params["gripper_rate"]
+    n_actions = act_delta / task_params["gripper_rate"]
+    zero_pad = torch.zeros(3)
     actions = []
     counter = 0
     while counter < n_actions:
         x = task_params["gripper_rate"] * torch.cos(rot_noise)
         y = -task_params["gripper_rate"] * torch.sin(rot_noise)
-        prim1_act = torch.stack([x/0.02, torch.tensor(0).to(device), y/0.02])
-        prim2_act = torch.stack([-x/0.02, torch.tensor(0).to(device), -y/0.02])
+        prim1_act = torch.stack([x/0.02, torch.tensor(0), y/0.02])
+        prim2_act = torch.stack([-x/0.02, torch.tensor(0), -y/0.02])
         act = torch.cat((prim1_act, zero_pad, prim2_act, zero_pad))
         actions.append(act)
         counter += 1
@@ -96,14 +101,14 @@ def get_action_seq(rot_noise, act_delta):
     actions = actions[:task_params["len_per_grip"]]
 
     for _ in range(task_params["len_per_grip"] - len(actions)):
-        actions.append(torch.zeros(12).to(device))
+        actions.append(torch.zeros(12))
 
     counter = 0
     while counter < task_params["len_per_grip_back"]:
         x = -task_params["gripper_rate"] * torch.cos(rot_noise)
         y = task_params["gripper_rate"] * torch.sin(rot_noise)
-        prim1_act = torch.stack([x/0.02, torch.tensor(0).to(device), y/0.02])
-        prim2_act = torch.stack([-x/0.02, torch.tensor(0).to(device), -y/0.02])
+        prim1_act = torch.stack([x/0.02, torch.tensor(0), y/0.02])
+        prim2_act = torch.stack([-x/0.02, torch.tensor(0), -y/0.02])
         act = torch.cat((prim1_act, zero_pad, prim2_act, zero_pad))
         actions.append(act)
         counter += 1
@@ -117,14 +122,14 @@ def get_action_seq(rot_noise, act_delta):
 def get_center_and_rot_from_pose(init_pose_seq):
     # import pdb; pdb.set_trace()
     if not torch.is_tensor(init_pose_seq):
-        init_pose_seq = torch.tensor(init_pose_seq).to(device)
+        init_pose_seq = torch.tensor(init_pose_seq)
         
     mid_point_seq = (init_pose_seq[:, task_params["gripper_mid_pt"], :3] + init_pose_seq[:, task_params["gripper_mid_pt"], 7:10]) / 2
 
     angle_seq = torch.atan2(init_pose_seq[:, task_params["gripper_mid_pt"], 2] - mid_point_seq[:, 2], \
         init_pose_seq[:, task_params["gripper_mid_pt"], 0] - mid_point_seq[:, 0])
 
-    pi = torch.full(angle_seq.shape, math.pi).to(device)
+    pi = torch.full(angle_seq.shape, math.pi)
     angle_seq_new = pi - angle_seq
     
     return mid_point_seq, angle_seq_new
@@ -151,7 +156,7 @@ def get_act_delta_from_action_seq(act_seq):
             act_delta += act_delta_per_step
         act_delta_seq.append(act_delta)
     
-    act_delta_seq = torch.stack(act_delta_seq)
+    act_delta_seq = torch.stack(act_delta_seq) - 0.5 * task_params["gripper_rate"]
 
     return act_delta_seq
 
@@ -293,15 +298,15 @@ class Planner(object):
         self.sim_correction = True
 
         if args.debug:
-            self.n_sample = 8
+            self.n_sample = 4
             self.init_pose_sample_size = 4
-            self.act_delta_sample_size = 4
-            self.n_epochs_GD = 10
+            self.act_delta_sample_size = 2
+            self.n_epochs_GD = 20
             self.best_k_GD = 1
         else:
             self.init_pose_sample_size = 40
             self.act_delta_sample_size = 8
-            self.n_epochs_GD = 60
+            self.n_epochs_GD = 100
             self.best_k_GD = 1
 
 
@@ -326,19 +331,30 @@ class Planner(object):
             if state_cur == None:
                 state_cur = state_cur_gt
             else:
-                state_cur = state_cur.to(device) 
-                state_cur_gt = state_cur_gt.to(device)
+                pdb.set_trace()
+                state_cur_sim = self.sim_rollout(init_pose_seq_opt.unsqueeze(0), act_seq_opt.unsqueeze(0), snapshot=True).squeeze()
+                state_cur_sim_copy = state_cur_sim.clone()
+            
+                if self.sim_correction:
+                    state_cur = state_cur_sim_copy
+                else:
+                    state_cur_opt_copy = state_cur_opt.clone()
+                    state_cur = torch.cat((state_cur_opt_copy, state_cur_sim_copy[:, self.n_particle:, :]), 1)
 
                 # pdb.set_trace()
-                if self.sim_correction:
-                    # torch.cuda.empty_cache()
-                    state_cur_sim = self.sim_rollout(init_pose_seq_opt.unsqueeze(0), act_seq_opt.unsqueeze(0), sim_correction=True).squeeze()
-                    # for s in range(state_cur_sim.shape[0]):
-                    #     visualize_points(state_cur_sim[s].cpu().numpy())
-                    #     visualize_points(state_cur_seq_opt[s].cpu().numpy())
-                    state_cur_opt = state_cur_sim.clone()
+                # if self.sim_correction:
+                #     sim_diff = self.evaluate_traj(state_cur_opt.unsqueeze(0), state_cur_sim[-1].unsqueeze(0))
+                #     print(f"Sim correction diff: {sim_diff}")
 
-                state_cur = torch.cat((state_cur_opt, state_cur_gt[:, self.n_particle:, :]), 1)
+                #     # for s in range(state_cur_sim.shape[0]):
+                #     #     visualize_points(state_cur_sim[s].cpu().numpy())
+                #     #     visualize_points(state_cur_seq_opt[s].cpu().numpy())
+
+                #     state_cur_sim_copy = state_cur_sim.clone()
+                #     state_cur = torch.cat((state_cur_sim_copy, state_cur_gt[:, self.n_particle:, :]), 1)
+                # else:
+                #     state_cur_opt_copy = state_cur_opt.clone()
+                #     state_cur = torch.cat((state_cur_opt_copy, state_cur_gt[:, self.n_particle:, :]), 1)
 
             print(f"state_cur: {state_cur.shape}, state_goal: {state_goal.shape}")
 
@@ -362,12 +378,15 @@ class Planner(object):
             elif self.args.opt_algo == "GD":
                 with torch.set_grad_enabled(True):
                     init_pose_seq_opt, act_seq_opt, state_cur_opt = self.optimize_action_GD(init_pose_seqs_pool, act_seqs_pool, reward_seqs, state_cur, state_goal)
+                # torch.set_grad_enabled(False)
             elif self.args.opt_algo == "CEM_GD":
                 for i in range(self.opt_iter):
                     self.opt_iter_cur = i
                     if i == self.opt_iter - 1:
+                        # state_cur = state_cur.clone()
                         with torch.set_grad_enabled(True):
                             init_pose_seq_opt, act_seq_opt, state_cur_opt = self.optimize_action_GD(init_pose_seqs_pool, act_seqs_pool, reward_seqs, state_cur, state_goal)
+                        # torch.set_grad_enabled(False)
                     else:
                         init_pose_seqs_pool, act_seqs_pool = self.optimize_action_CEM(init_pose_seqs_pool, act_seqs_pool, reward_seqs)
                         reward_seqs, state_cur_seqs = self.rollout(init_pose_seqs_pool, act_seqs_pool, state_cur, state_goal)
@@ -447,9 +466,9 @@ class Planner(object):
 
 
     @profile
-    def sim_rollout(self, init_pose_seqs, act_seqs, sim_correction=False):
-        init_pose_seqs = init_pose_seqs.detach().cpu().numpy()
-        act_seqs = act_seqs.detach().cpu().numpy()
+    def sim_rollout(self, init_pose_seqs, act_seqs, snapshot=False):
+        # init_pose_seqs = init_pose_seqs.detach().cpu().numpy()
+        # act_seqs = act_seqs.detach().cpu().numpy()
         state_seq_batch = []
         for t in range(act_seqs.shape[0]):
             self.taichi_env.set_state(**self.env_init_state)
@@ -472,18 +491,18 @@ class Planner(object):
                     #     gt_particles = sample_particles(self.taichi_env, self.cam_params, self.n_particle)
                     #     state_seq_gt.append(gt_particles[:self.n_particle])
 
-            if sim_correction:
-                gt_particles = sample_particles(self.taichi_env, self.cam_params, self.n_particle)
+            if snapshot:
+                gt_state = sample_particles(self.taichi_env, self.cam_params, self.n_particle)
                 state_seq_gt = []
                 for i in range(self.n_his):
-                    state_seq_gt.append(gt_particles[:self.n_particle])
+                    state_seq_gt.append(gt_state)
                 state_seq_gt = np.stack(state_seq_gt)
                 state_seq_batch.append(state_seq_gt)
             else:
                 state_seq = np.stack(state_seq)
                 state_seq_batch.append(state_seq)
 
-        state_seq_batch = torch.from_numpy(np.stack(state_seq_batch)).to(device)
+        state_seq_batch = torch.from_numpy(np.stack(state_seq_batch))
 
         # print(f"state_seq_batch: {state_seq_batch.shape}")
 
@@ -497,19 +516,24 @@ class Planner(object):
         act_seqs,    # [n_sample, -1, action_dim]
     ):
         if not torch.is_tensor(init_pose_seqs):
-            init_pose_seqs = torch.tensor(init_pose_seqs).to(device)
+            init_pose_seqs = torch.tensor(init_pose_seqs)
 
         if not torch.is_tensor(act_seqs):
-            act_seqs = torch.tensor(act_seqs).to(device)
+            act_seqs = torch.tensor(act_seqs)
 
         init_pose_seqs = init_pose_seqs.float()
         act_seqs = act_seqs.float()
         state_cur = state_cur.float()
-        state_cur = expand(init_pose_seqs.shape[0], state_cur.unsqueeze(0)).to(device)
+        state_cur = expand(init_pose_seqs.shape[0], state_cur.unsqueeze(0))
 
+        if use_gpu:
+            init_pose_seqs = init_pose_seqs.to(device)
+            act_seqs = act_seqs.to(device)
+            state_cur = state_cur.to(device)
+
+        memory_init = self.model.init_memory(init_pose_seqs.shape[0], self.n_particle + self.n_shape)
         scene_params = self.scene_params.expand(init_pose_seqs.shape[0], -1)
         group_gt = get_env_group(self.args, self.n_particle, scene_params, use_gpu=self.use_gpu)
-        memory_init = self.model.init_memory(init_pose_seqs.shape[0], self.n_particle + self.n_shape)
 
         # print(state_cur.shape)
         
@@ -575,9 +599,25 @@ class Planner(object):
                 states_pred_list.append(pred_pos[:, :self.n_particle, :])
         
         # states_pred_tensor: [n_sample, n_look_ahead, state_dim]
-        states_pred_tensor = torch.stack(states_pred_list, dim=1)
+        states_pred_array = torch.stack(states_pred_list, dim=1).cpu()
 
-        return states_pred_tensor #.data.cpu().numpy()
+        print(f"torch mem allocated: {torch.cuda.memory_allocated()}; torch mem reserved: {torch.cuda.memory_reserved()}")
+        
+        # for obj in gc.get_objects():
+        #     try:
+        #         if torch.is_tensor(obj) or (hasattr(obj, 'data') and torch.is_tensor(obj.data)):
+        #             # print(type(obj), obj.size())
+        #             obj = obj.detach()
+        #             del obj
+        #             obj = None
+
+        #     except: pass
+
+        # gc.collect()
+        # torch.cuda.empty_cache()
+        # print(f"After: torch mem allocated: {torch.cuda.memory_allocated()}; torch mem reserved: {torch.cuda.memory_reserved()}")
+
+        return states_pred_array #.data.cpu().numpy()
 
 
     def evaluate_traj(
@@ -587,7 +627,7 @@ class Planner(object):
     ):
         # reward_seqs = -np.mean(np.sum((state_seqs[:, -1] - state_goal)**2, 2), 1)
         # goal = state_goal.expand(self.n_sample, -1, -1)
-        state_goal = state_goal.to(device)
+        # state_goal = state_goal.to(device)
 
         # print(state_seqs.shape, state_goal.shape)
         reward_seqs = []
@@ -647,14 +687,15 @@ class Planner(object):
             init_pose_seq = init_pose_seqs[idx[-i]]
             mid_point_seq, angle_seq = get_center_and_rot_from_pose(init_pose_seq)
             act_seq = act_seqs[idx[-i]]
-            act_delta_seq = get_act_delta_from_action_seq(act_seq)
+            # act_delta_seq = get_act_delta_from_action_seq(act_seq)
             # print(f"Selected init pose seq: {init_pose_seq[:, self.gripper_mid_pt, :7]}")
             init_pose_seqs_pool.append(init_pose_seq)
             act_seqs_pool.append(act_seq)
 
             for k in range(self.act_delta_sample_size - 1):
-                act_delta_noise = torch.clamp(torch.tensor(np.random.randn(init_pose_seq.shape[0])*0.02), max=0.05, min=-0.05).to(device)
-                act_delta_sample = act_delta_seq + act_delta_noise
+                # act_delta_noise = torch.clamp(torch.tensor(np.random.randn(init_pose_seq.shape[0])*0.02), max=0.05, min=-0.05)
+                # act_delta_sample = act_delta_seq + act_delta_noise
+                act_delta_sample = torch.tensor([np.random.uniform(*self.act_delta_limits)])
                 # print(f"{i} act_delta_sample: {act_delta_sample}")
                 act_seq_sample = get_action_seq_from_pose(init_pose_seq, act_delta_sample)
 
@@ -670,8 +711,8 @@ class Planner(object):
             while j < n_init_pose_samples:
                 init_pose_seq_sample = []
                 for k in range(init_pose_seq.shape[0]):
-                    p_noise = torch.clamp(torch.tensor([0, 0, np.random.randn()*0.03]), max=0.1, min=-0.1).to(device)
-                    rot_noise = torch.clamp(torch.tensor(np.random.randn()*math.pi/36), max=0.1, min=-0.1).to(device)
+                    p_noise = torch.clamp(torch.tensor([0, 0, np.random.randn()*0.03]), max=0.1, min=-0.1)
+                    rot_noise = torch.clamp(torch.tensor(np.random.randn()*math.pi/36), max=0.1, min=-0.1)
                 
                     new_mid_point = mid_point_seq[k, :3] + p_noise
                     new_angle = angle_seq[k] + rot_noise
@@ -685,8 +726,8 @@ class Planner(object):
                 for k in range(self.act_delta_sample_size):
                     # act_delta_noise = torch.tensor(np.random.randn(init_pose_seq.shape[0])*0.01).to(device)
                     # act_delta_sample = torch.clamp(act_delta_seq + act_delta_noise, max=self.act_delta_limits[1], min=self.act_delta_limits[0])
-                    act_delta_sample = torch.tensor([np.random.uniform(*self.act_delta_limits)]).to(device)
-                    print(f"act_delta_sample: {act_delta_sample}")
+                    act_delta_sample = torch.tensor([np.random.uniform(*self.act_delta_limits)])
+                    # print(f"act_delta_sample: {act_delta_sample}")
                     act_seq_sample = get_action_seq_from_pose(init_pose_seq_sample, act_delta_sample)
 
                     init_pose_seqs_pool.append(init_pose_seq_sample)
@@ -708,9 +749,9 @@ class Planner(object):
         reward_seqs,
         state_cur,
         state_goal,
-        lr=1e-2
+        lr=1e-1
     ):
-        state_goal = state_goal.to(device)
+        # state_goal = state_goal.to(device)
         best_k = self.best_k_GD
         idx = torch.argsort(reward_seqs)
         # print(f"Selected idx: {idx[-1]} with loss {reward_seqs[idx[-1]]}")
@@ -733,10 +774,10 @@ class Planner(object):
 
         mid_points = best_mid_point_seqs.requires_grad_()
         angles = best_angle_seqs.requires_grad_()
-        act_deltas = best_act_delta_seqs.requires_grad_()
+        act_deltas = best_act_delta_seqs
 
-        # optimizer = torch.optim.Adam([mid_points, angles, act_deltas], lr=lr)
-        optimizer = torch.optim.SGD([mid_points, angles, act_deltas], lr=lr)
+        # optimizer = torch.optim.Adam([mid_points, angles], lr=lr)
+        optimizer = torch.optim.SGD([mid_points, angles], lr=lr)
         # scheduler = torch.optim.lr_scheduler.ReduceLROnPlateau(optimizer, 'min', factor=0.8, patience=3, verbose=True)
 
         loss_list = []
@@ -749,9 +790,9 @@ class Planner(object):
                     init_pose = get_pose(best_mid_point_seqs[i, j, :3], angles[i, j])
                     init_pose_seq_sample.append(init_pose)
 
-                # import pdb; pdb.set_trace()
-                init_pose_seq_sample = torch.stack(init_pose_seq_sample).to(device)
-                act_seq_sample = get_action_seq_from_pose(init_pose_seq_sample, act_deltas[i]).to(device)
+                # pdb.set_trace()
+                init_pose_seq_sample = torch.stack(init_pose_seq_sample)
+                act_seq_sample = get_action_seq_from_pose(init_pose_seq_sample, act_deltas[i])
 
                 init_pose_seq_samples.append(init_pose_seq_sample)
                 act_seq_samples.append(act_seq_sample)
@@ -759,8 +800,17 @@ class Planner(object):
             init_pose_seq_samples = torch.stack(init_pose_seq_samples)
             act_seq_samples = torch.stack(act_seq_samples)
 
+            non_static_idx = []
+            for i in range(act_seq_samples.shape[0]):
+                for j in range(act_seq_samples.shape[1]):
+                    for k in range(task_params["len_per_grip"]):
+                        if torch.linalg.norm(act_seq_samples[i, j, k]) == 0:
+                            non_static_idx.append(k)
+                            break
+            print(f"The length of non-static act seq is: {non_static_idx}")
+
             # pdb.set_trace()
-            reward_seqs, state_cur_seqs = self.rollout(init_pose_seq_samples, act_seq_samples[:, :, :task_params["len_per_grip"], :], state_cur, state_goal)
+            reward_seqs, state_cur_seqs = self.rollout(init_pose_seq_samples, act_seq_samples[:, :, :max(non_static_idx), :], state_cur, state_goal)
             loss = torch.min(torch.neg(reward_seqs))
 
             print(f"Epoch: {epoch}; Loss: {loss.item()}")
@@ -780,7 +830,7 @@ class Planner(object):
             init_pose = get_pose(mid_points[idx[-1], i, :3], angles[idx[-1], i])
             init_pose_seq_opt.append(init_pose)
 
-        init_pose_seq_opt = torch.stack(init_pose_seq_opt).to(device)
+        init_pose_seq_opt = torch.stack(init_pose_seq_opt)
         act_seq_opt = get_action_seq_from_pose(init_pose_seq_opt, act_deltas[idx[-1]])
 
         print(f"Optimal set of params:\nmid_point: {mid_points[idx[-1]]}\nangle: {angles[idx[-1]]}\nact_delta: {act_deltas[idx[-1]]}")
@@ -975,7 +1025,7 @@ def main():
                     n_shape=n_shape, model=model, all_p=all_p, cam_params=cam_params, goal_shapes=goal_shapes, task_params=task_params, use_gpu=use_gpu, 
                     rollout_path=control_out_dir)
 
-    with torch.set_grad_enabled(False):
+    with torch.no_grad():
         if args.gt_action:
             state_cur = torch.FloatTensor(np.stack(all_p[:args.n_his]))
             state_goal = torch.FloatTensor(all_p[-1]).unsqueeze(0)[:, :n_particle, :]
@@ -997,6 +1047,8 @@ def main():
 
     torch.cuda.empty_cache()
 
+    # ti.reset()
+    # ti.init(arch=ti.cuda)
     env.set_state(**state)
 
     for i in range(act_seq.shape[0]):

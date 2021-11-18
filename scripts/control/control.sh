@@ -21,7 +21,7 @@ kernprof -l control.py \
 	--augment_ratio 0.05 \
 	--shape_aug 1 \
 	--n_grips 3 \
-	--opt_algo CEM \
+	--opt_algo CEM_GD \
 	--opt_iter 3 \
 	--sample_iter 3 \
 	--rewardtype emd \
@@ -31,4 +31,4 @@ kernprof -l control.py \
 	--control_sample_size 200 \
 	--control_batch_size 4 \
 	--goal_shape_name none \
-	--debug 0
+	--debug 1
