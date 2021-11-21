@@ -161,19 +161,13 @@ def get_act_delta_from_action_seq(act_seq):
     return act_delta_seq
 
 
-def sample_particles(env, cam_params, k_fps_particles):
+def sample_particles(env, cam_params, k_fps_particles, n_shapes=3, n_particles=2000):
     prim_pos1 = env.primitives.primitives[0].get_state(0)
     prim_pos2 = env.primitives.primitives[1].get_state(0)
     prim_pos = [prim_pos1[:3], prim_pos2[:3]]
 
-    # env.render(mode='plt')
-    # pdb.set_trace()
-
     img = env.render_multi(mode='rgb_array', spp=3)
     rgb, depth = img[0], img[1]
-
-    n_particles = 2000
-    n_shapes = 3
 
     sampled_points = sample_data.gen_data_one_frame(rgb, depth, cam_params, prim_pos, n_particles, k_fps_particles)
 
@@ -756,7 +750,7 @@ class Planner(object):
         lr=1e-1
     ):
         # state_goal = state_goal.to(device)
-        best_k = self.GD_batch_size
+        best_k = reward_seqs.shape[0]
         idx = torch.argsort(reward_seqs)
         # print(f"Selected idx: {idx[-1]} with loss {reward_seqs[idx[-1]]}")
         print(f"Selected top reward seqs: {reward_seqs[idx[-best_k:]]}")
