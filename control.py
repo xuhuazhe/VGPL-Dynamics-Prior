@@ -3,6 +3,7 @@ import math
 import numpy as np
 import pandas as pd
 import torch
+from torch.optim import optimizer
 from tqdm import tqdm, trange
 import copy
 import imageio
@@ -292,8 +293,8 @@ class Planner(object):
 
         if args.debug:
             self.n_sample = 8
-            self.init_pose_sample_size = 4
-            self.act_delta_sample_size = 2
+            self.init_pose_sample_size = 8
+            self.act_delta_sample_size = 4
             self.n_epochs_GD = 20
             self.GD_batch_size = 2
             self.batch_size = 2
@@ -310,6 +311,7 @@ class Planner(object):
         n_grips_per_iter = int(self.n_grips / self.sample_iter)
         init_pose_seq = []
         act_seq = []
+        loss_seq = []
         state_cur = None
         for i in range(self.sample_iter):
             self.sample_iter_cur = i
@@ -361,20 +363,20 @@ class Planner(object):
             print('sampling: max: %.4f, mean: %.4f, std: %.4f' % (torch.max(reward_seqs), torch.mean(reward_seqs), torch.std(reward_seqs)))
 
             if self.args.opt_algo == 'max':
-                init_pose_seq_opt, act_seq_opt, state_cur_opt = self.optimize_action_max(
+                init_pose_seq_opt, act_seq_opt, loss_opt, state_cur_opt = self.optimize_action_max(
                     init_pose_seqs_pool, act_seqs_pool, reward_seqs, state_cur_seqs)
             elif self.args.opt_algo == 'CEM':
                 for j in range(self.opt_iter):
                     self.opt_iter_cur = j
                     if j == self.opt_iter - 1:
-                        init_pose_seq_opt, act_seq_opt, state_cur_opt = self.optimize_action_max(
+                        init_pose_seq_opt, act_seq_opt, loss_opt, state_cur_opt = self.optimize_action_max(
                             init_pose_seqs_pool, act_seqs_pool, reward_seqs, state_cur_seqs)
                     else:
                         init_pose_seqs_pool, act_seqs_pool = self.optimize_action_CEM(init_pose_seqs_pool, act_seqs_pool, reward_seqs)
                         reward_seqs, state_cur_seqs = self.rollout(init_pose_seqs_pool, act_seqs_pool, state_cur, state_goal)
             elif self.args.opt_algo == "GD":
                 with torch.set_grad_enabled(True):
-                    init_pose_seq_opt, act_seq_opt, state_cur_opt = self.optimize_action_GD(init_pose_seqs_pool, act_seqs_pool, reward_seqs, state_cur, state_goal)
+                    init_pose_seq_opt, act_seq_opt, loss_opt, state_cur_opt = self.optimize_action_GD(init_pose_seqs_pool, act_seqs_pool, reward_seqs, state_cur, state_goal)
                 # torch.set_grad_enabled(False)
             elif self.args.opt_algo == "CEM_GD":
                 for j in range(self.opt_iter):
@@ -382,7 +384,7 @@ class Planner(object):
                     if j == self.opt_iter - 1:
                         # state_cur = state_cur.clone()
                         with torch.set_grad_enabled(True):
-                            init_pose_seq_opt, act_seq_opt, state_cur_opt = self.optimize_action_GD(init_pose_seqs_pool, act_seqs_pool, reward_seqs, state_cur, state_goal)
+                            init_pose_seq_opt, act_seq_opt, loss_opt, state_cur_opt = self.optimize_action_GD(init_pose_seqs_pool, act_seqs_pool, reward_seqs, state_cur, state_goal)
                         # torch.set_grad_enabled(False)
                     else:
                         init_pose_seqs_pool, act_seqs_pool = self.optimize_action_CEM(init_pose_seqs_pool, act_seqs_pool, reward_seqs)
@@ -393,11 +395,13 @@ class Planner(object):
             # print(init_pose.shape, actions.shape)
             init_pose_seq.append(init_pose_seq_opt.cpu().numpy())
             act_seq.append(act_seq_opt.cpu().numpy())
+            loss_seq.append(loss_opt.cpu().numpy())
         
         init_pose_seq = np.concatenate(init_pose_seq, axis=0)
         act_seq = np.concatenate(act_seq, axis=0)
+        loss_seq = np.array(loss_seq)
 
-        return init_pose_seq, act_seq
+        return init_pose_seq, act_seq, loss_seq
 
 
     def rollout(self, init_pose_seqs_pool, act_seqs_pool, state_cur, state_goal):
@@ -406,7 +410,8 @@ class Planner(object):
         state_cur_seqs_rollout = []
         
         n_batch = int(math.ceil(init_pose_seqs_pool.shape[0] / self.batch_size))
-        for i, _ in enumerate(tqdm(range(n_batch), total=n_batch)):
+        batches = tqdm(range(n_batch), total=n_batch) if n_batch > 4 else range(n_batch)
+        for i, _ in enumerate(batches):
             # print(f"Batch: {i}/{n_batch}")
             init_pose_seqs = init_pose_seqs_pool[i*self.batch_size:(i+1)*self.batch_size]
             act_seqs = act_seqs_pool[i*self.batch_size:(i+1)*self.batch_size]
@@ -654,14 +659,14 @@ class Planner(object):
     ):
 
         idx = torch.argsort(reward_seqs)
-        print(f"Selected idx: {idx[-1]} with loss {reward_seqs[idx[-1]]}")
+        print(f"Selected idx: {idx[-1]} with reward {reward_seqs[idx[-1]]}")
 
         visualize_sampled_init_pos(init_pose_seqs, reward_seqs, idx, \
             os.path.join(self.rollout_path, f'plot_max_{self.sample_iter_cur}'))
 
         # [-1, action_dim]
         # pdb.set_trace()
-        return init_pose_seqs[idx[-1]], act_seqs[idx[-1]], state_cur_seqs[idx[-1]]
+        return init_pose_seqs[idx[-1]], act_seqs[idx[-1]], torch.neg(reward_seqs[idx[-1]]), state_cur_seqs[idx[-1]]
 
 
     def optimize_action_CEM(    # Cross Entropy Method (CEM)
@@ -669,9 +674,9 @@ class Planner(object):
         init_pose_seqs,
         act_seqs,
         reward_seqs,    # [n_sample]
-        best_k_ratio=0.05
+        best_k_ratio=0.1
     ):
-        best_k = max(4, int(init_pose_seqs.shape[0] * best_k_ratio))
+        best_k = max(5, int(init_pose_seqs.shape[0] * best_k_ratio))
         idx = torch.argsort(reward_seqs)
         print(f"Selected top reward seqs: {reward_seqs[idx[-best_k:]]}")
         # print(f"Selected top init pose seqs: {init_pose_seqs[idx[-best_k:], :, self.gripper_mid_pt, :7]}")
@@ -776,60 +781,77 @@ class Planner(object):
         act_deltas = best_act_delta_seqs
 
         # optimizer = torch.optim.Adam([mid_points, angles], lr=lr)
-        optimizer = torch.optim.SGD([mid_points, angles], lr=lr)
-        # scheduler = torch.optim.lr_scheduler.ReduceLROnPlateau(optimizer, 'min', factor=0.8, patience=3, verbose=True)
+        # optimizer = torch.optim.SGD([mid_points, angles], lr=lr)
+        optimizer = torch.optim.LBFGS([mid_points, angles], lr=lr)
 
-        loss_list = []
-        n_batch = best_k // self.batch_size
-        for epoch in range(self.n_epochs_GD):
-            loss_list_per_epoch = []
+        loss_list_all = []
+        n_batch = int(math.ceil(best_k / self.batch_size))
+        for epoch, _ in enumerate(tqdm(range(self.n_epochs_GD), total=self.n_epochs_GD)):
+            reward_list = None
+            state_cur_list = None
             for b in range(n_batch):
-                init_pose_seq_samples = []
-                act_seq_samples = []
-                for i in range(self.batch_size):
-                    init_pose_seq_sample = []
-                    for j in range(mid_points.shape[1]):
-                        init_pose = get_pose(mid_points[b * self.batch_size + i, j, :3], angles[b * self.batch_size + i, j])
-                        init_pose_seq_sample.append(init_pose)
+                print(f"Batch {b}/{n_batch}:")
+                reward_seqs = None
+                state_cur_seqs = None
+                def closure():
+                    nonlocal reward_seqs
+                    nonlocal state_cur_seqs
+                    
+                    optimizer.zero_grad()
+
+                    start_idx = b * self.batch_size
+                    end_idx = (b + 1) * self.batch_size
+                    init_pose_seq_samples = []
+                    act_seq_samples = []
+                    for i in range(mid_points[start_idx:end_idx].shape[0]):
+                        init_pose_seq_sample = []
+                        for j in range(mid_points.shape[1]):
+                            init_pose = get_pose(mid_points[start_idx + i, j, :3], angles[start_idx + i, j])
+                            init_pose_seq_sample.append(init_pose)
+
+                        # pdb.set_trace()
+                        init_pose_seq_sample = torch.stack(init_pose_seq_sample)
+                        act_seq_sample = get_action_seq_from_pose(init_pose_seq_sample, act_deltas[start_idx + i])
+
+                        init_pose_seq_samples.append(init_pose_seq_sample)
+                        act_seq_samples.append(act_seq_sample)
+
+                    init_pose_seq_samples = torch.stack(init_pose_seq_samples)
+                    act_seq_samples = torch.stack(act_seq_samples)
+
+                    non_static_idx = int(torch.ceil(torch.max(act_deltas[start_idx: end_idx]) / task_params["gripper_rate"]).item())
+                    # for i in range(act_seq_samples.shape[0]):
+                    #     for j in range(act_seq_samples.shape[1]):
+                    #         for k in range(task_params["len_per_grip"]):
+                    #             if torch.linalg.norm(act_seq_samples[i, j, k]) == 0:
+                    #                 non_static_idx.append(k)
+                    #                 break
+                    # print(f"The non-static act seq and act_deltas is: {non_static_idx} and {act_deltas}")
 
                     # pdb.set_trace()
-                    init_pose_seq_sample = torch.stack(init_pose_seq_sample)
-                    act_seq_sample = get_action_seq_from_pose(init_pose_seq_sample, act_deltas[b * self.batch_size + i])
+                    reward_seqs, state_cur_seqs = self.rollout(init_pose_seq_samples, act_seq_samples[:, :, :non_static_idx, :], state_cur, state_goal)
+                    
+                    loss = torch.sum(torch.neg(reward_seqs))
+                    
+                    loss.backward()
 
-                    init_pose_seq_samples.append(init_pose_seq_sample)
-                    act_seq_samples.append(act_seq_sample)
+                    return loss
+                
+                # for i in range(10):
+                optimizer.step(closure)
 
-                init_pose_seq_samples = torch.stack(init_pose_seq_samples)
-                act_seq_samples = torch.stack(act_seq_samples)
-
-                non_static_idx = int(torch.ceil(torch.max(act_deltas[b * self.batch_size: (b + 1) * self.batch_size]) / task_params["gripper_rate"]).item())
-                # for i in range(act_seq_samples.shape[0]):
-                #     for j in range(act_seq_samples.shape[1]):
-                #         for k in range(task_params["len_per_grip"]):
-                #             if torch.linalg.norm(act_seq_samples[i, j, k]) == 0:
-                #                 non_static_idx.append(k)
-                #                 break
-                # print(f"The non-static act seq and act_deltas is: {non_static_idx} and {act_deltas}")
-
-                # pdb.set_trace()
-                reward_seqs, state_cur_seqs = self.rollout(init_pose_seq_samples, act_seq_samples[:, :, :non_static_idx, :], state_cur, state_goal)
-                loss = torch.sum(torch.neg(reward_seqs))
-
-                loss_list_per_epoch.append(torch.min(torch.neg(reward_seqs)))
-
-                optimizer.zero_grad()
-                loss.backward()
-                optimizer.step()
-
-            loss_min = torch.min(torch.stack(loss_list_per_epoch))
-            loss_list.append([epoch, loss_min])
+                reward_list = torch.cat((reward_list, reward_seqs)) if reward_list != None else reward_seqs
+                state_cur_list = torch.cat((state_cur_list, state_cur_seqs)) if state_cur_list != None else state_cur_seqs
+                    
+            loss_min = torch.min(torch.neg(reward_list))
+            loss_list_all.append([epoch, loss_min.detach()])
             print(f"Epoch: {epoch}; Loss: {loss_min}")
             print(f"Params:\nmid_point: {mid_points}\nangle: {angles}\nact_delta: {act_deltas}")
 
-        visualize_loss(loss_list, os.path.join(self.rollout_path, f'plot_GD_loss_{self.sample_iter_cur}'))
+        visualize_loss(loss_list_all, os.path.join(self.rollout_path, f'plot_GD_loss_{self.sample_iter_cur}'))
 
-        # pdb.set_trace()
-        idx = torch.argsort(reward_seqs)
+        pdb.set_trace()
+        idx = torch.argsort(reward_list)
         init_pose_seq_opt = []
         for i in range(mid_points[idx[-1]].shape[0]):
             init_pose = get_pose(mid_points[idx[-1], i, :3], angles[idx[-1], i])
@@ -841,7 +863,7 @@ class Planner(object):
         print(f"Optimal set of params:\nmid_point: {mid_points[idx[-1]]}\nangle: {angles[idx[-1]]}\nact_delta: {act_deltas[idx[-1]]}")
         print(f"Optimal init pose seq: {init_pose_seq_opt[:, task_params['gripper_mid_pt'], :7]}")
 
-        return init_pose_seq_opt, act_seq_opt, state_cur_seqs[idx[-1]]
+        return init_pose_seq_opt, act_seq_opt, torch.neg(reward_list[idx[-1]]), state_cur_list[idx[-1]]
         # return init_pose_seq_samples[0], act_seq_samples[0], None
 
 
@@ -1045,10 +1067,11 @@ def main():
             init_pose_seq = init_pose_gt[0]
             act_seq = act_seq_gt[0]
         else:
-            init_pose_seq, act_seq = planner.trajectory_optimization()
+            init_pose_seq, act_seq, loss_seq = planner.trajectory_optimization()
 
-    print(init_pose_seq[:, task_params["gripper_mid_pt"], :7])
     print(init_pose_seq.shape, act_seq.shape)
+    print(f"Best init pose: {init_pose_seq[:, task_params['gripper_mid_pt'], :7]}")
+    print(f"Best loss: {loss_seq}")
 
     torch.cuda.empty_cache()
 
