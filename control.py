@@ -326,22 +326,23 @@ class Planner(object):
             if len(self.args.goal_shape_name) > 0 and self.args.goal_shape_name != 'none':
                 state_goal = self.goal_shapes[i]
 
-            state_cur = state_cur_gt
+            # state_cur = state_cur_gt
 
-            # if state_cur == None:
-            #     state_cur = state_cur_gt
-            # else:
-            #     # pdb.set_trace()
-            #     state_cur_sim = self.sim_rollout(init_pose_seq_opt.unsqueeze(0), act_seq_opt.unsqueeze(0), snapshot=True).squeeze()
-            #     state_cur_sim_copy = state_cur_sim.clone()
-            #     visualize_points(state_cur_sim_copy[-1, :self.n_particle])
-            #     if self.sim_correction:
-            #         state_cur = state_cur_sim_copy
-            #         model_sim_diff = self.evaluate_traj(state_cur_opt.unsqueeze(0), state_cur_sim_copy[-1, :self.n_particle].unsqueeze(0))
-            #         gt_sim_diff = self.evaluate_traj(state_cur_gt.unsqueeze(0), state_cur_sim_copy[-1, :self.n_particle].unsqueeze(0))
-            #         print(f"model-sim diff: {model_sim_diff}; gt-sim diff: {gt_sim_diff}")
-            #     else:
-            #         state_cur = torch.cat((state_cur_opt.clone(), state_cur_sim_copy[:, self.n_particle:, :]), 1)
+            if state_cur == None:
+                state_cur = state_cur_gt
+            else:
+                # pdb.set_trace()
+                state_cur_sim = self.sim_rollout(init_pose_seq_opt.unsqueeze(0), act_seq_opt.unsqueeze(0), snapshot=True).squeeze()
+                state_cur_sim_copy = state_cur_sim.clone()
+                visualize_points(state_cur_sim_copy[-1, :self.n_particle])
+                if self.sim_correction:
+                    state_cur = state_cur_sim_copy
+                    model_sim_diff = self.evaluate_traj(state_cur_opt.unsqueeze(0), state_cur_sim_copy[-1, :self.n_particle].unsqueeze(0))
+                    sim_gt_diff = self.evaluate_traj(state_cur_gt.unsqueeze(0), state_cur_sim_copy[-1, :self.n_particle].unsqueeze(0))
+                    model_gt_diff = self.evaluate_traj(state_cur_gt.unsqueeze(0), state_cur_opt[-1].unsqueeze(0))
+                    print(f"model-sim diff: {model_sim_diff}; gt-sim diff: {sim_gt_diff}; model-gt diff: {model_gt_diff}")
+                else:
+                    state_cur = torch.cat((state_cur_opt.clone(), state_cur_sim_copy[:, self.n_particle:, :]), 1)
 
             print(f"state_cur: {state_cur.shape}, state_goal: {state_goal.shape}")
 
@@ -463,7 +464,8 @@ class Planner(object):
         # act_seqs = act_seqs.detach().cpu().numpy()
         state_seq_batch = []
         for t in range(act_seqs.shape[0]):
-            self.taichi_env.set_state(**self.env_init_state)
+            if not snapshot:
+                self.taichi_env.set_state(**self.env_init_state)
             state_seq = []
             # state_seq_gt = []
             for i in range(act_seqs.shape[1]):
@@ -731,8 +733,8 @@ class Planner(object):
         best_k_ratio=0.2
     ):
         # state_goal = state_goal.to(device)
-        best_k = max(8, reward_seqs.shape[0] * best_k_ratio)
         idx = torch.argsort(reward_seqs)
+        best_k = max(8, int(reward_seqs.shape[0] * best_k_ratio))
         # print(f"Selected idx: {idx[-1]} with loss {reward_seqs[idx[-1]]}")
         print(f"Selected top reward seqs: {reward_seqs[idx[-best_k:]]}")
 
