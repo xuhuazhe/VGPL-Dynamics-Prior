@@ -291,8 +291,8 @@ class Planner(object):
         self.sim_correction = True
 
         if args.debug:
-            self.n_sample = 40
-            self.init_pose_sample_size = 20
+            self.n_sample = 12
+            self.init_pose_sample_size = 8
             self.act_delta_sample_size = 4
             self.n_epochs_GD = 20
             self.GD_batch_size = 2
@@ -779,45 +779,47 @@ class Planner(object):
         # scheduler = torch.optim.lr_scheduler.ReduceLROnPlateau(optimizer, 'min', factor=0.8, patience=3, verbose=True)
 
         loss_list = []
+        n_batch = best_k // self.batch_size
         for epoch in range(self.n_epochs_GD):
-            init_pose_seq_samples = []
-            act_seq_samples = []
-            for i in range(mid_points.shape[0]):
-                init_pose_seq_sample = []
-                for j in range(mid_points.shape[1]):
-                    init_pose = get_pose(best_mid_point_seqs[i, j, :3], angles[i, j])
-                    init_pose_seq_sample.append(init_pose)
+            for b in range(n_batch):
+                init_pose_seq_samples = []
+                act_seq_samples = []
+                for i in range(self.batch_size):
+                    init_pose_seq_sample = []
+                    for j in range(mid_points.shape[1]):
+                        init_pose = get_pose(mid_points[b * self.batch_size + i, j, :3], angles[b * self.batch_size + i, j])
+                        init_pose_seq_sample.append(init_pose)
+
+                    # pdb.set_trace()
+                    init_pose_seq_sample = torch.stack(init_pose_seq_sample)
+                    act_seq_sample = get_action_seq_from_pose(init_pose_seq_sample, act_deltas[b * self.batch_size + i])
+
+                    init_pose_seq_samples.append(init_pose_seq_sample)
+                    act_seq_samples.append(act_seq_sample)
+
+                init_pose_seq_samples = torch.stack(init_pose_seq_samples)
+                act_seq_samples = torch.stack(act_seq_samples)
+
+                non_static_idx = torch.ceil(torch.max(act_deltas[b * self.batch_size: (b + 1) * self.batch_size]))
+                # for i in range(act_seq_samples.shape[0]):
+                #     for j in range(act_seq_samples.shape[1]):
+                #         for k in range(task_params["len_per_grip"]):
+                #             if torch.linalg.norm(act_seq_samples[i, j, k]) == 0:
+                #                 non_static_idx.append(k)
+                #                 break
+                print(f"The non-static act seq and act_deltas is: {non_static_idx}")
 
                 # pdb.set_trace()
-                init_pose_seq_sample = torch.stack(init_pose_seq_sample)
-                act_seq_sample = get_action_seq_from_pose(init_pose_seq_sample, act_deltas[i])
+                reward_seqs, state_cur_seqs = self.rollout(init_pose_seq_samples, act_seq_samples[:, :, :non_static_idx, :], state_cur, state_goal)
+                loss = torch.sum(torch.neg(reward_seqs))
 
-                init_pose_seq_samples.append(init_pose_seq_sample)
-                act_seq_samples.append(act_seq_sample)
+                print(f"Epoch: {epoch}; Loss: {torch.min(torch.neg(reward_seqs))}")
+                print(f"Params:\nmid_point: {mid_points}\nangle: {angles}\nact_delta: {act_deltas}")
+                loss_list.append([epoch, torch.min(torch.neg(reward_seqs))])
 
-            init_pose_seq_samples = torch.stack(init_pose_seq_samples)
-            act_seq_samples = torch.stack(act_seq_samples)
-
-            non_static_idx = []
-            for i in range(act_seq_samples.shape[0]):
-                for j in range(act_seq_samples.shape[1]):
-                    for k in range(task_params["len_per_grip"]):
-                        if torch.linalg.norm(act_seq_samples[i, j, k]) == 0:
-                            non_static_idx.append(k)
-                            break
-            print(f"The length of non-static act seq is: {non_static_idx}")
-
-            # pdb.set_trace()
-            reward_seqs, state_cur_seqs = self.rollout(init_pose_seq_samples, act_seq_samples[:, :, :max(non_static_idx), :], state_cur, state_goal)
-            loss = torch.sum(torch.neg(reward_seqs))
-
-            print(f"Epoch: {epoch}; Loss: {torch.min(torch.neg(reward_seqs))}")
-            print(f"Params:\nmid_point: {mid_points}\nangle: {angles}\nact_delta: {act_deltas}")
-            loss_list.append([epoch, torch.min(torch.neg(reward_seqs))])
-
-            optimizer.zero_grad()
-            loss.backward()
-            optimizer.step()
+                optimizer.zero_grad()
+                loss.backward()
+                optimizer.step()
 
         visualize_loss(loss_list, os.path.join(self.rollout_path, f'plot_GD_loss_{self.sample_iter_cur}'))
 
