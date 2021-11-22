@@ -399,7 +399,7 @@ class Planner(object):
         if len(self.args.goal_shape_name) > 0 and self.args.goal_shape_name != 'none':
             state_goal = self.goal_shapes[i]
 
-        return state_goal.unsqueeze(0)
+        return state_goal
 
 
     def sample_action_params(self, n_grips):
