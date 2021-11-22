@@ -33,6 +33,6 @@ kernprof -l control.py \
 	--CEM_init_pose_sample_size 40 \
 	--CEM_act_delta_sample_size 8 \
 	--GD_epochs 100 \
-	--GD_batch_size 8 \
+	--GD_batch_size 1 \
 	--goal_shape_name none \
 	--debug 1

@@ -219,14 +219,15 @@ def visualize_sampled_init_pos(init_pose_seqs, reward_seqs, idx, path):
     # plt.show()
 
 
-def visualize_loss(loss_list, path):
-    iters, loss = map(list, zip(*loss_list))
+def visualize_loss(loss_lists, path):
     plt.figure(figsize=[16, 9])
-    plt.plot(iters, loss, linewidth=6, label='EMD')
+    for loss_list in loss_lists:
+        iters, loss = map(list, zip(*loss_list))
+        plt.plot(iters, loss, linewidth=6)
     plt.xlabel('epochs', fontsize=30)
     plt.ylabel('loss', fontsize=30)
     plt.title('Test Loss', fontsize=35)
-    plt.legend(fontsize=30)
+    # plt.legend(fontsize=30)
     plt.xticks(fontsize=25)
     plt.yticks(fontsize=25)
 
@@ -292,11 +293,11 @@ class Planner(object):
         self.sim_correction = True
 
         if args.debug:
-            self.n_sample = 8
+            self.n_sample = 20
             self.init_pose_sample_size = 8
             self.act_delta_sample_size = 4
             self.n_epochs_GD = 20
-            self.GD_batch_size = 2
+            self.GD_batch_size = 1
             self.batch_size = 2
         else:
             self.n_sample = args.control_sample_size
@@ -330,30 +331,17 @@ class Planner(object):
             # if state_cur == None:
             #     state_cur = state_cur_gt
             # else:
-            #     pdb.set_trace()
+            #     # pdb.set_trace()
             #     state_cur_sim = self.sim_rollout(init_pose_seq_opt.unsqueeze(0), act_seq_opt.unsqueeze(0), snapshot=True).squeeze()
             #     state_cur_sim_copy = state_cur_sim.clone()
-            
+            #     visualize_points(state_cur_sim_copy[-1, :self.n_particle])
             #     if self.sim_correction:
             #         state_cur = state_cur_sim_copy
+            #         model_sim_diff = self.evaluate_traj(state_cur_opt.unsqueeze(0), state_cur_sim_copy[-1, :self.n_particle].unsqueeze(0))
+            #         gt_sim_diff = self.evaluate_traj(state_cur_gt.unsqueeze(0), state_cur_sim_copy[-1, :self.n_particle].unsqueeze(0))
+            #         print(f"model-sim diff: {model_sim_diff}; gt-sim diff: {gt_sim_diff}")
             #     else:
-            #         state_cur_opt_copy = state_cur_opt.clone()
-            #         state_cur = torch.cat((state_cur_opt_copy, state_cur_sim_copy[:, self.n_particle:, :]), 1)
-
-                # pdb.set_trace()
-                # if self.sim_correction:
-                #     sim_diff = self.evaluate_traj(state_cur_opt.unsqueeze(0), state_cur_sim[-1].unsqueeze(0))
-                #     print(f"Sim correction diff: {sim_diff}")
-
-                #     # for s in range(state_cur_sim.shape[0]):
-                #     #     visualize_points(state_cur_sim[s].cpu().numpy())
-                #     #     visualize_points(state_cur_seq_opt[s].cpu().numpy())
-
-                #     state_cur_sim_copy = state_cur_sim.clone()
-                #     state_cur = torch.cat((state_cur_sim_copy, state_cur_gt[:, self.n_particle:, :]), 1)
-                # else:
-                #     state_cur_opt_copy = state_cur_opt.clone()
-                #     state_cur = torch.cat((state_cur_opt_copy, state_cur_gt[:, self.n_particle:, :]), 1)
+            #         state_cur = torch.cat((state_cur_opt.clone(), state_cur_sim_copy[:, self.n_particle:, :]), 1)
 
             print(f"state_cur: {state_cur.shape}, state_goal: {state_goal.shape}")
 
@@ -605,21 +593,7 @@ class Planner(object):
         # states_pred_tensor: [n_sample, n_look_ahead, state_dim]
         states_pred_array = torch.stack(states_pred_list, dim=1).cpu()
 
-        print(f"torch mem allocated: {torch.cuda.memory_allocated()}; torch mem reserved: {torch.cuda.memory_reserved()}")
-        
-        # for obj in gc.get_objects():
-        #     try:
-        #         if torch.is_tensor(obj) or (hasattr(obj, 'data') and torch.is_tensor(obj.data)):
-        #             # print(type(obj), obj.size())
-        #             obj = obj.detach()
-        #             del obj
-        #             obj = None
-
-        #     except: pass
-
-        # gc.collect()
-        # torch.cuda.empty_cache()
-        # print(f"After: torch mem allocated: {torch.cuda.memory_allocated()}; torch mem reserved: {torch.cuda.memory_reserved()}")
+        # print(f"torch mem allocated: {torch.cuda.memory_allocated()}; torch mem reserved: {torch.cuda.memory_reserved()}")
 
         return states_pred_array #.data.cpu().numpy()
 
@@ -753,10 +727,11 @@ class Planner(object):
         reward_seqs,
         state_cur,
         state_goal,
-        lr=1e-1
+        lr=1e-1,
+        best_k_ratio=0.2
     ):
         # state_goal = state_goal.to(device)
-        best_k = reward_seqs.shape[0]
+        best_k = max(8, reward_seqs.shape[0] * best_k_ratio)
         idx = torch.argsort(reward_seqs)
         # print(f"Selected idx: {idx[-1]} with loss {reward_seqs[idx[-1]]}")
         print(f"Selected top reward seqs: {reward_seqs[idx[-best_k:]]}")
@@ -782,75 +757,80 @@ class Planner(object):
 
         # optimizer = torch.optim.Adam([mid_points, angles], lr=lr)
         # optimizer = torch.optim.SGD([mid_points, angles], lr=lr)
-        optimizer = torch.optim.LBFGS([mid_points, angles], lr=lr)
+        # optimizer = torch.optim.LBFGS([mid_points, angles], lr=lr, line_search_fn="strong_wolfe")
+        # optimizer = FullBatchLBFGS([mid_points, angles], lr=lr, history_size=10, line_search='Wolfe', debug=True)
 
         loss_list_all = []
-        n_batch = int(math.ceil(best_k / self.batch_size))
-        for epoch, _ in enumerate(tqdm(range(self.n_epochs_GD), total=self.n_epochs_GD)):
-            reward_list = None
-            state_cur_list = None
-            for b in range(n_batch):
-                print(f"Batch {b}/{n_batch}:")
-                reward_seqs = None
-                state_cur_seqs = None
-                def closure():
-                    nonlocal reward_seqs
-                    nonlocal state_cur_seqs
-                    
-                    optimizer.zero_grad()
+        n_batch = int(math.ceil(best_k / self.GD_batch_size))
+        reward_list = None
+        state_cur_list = None
 
-                    start_idx = b * self.batch_size
-                    end_idx = (b + 1) * self.batch_size
-                    init_pose_seq_samples = []
-                    act_seq_samples = []
-                    for i in range(mid_points[start_idx:end_idx].shape[0]):
-                        init_pose_seq_sample = []
-                        for j in range(mid_points.shape[1]):
-                            init_pose = get_pose(mid_points[start_idx + i, j, :3], angles[start_idx + i, j])
-                            init_pose_seq_sample.append(init_pose)
+        for b in range(n_batch):
+            print(f"Batch {b}/{n_batch}:")
+            optimizer = torch.optim.LBFGS([mid_points, angles], lr=lr, line_search_fn="strong_wolfe")
+            start_idx = b * self.GD_batch_size
+            end_idx = (b + 1) * self.GD_batch_size
 
-                        # pdb.set_trace()
-                        init_pose_seq_sample = torch.stack(init_pose_seq_sample)
-                        act_seq_sample = get_action_seq_from_pose(init_pose_seq_sample, act_deltas[start_idx + i])
+            epoch = 0
+            loss_list = []
+            reward_seqs = None
+            state_cur_seqs = None
+            
+            def closure():
+                nonlocal epoch
+                nonlocal loss_list
+                nonlocal reward_seqs
+                nonlocal state_cur_seqs
+                
+                optimizer.zero_grad()
 
-                        init_pose_seq_samples.append(init_pose_seq_sample)
-                        act_seq_samples.append(act_seq_sample)
-
-                    init_pose_seq_samples = torch.stack(init_pose_seq_samples)
-                    act_seq_samples = torch.stack(act_seq_samples)
-
-                    non_static_idx = int(torch.ceil(torch.max(act_deltas[start_idx: end_idx]) / task_params["gripper_rate"]).item())
-                    # for i in range(act_seq_samples.shape[0]):
-                    #     for j in range(act_seq_samples.shape[1]):
-                    #         for k in range(task_params["len_per_grip"]):
-                    #             if torch.linalg.norm(act_seq_samples[i, j, k]) == 0:
-                    #                 non_static_idx.append(k)
-                    #                 break
-                    # print(f"The non-static act seq and act_deltas is: {non_static_idx} and {act_deltas}")
+                init_pose_seq_samples = []
+                act_seq_samples = []
+                for i in range(mid_points[start_idx:end_idx].shape[0]):
+                    init_pose_seq_sample = []
+                    for j in range(mid_points.shape[1]):
+                        init_pose = get_pose(mid_points[start_idx + i, j, :3], angles[start_idx + i, j])
+                        init_pose_seq_sample.append(init_pose)
 
                     # pdb.set_trace()
-                    reward_seqs, state_cur_seqs = self.rollout(init_pose_seq_samples, act_seq_samples[:, :, :non_static_idx, :], state_cur, state_goal)
-                    
-                    loss = torch.sum(torch.neg(reward_seqs))
-                    
-                    loss.backward()
+                    init_pose_seq_sample = torch.stack(init_pose_seq_sample)
+                    act_seq_sample = get_action_seq_from_pose(init_pose_seq_sample, act_deltas[start_idx + i])
 
-                    return loss
+                    init_pose_seq_samples.append(init_pose_seq_sample)
+                    act_seq_samples.append(act_seq_sample)
+
+                init_pose_seq_samples = torch.stack(init_pose_seq_samples)
+                act_seq_samples = torch.stack(act_seq_samples)
+
+                non_static_idx = int(torch.ceil(torch.max(act_deltas[start_idx: end_idx]) / task_params["gripper_rate"]).item())
+
+                # pdb.set_trace()
+                reward_seqs, state_cur_seqs = self.rollout(init_pose_seq_samples, act_seq_samples[:, :, :non_static_idx, :], state_cur, state_goal)
+
+                loss = torch.sum(torch.neg(reward_seqs))
+                loss_list.append([epoch, loss.item()])
+                loss.backward()
+                epoch += 1
                 
-                # for i in range(10):
-                optimizer.step(closure)
+                return loss
 
-                reward_list = torch.cat((reward_list, reward_seqs)) if reward_list != None else reward_seqs
-                state_cur_list = torch.cat((state_cur_list, state_cur_seqs)) if state_cur_list != None else state_cur_seqs
-                    
-            loss_min = torch.min(torch.neg(reward_list))
-            loss_list_all.append([epoch, loss_min.detach()])
-            print(f"Epoch: {epoch}; Loss: {loss_min}")
-            print(f"Params:\nmid_point: {mid_points}\nangle: {angles}\nact_delta: {act_deltas}")
+            # for epoch, _ in enumerate(tqdm(range(self.n_epochs_GD), total=self.n_epochs_GD)):
+            loss = optimizer.step(closure)
+
+            loss_list_all.append(loss_list)
+
+            reward_list = torch.cat((reward_list, reward_seqs)) if reward_list != None else reward_seqs
+            state_cur_list = torch.cat((state_cur_list, state_cur_seqs)) if state_cur_list != None else state_cur_seqs
+
+        loss_min = torch.min(torch.neg(reward_list))
+        print(f"Loss: {loss_min}")
+
+        # loss_list_all.append([epoch, loss_min.detach()])
+        print(f"Params:\nmid_point: {mid_points}\nangle: {angles}\nact_delta: {act_deltas}")
 
         visualize_loss(loss_list_all, os.path.join(self.rollout_path, f'plot_GD_loss_{self.sample_iter_cur}'))
 
-        pdb.set_trace()
+        # pdb.set_trace()
         idx = torch.argsort(reward_list)
         init_pose_seq_opt = []
         for i in range(mid_points[idx[-1]].shape[0]):
