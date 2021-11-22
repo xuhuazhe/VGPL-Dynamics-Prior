@@ -778,7 +778,7 @@ class Planner(object):
 
         for b in range(n_batch):
             print(f"Batch {b}/{n_batch}:")
-            optimizer = torch.optim.LBFGS([mid_points, angles], lr=lr, line_search_fn="strong_wolfe")
+            optimizer = torch.optim.LBFGS([mid_points, angles], lr=lr, tolerance_change=1e-5, line_search_fn="strong_wolfe")
             start_idx = b * self.GD_batch_size
             end_idx = (b + 1) * self.GD_batch_size
 
@@ -1059,16 +1059,16 @@ def main():
             act_seq = act_seq_gt[0]
         else:
             init_pose_seq, act_seq, loss_seq = planner.trajectory_optimization()
-            state_cur_sim_seq = planner.sim_rollout(init_pose_seq.unsqueeze(0), act_seq.unsqueeze(0)).squeeze()
             loss_sim_seq = []
-            for i, state_cur_sim in enumerate(state_cur_sim_seq):
+            for i in range(task_params['n_grips']):
+                state_cur_sim = planner.sim_rollout(init_pose_seq[i].unsqueeze(0), act_seq[i].unsqueeze(0)).squeeze()
                 visualize_points(state_cur_sim[-1, :n_particle], os.path.join(control_out_dir, f'sim_particles_final_{i}'))
                 state_goal = planner.get_state_goal(i)
                 loss_sim_seq.append(planner.evaluate_traj(state_cur_sim.unsqueeze(0), state_goal))
             loss_sim_seq = torch.stack(loss_sim_seq)
 
     print(init_pose_seq.shape, act_seq.shape)
-    print(f"Best init pose: {init_pose_seq[:, tapper_mid_ptsk_params['gri'], :7]}")
+    print(f"Best init pose: {init_pose_seq[:, task_params['gripper_mid_pt'], :7]}")
     print(f"Best model loss: {loss_seq}; Best sim loss: {loss_sim_seq}")
 
     with open(f"{control_out_dir}/init_pose_seq_opt.npy", 'wb') as f:
