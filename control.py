@@ -1061,7 +1061,7 @@ def main():
             init_pose_seq, act_seq, loss_seq = planner.trajectory_optimization()
             loss_sim_seq = []
             for i in range(task_params['n_grips']):
-                state_cur_sim = planner.sim_rollout(init_pose_seq[i].unsqueeze(0), act_seq[i].unsqueeze(0)).squeeze()
+                state_cur_sim = planner.sim_rollout(init_pose_seq[i].unsqueeze(0).unsqueeze(0), act_seq[i].unsqueeze(0).unsqueeze(0)).squeeze()
                 visualize_points(state_cur_sim[-1, :n_particle], os.path.join(control_out_dir, f'sim_particles_final_{i}'))
                 state_goal = planner.get_state_goal(i)
                 loss_sim_seq.append(planner.evaluate_traj(state_cur_sim.unsqueeze(0), state_goal))
