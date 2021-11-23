@@ -750,6 +750,8 @@ class Planner(object):
         angles = best_angle_seqs.requires_grad_()
         act_deltas = best_act_delta_seqs
 
+        # print(f"Params:\nmid_point: {mid_points}\nangle: {angles}\nact_delta: {act_deltas}")
+        
         # optimizer = torch.optim.Adam([mid_points, angles], lr=lr)
         # optimizer = torch.optim.SGD([mid_points, angles], lr=lr)
         # optimizer = torch.optim.LBFGS([mid_points, angles], lr=lr, line_search_fn="strong_wolfe")
@@ -857,7 +859,7 @@ def main():
     if args.gt_action:
         test_name = f'sim_{args.use_sim}+{args.rewardtype}+gt_action_{args.gt_action}'
     else:
-        test_name = f'sim_{args.use_sim}+{args.rewardtype}+sample_iter_{args.sample_iter}+opt_{args.opt_algo}_{args.opt_iter}'
+        test_name = f'sim_{args.use_sim}+{args.rewardtype}+sample_iter_{args.sample_iter}+opt_{args.opt_algo}_{args.opt_iter}+debug_{args.debug}'
 
     vid_idx = 0
     control_out_dir = os.path.join(args.outf, 'control', str(vid_idx).zfill(3), test_name)

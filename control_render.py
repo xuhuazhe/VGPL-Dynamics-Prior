@@ -49,13 +49,11 @@ def main():
     if args.gt_action:
         test_name = f'sim_{args.use_sim}+{args.rewardtype}+gt_action_{args.gt_action}'
     else:
-        test_name = f'sim_{args.use_sim}+{args.rewardtype}+sample_iter_{args.sample_iter}+opt_{args.opt_algo}_{args.opt_iter}'
+        test_name = f'sim_{args.use_sim}+{args.rewardtype}+sample_iter_{args.sample_iter}+opt_{args.opt_algo}_{args.opt_iter}+debug_{args.debug}'
 
     vid_idx = 0
     control_out_dir = os.path.join(args.outf, 'control', str(vid_idx).zfill(3), test_name)
     os.system('mkdir -p ' + control_out_dir)
-
-    tee = Tee(os.path.join(control_out_dir, 'control.log'), 'w')
 
     # set up the env
     cfg = load(args.gripperf)
