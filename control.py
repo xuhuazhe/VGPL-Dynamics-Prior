@@ -236,16 +236,21 @@ def visualize_loss(loss_lists, path):
     # plt.show()
 
 
-def visualize_points(points, path):
+def visualize_points(all_points, path):
+    # print(all_points.shape)
+    points = all_points[:300]
+    shapes = all_points[300:]
+
     fig = plt.figure()
     ax = fig.add_subplot(111, projection='3d')
-    ax.scatter(points[:, 0], points[:, 1], points[:, 2], c='b', s=20)
+    ax.scatter(points[:, 0], points[:, 2], points[:, 1], c='b', s=20)
+    ax.scatter(shapes[:, 0], shapes[:, 2], shapes[:, 1], c='r', s=20)
     
     extents = np.array([getattr(ax, 'get_{}lim'.format(dim))() for dim in 'xyz'])
     sz = extents[:, 1] - extents[:, 0]
     centers = np.mean(extents, axis=1)
     maxsize = max(abs(sz))
-    r = 0.15  # maxsize / 2
+    r = 0.25  # maxsize / 2
     for ctr, dim in zip(centers, 'xyz'):
         getattr(ax, 'set_{}lim'.format(dim))(ctr - r, ctr + r)
 
@@ -333,7 +338,7 @@ class Planner(object):
                 # pdb.set_trace()
                 state_cur_sim = self.sim_rollout(init_pose_seq_opt.unsqueeze(0), act_seq_opt.unsqueeze(0), snapshot=True).squeeze()
                 state_cur_sim_copy = state_cur_sim.clone()
-                visualize_points(state_cur_sim_copy[-1, :self.n_particle], os.path.join(self.rollout_path, f'sim_particles_{self.sample_iter_cur}'))
+                visualize_points(state_cur_sim_copy[-1], os.path.join(self.rollout_path, f'sim_particles_{self.sample_iter_cur}'))
                 if self.sim_correction:
                     state_cur = state_cur_sim_copy
                     model_sim_diff = self.evaluate_traj(state_cur_opt.unsqueeze(0), state_cur_sim_copy[-1, :self.n_particle].unsqueeze(0))
@@ -1062,7 +1067,7 @@ def main():
             loss_sim_seq = []
             for i in range(task_params['n_grips']):
                 state_cur_sim = planner.sim_rollout(init_pose_seq[i].unsqueeze(0).unsqueeze(0), act_seq[i].unsqueeze(0).unsqueeze(0)).squeeze()
-                visualize_points(state_cur_sim[-1, :n_particle], os.path.join(control_out_dir, f'sim_particles_final_{i}'))
+                visualize_points(state_cur_sim[-1], os.path.join(control_out_dir, f'sim_particles_final_{i}'))
                 state_goal = planner.get_state_goal(i)
                 loss_sim_seq.append(planner.evaluate_traj(state_cur_sim.unsqueeze(0), state_goal))
             loss_sim_seq = torch.stack(loss_sim_seq)
