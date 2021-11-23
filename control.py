@@ -87,28 +87,28 @@ def get_action_seq(rot_noise, act_delta):
         act_delta = torch.tensor(act_delta)
 
     # n_actions = (act_delta - torch.remainder(act_delta, task_params["gripper_rate"])) / task_params["gripper_rate"]
-    n_actions = act_delta / task_params["gripper_rate"]
+    # n_actions = act_delta / task_params["gripper_rate"]
     zero_pad = torch.zeros(3)
     actions = []
     counter = 0
-    while counter < n_actions:
-        x = task_params["gripper_rate"] * torch.cos(rot_noise)
-        y = -task_params["gripper_rate"] * torch.sin(rot_noise)
+    while counter < task_params["len_per_grip"]:
+        x = act_delta * torch.cos(rot_noise)
+        y = -act_delta * torch.sin(rot_noise)
         prim1_act = torch.stack([x/0.02, torch.tensor(0), y/0.02])
         prim2_act = torch.stack([-x/0.02, torch.tensor(0), -y/0.02])
         act = torch.cat((prim1_act, zero_pad, prim2_act, zero_pad))
         actions.append(act)
         counter += 1
 
-    actions = actions[:task_params["len_per_grip"]]
+    # actions = actions[:task_params["len_per_grip"]]
 
-    for _ in range(task_params["len_per_grip"] - len(actions)):
-        actions.append(torch.zeros(12))
+    # for _ in range(task_params["len_per_grip"] - len(actions)):
+    #     actions.append(torch.zeros(12))
 
     counter = 0
     while counter < task_params["len_per_grip_back"]:
-        x = -task_params["gripper_rate"] * torch.cos(rot_noise)
-        y = task_params["gripper_rate"] * torch.sin(rot_noise)
+        x = -act_delta * torch.cos(rot_noise)
+        y = act_delta * torch.sin(rot_noise)
         prim1_act = torch.stack([x/0.02, torch.tensor(0), y/0.02])
         prim2_act = torch.stack([-x/0.02, torch.tensor(0), -y/0.02])
         act = torch.cat((prim1_act, zero_pad, prim2_act, zero_pad))
@@ -155,10 +155,11 @@ def get_act_delta_from_action_seq(act_seq):
         act_delta = 0
         for j in range(task_params["len_per_grip"]):
             act_delta_per_step = torch.linalg.norm(act_seq[i, j, :3] * 0.02)
-            act_delta += act_delta_per_step
+            act_delta = act_delta_per_step
+            break
         act_delta_seq.append(act_delta)
     
-    act_delta_seq = torch.stack(act_delta_seq) - 0.5 * task_params["gripper_rate"]
+    act_delta_seq = torch.stack(act_delta_seq)
 
     return act_delta_seq
 
@@ -296,7 +297,7 @@ class Planner(object):
         self.n_shapes_floor = task_params["n_shapes_floor"]
         self.gripper_mid_pt = task_params["gripper_mid_pt"]
 
-        self.act_delta_limits = (0.13, 0.17)
+        self.act_delta_limits = (0.00675, 0.00875)
         self.n_grips_per_iter = int(self.n_grips / self.sample_iter)
         self.sim_correction = True
 
@@ -685,8 +686,8 @@ class Planner(object):
             while j < n_init_pose_samples:
                 init_pose_seq_sample = []
                 for k in range(init_pose_seq.shape[0]):
-                    p_noise = torch.clamp(torch.tensor([0, 0, np.random.randn()*0.03]), max=0.1, min=-0.1)
-                    rot_noise = torch.clamp(torch.tensor(np.random.randn()*math.pi/36), max=0.1, min=-0.1)
+                    p_noise = torch.clamp(torch.tensor([0, 0, np.random.randn()*0.03]), min=-0.1, max=0.1)
+                    rot_noise = torch.clamp(torch.tensor(np.random.randn()*math.pi/36), min=-0.1, max=0.1)
                 
                     new_mid_point = mid_point_seq[k, :3] + p_noise
                     new_angle = angle_seq[k] + rot_noise
@@ -748,10 +749,8 @@ class Planner(object):
 
         mid_points = best_mid_point_seqs.requires_grad_()
         angles = best_angle_seqs.requires_grad_()
-        act_deltas = best_act_delta_seqs
+        act_deltas = best_act_delta_seqs.requires_grad_()
 
-        # print(f"Params:\nmid_point: {mid_points}\nangle: {angles}\nact_delta: {act_deltas}")
-        
         # optimizer = torch.optim.Adam([mid_points, angles], lr=lr)
         # optimizer = torch.optim.SGD([mid_points, angles], lr=lr)
         # optimizer = torch.optim.LBFGS([mid_points, angles], lr=lr, line_search_fn="strong_wolfe")
@@ -764,7 +763,9 @@ class Planner(object):
 
         for b in range(n_batch):
             print(f"Batch {b}/{n_batch}:")
-            optimizer = torch.optim.LBFGS([mid_points, angles], lr=lr, tolerance_change=1e-5, line_search_fn="strong_wolfe")
+
+            optimizer = torch.optim.LBFGS([mid_points, angles, act_deltas], lr=lr, tolerance_change=1e-5, line_search_fn="strong_wolfe")
+            
             start_idx = b * self.GD_batch_size
             end_idx = (b + 1) * self.GD_batch_size
 
@@ -778,6 +779,8 @@ class Planner(object):
                 nonlocal loss_list
                 nonlocal reward_seqs
                 nonlocal state_cur_seqs
+
+                print(f"Params:\nmid_point: {mid_points}\nangle: {angles}\nact_delta: {act_deltas}")
                 
                 optimizer.zero_grad()
 
@@ -791,7 +794,9 @@ class Planner(object):
 
                     # pdb.set_trace()
                     init_pose_seq_sample = torch.stack(init_pose_seq_sample)
-                    act_seq_sample = get_action_seq_from_pose(init_pose_seq_sample, act_deltas[start_idx + i])
+
+                    act_delta_clamp = torch.clamp(act_deltas[start_idx + i], min=self.act_delta_limits[0], max=self.act_delta_limits[1])
+                    act_seq_sample = get_action_seq_from_pose(init_pose_seq_sample, act_delta_clamp)
 
                     init_pose_seq_samples.append(init_pose_seq_sample)
                     act_seq_samples.append(act_seq_sample)
@@ -799,16 +804,19 @@ class Planner(object):
                 init_pose_seq_samples = torch.stack(init_pose_seq_samples)
                 act_seq_samples = torch.stack(act_seq_samples)
 
-                non_static_idx = int(torch.ceil(torch.max(act_deltas[start_idx: end_idx]) / task_params["gripper_rate"]).item())
+                # non_static_idx = int(torch.ceil(torch.max(act_deltas[start_idx: end_idx]) / task_params["gripper_rate"]).item())
 
                 # pdb.set_trace()
-                reward_seqs, state_cur_seqs = self.rollout(init_pose_seq_samples, act_seq_samples[:, :, :non_static_idx, :], state_cur, state_goal)
+                reward_seqs, state_cur_seqs = self.rollout(init_pose_seq_samples, act_seq_samples[:, :, :task_params["len_per_grip"], :], state_cur, state_goal)
 
                 loss = torch.sum(torch.neg(reward_seqs))
                 loss_list.append([epoch, loss.item()])
-                loss.backward()
-                epoch += 1
                 
+                loss.backward()
+                # act_deltas.grad[start_idx + i] /= task_params["len_per_grip"]
+
+                epoch += 1
+
                 return loss
 
             loss = optimizer.step(closure)
@@ -835,7 +843,9 @@ class Planner(object):
             init_pose_seq_opt.append(init_pose)
 
         init_pose_seq_opt = torch.stack(init_pose_seq_opt)
-        act_seq_opt = get_action_seq_from_pose(init_pose_seq_opt, act_deltas[idx[-1]])
+
+        act_delta_opt = torch.clamp(act_deltas[idx[-1]], min=self.act_delta_limits[0], max=self.act_delta_limits[1])
+        act_seq_opt = get_action_seq_from_pose(init_pose_seq_opt, act_delta_opt)
 
         print(f"Optimal set of params:\nmid_point: {mid_points[idx[-1]]}\nangle: {angles[idx[-1]]}\nact_delta: {act_deltas[idx[-1]]}")
         print(f"Optimal init pose seq: {init_pose_seq_opt[:, task_params['gripper_mid_pt'], :7]}")

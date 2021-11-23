@@ -21,4 +21,5 @@ python control_render.py \
 	--rewardtype emd \
 	--use_sim 0 \
 	--gt_action 0 \
-	--gt_state_goal 0
+	--gt_state_goal 0 \
+	--debug 0
