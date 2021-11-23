@@ -318,35 +318,41 @@ class Planner(object):
 
     @profile
     def trajectory_optimization(self):
-        init_pose_seq = None
-        act_seq = None
-        loss_seq = None
+        init_pose_seq = torch.Tensor()
+        act_seq = torch.Tensor()
+        loss_seq = torch.Tensor()
         state_cur = None
         for i in range(self.sample_iter):
             self.sample_iter_cur = i
 
             start_idx = i * self.n_grips_per_iter * (self.len_per_grip + self.len_per_grip_back)
             state_cur_gt = torch.FloatTensor(np.stack(self.all_p[start_idx:start_idx+self.args.n_his]))
-
-            state_goal = self.get_state_goal(i)
-
+            state_cur_gt_particles = state_cur_gt[:, :self.n_particle].clone()
             # state_cur = state_cur_gt
 
+            state_goal = self.get_state_goal(i)
+            
+            # pdb.set_trace()
+            # if state_cur == None:
+            #     state_cur = state_cur_gt
+            # else:
+            state_cur_sim = self.sim_rollout(init_pose_seq.unsqueeze(0), act_seq.unsqueeze(0), snapshot=True).squeeze()
+            state_cur_sim_particles = state_cur_sim[:, :self.n_particle].clone()
+            state_cur_sim_shapes = state_cur_sim[:, self.n_particle:].clone()
+            visualize_points(state_cur_sim[-1], os.path.join(self.rollout_path, f'sim_particles_{i}'))
+            visualize_points(state_cur_gt[-1], os.path.join(self.rollout_path, f'gt_particles_{i}'))
             if state_cur == None:
-                state_cur = state_cur_gt
+                state_cur = state_cur_sim.clone()
+                sim_gt_diff = self.evaluate_traj(state_cur_sim_particles.unsqueeze(0), state_cur_gt_particles[-1].unsqueeze(0))
+                print(f"sim-gt diff: {sim_gt_diff}")
+            elif self.sim_correction:
+                state_cur = state_cur_sim.clone()
+                model_sim_diff = self.evaluate_traj(state_cur_opt.unsqueeze(0), state_cur_sim_particles[-1].unsqueeze(0))
+                sim_gt_diff = self.evaluate_traj(state_cur_sim_particles.unsqueeze(0), state_cur_gt_particles[-1].unsqueeze(0))
+                model_gt_diff = self.evaluate_traj(state_cur_opt.unsqueeze(0), state_cur_gt_particles[-1].unsqueeze(0))
+                print(f"model-sim diff: {model_sim_diff}; sim-gt diff: {sim_gt_diff}; model-gt diff: {model_gt_diff}")
             else:
-                # pdb.set_trace()
-                state_cur_sim = self.sim_rollout(init_pose_seq, act_seq, snapshot=True).squeeze()
-                state_cur_sim_copy = state_cur_sim.clone()
-                visualize_points(state_cur_sim_copy[-1], os.path.join(self.rollout_path, f'sim_particles_{self.sample_iter_cur}'))
-                if self.sim_correction:
-                    state_cur = state_cur_sim_copy
-                    model_sim_diff = self.evaluate_traj(state_cur_opt.unsqueeze(0), state_cur_sim_copy[-1, :self.n_particle].unsqueeze(0))
-                    sim_gt_diff = self.evaluate_traj(state_cur_sim_copy.unsqueeze(0), state_goal)
-                    model_gt_diff = self.evaluate_traj(state_cur_opt.unsqueeze(0), state_goal)
-                    print(f"model-sim diff: {model_sim_diff}; gt-sim diff: {sim_gt_diff}; model-gt diff: {model_gt_diff}")
-                else:
-                    state_cur = torch.cat((state_cur_opt.clone(), state_cur_sim_copy[:, self.n_particle:, :]), 1)
+                state_cur = torch.cat((state_cur_opt.clone(), state_cur_sim_shapes), 1)
 
             print(f"state_cur: {state_cur.shape}, state_goal: {state_goal.shape}")
 
@@ -387,9 +393,9 @@ class Planner(object):
 
             # print(init_pose.shape, actions.shape)
         
-            init_pose_seq = torch.cat((init_pose_seq, init_pose_seq_opt)) if init_pose_seq != None else init_pose_seq_opt
-            act_seq = torch.cat((act_seq, act_seq_opt)) if act_seq != None else act_seq_opt
-            loss_seq = torch.cat((loss_seq, loss_opt)) if loss_seq != None else loss_opt
+            init_pose_seq = torch.cat((init_pose_seq, init_pose_seq_opt))
+            act_seq = torch.cat((act_seq, act_seq_opt))
+            loss_seq = torch.cat((loss_seq, loss_opt))
 
         return init_pose_seq.cpu(), act_seq.cpu(), loss_seq.cpu()
 
@@ -487,7 +493,7 @@ class Planner(object):
                     step_size = len(x) // self.n_particle
                     # print(f"x before: {x.shape}")
                     x = x[::step_size]
-                    particles = x[:300]
+                    particles = x[:self.n_particle]
                     # print(f"x after: {x.shape}")
                     state_seq.append(particles)
 
@@ -622,13 +628,16 @@ class Planner(object):
         # print(state_seqs.shape, state_goal.shape)
         reward_seqs = []
         for i in range(state_seqs.shape[0]):
+            state_final = state_seqs[i, -1].unsqueeze(0)
+            if state_final.shape != state_goal.shape:
+                print("Data shape doesn't match in evaluate_traj!")
+                raise ValueError
             # smaller loss, larger reward
             if self.dist_func == "emd":
                 dist_func = EarthMoverLoss()
-                loss = dist_func(state_seqs[i, -1].unsqueeze(0), state_goal)
-            elif self.dist_func == "l1shape":
-                dist_func = L1ShapeLoss()
-                loss = dist_func(state_seqs[i, -1], state_goal[0])
+                loss = dist_func(state_final, state_goal)
+            else:
+                raise NotImplementedError
             reward_seqs.append(0.0 - loss)
         # reward_seqs: [n_sample]
         reward_seqs = torch.stack(reward_seqs)
@@ -645,6 +654,7 @@ class Planner(object):
     ):
 
         idx = torch.argsort(reward_seqs)
+        loss_opt = torch.neg(reward_seqs[idx[-1]]).view(1)
         print(f"Selected idx: {idx[-1]} with reward {reward_seqs[idx[-1]]}")
 
         visualize_sampled_init_pos(init_pose_seqs, reward_seqs, idx, \
@@ -652,7 +662,7 @@ class Planner(object):
 
         # [-1, action_dim]
         # pdb.set_trace()
-        return init_pose_seqs[idx[-1]], act_seqs[idx[-1]], torch.neg(reward_seqs[idx[-1]]), state_cur_seqs[idx[-1]]
+        return init_pose_seqs[idx[-1]], act_seqs[idx[-1]], loss_opt, state_cur_seqs[idx[-1]]
 
 
     def optimize_action_CEM(    # Cross Entropy Method (CEM)
@@ -844,6 +854,7 @@ class Planner(object):
 
         # pdb.set_trace()
         idx = torch.argsort(reward_list)
+        loss_opt = torch.neg(reward_list[idx[-1]]).view(1)
         init_pose_seq_opt = []
         for i in range(mid_points[idx[-1]].shape[0]):
             init_pose = get_pose(mid_points[idx[-1], i, :3], angles[idx[-1], i])
@@ -855,7 +866,7 @@ class Planner(object):
         print(f"Optimal set of params:\nmid_point: {mid_points[idx[-1]]}\nangle: {angles[idx[-1]]}\nact_delta: {act_deltas[idx[-1]]}")
         print(f"Optimal init pose seq: {init_pose_seq_opt[:, task_params['gripper_mid_pt'], :7]}")
 
-        return init_pose_seq_opt, act_seq_opt, torch.neg(reward_list[idx[-1]]), state_cur_list[idx[-1]]
+        return init_pose_seq_opt, act_seq_opt, loss_opt, state_cur_list[idx[-1]]
         # return init_pose_seq_samples[0], act_seq_samples[0], None
 
 
@@ -1060,13 +1071,13 @@ def main():
             act_seq = act_seq_gt[0]
         else:
             init_pose_seq, act_seq, loss_seq = planner.trajectory_optimization()
-            loss_sim_seq = []
+            loss_sim_seq = torch.Tensor()
             for i in range(task_params['n_grips']):
                 state_cur_sim = planner.sim_rollout(init_pose_seq[i].unsqueeze(0).unsqueeze(0), act_seq[i].unsqueeze(0).unsqueeze(0)).squeeze()
                 visualize_points(state_cur_sim[-1], os.path.join(control_out_dir, f'sim_particles_final_{i}'))
                 state_goal = planner.get_state_goal(i)
-                loss_sim_seq.append(planner.evaluate_traj(state_cur_sim.unsqueeze(0), state_goal))
-            loss_sim_seq = torch.stack(loss_sim_seq)
+                loss_sim = planner.evaluate_traj(state_cur_sim[:, :n_particle].unsqueeze(0), state_goal)
+                loss_sim_seq = torch.cat((loss_sim_seq, loss_sim))
 
     print(init_pose_seq.shape, act_seq.shape)
     print(f"Best init pose: {init_pose_seq[:, task_params['gripper_mid_pt'], :7]}")
