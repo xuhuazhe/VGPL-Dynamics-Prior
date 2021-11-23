@@ -35,4 +35,4 @@ kernprof -l control.py \
 	--GD_epochs 100 \
 	--GD_batch_size 1 \
 	--goal_shape_name none \
-	--debug 1
+	--debug 0
