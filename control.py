@@ -318,9 +318,9 @@ class Planner(object):
 
     @profile
     def trajectory_optimization(self):
-        init_pose_seq = []
-        act_seq = []
-        loss_seq = []
+        init_pose_seq = None
+        act_seq = None
+        loss_seq = None
         state_cur = None
         for i in range(self.sample_iter):
             self.sample_iter_cur = i
@@ -336,7 +336,7 @@ class Planner(object):
                 state_cur = state_cur_gt
             else:
                 # pdb.set_trace()
-                state_cur_sim = self.sim_rollout(init_pose_seq_opt.unsqueeze(0), act_seq_opt.unsqueeze(0), snapshot=True).squeeze()
+                state_cur_sim = self.sim_rollout(init_pose_seq, act_seq, snapshot=True).squeeze()
                 state_cur_sim_copy = state_cur_sim.clone()
                 visualize_points(state_cur_sim_copy[-1], os.path.join(self.rollout_path, f'sim_particles_{self.sample_iter_cur}'))
                 if self.sim_correction:
@@ -386,15 +386,12 @@ class Planner(object):
                 raise NotImplementedError
 
             # print(init_pose.shape, actions.shape)
-            init_pose_seq.append(init_pose_seq_opt.cpu())
-            act_seq.append(act_seq_opt.cpu())
-            loss_seq.append(loss_opt.cpu())
         
-        init_pose_seq = torch.cat(init_pose_seq, dim=0)
-        act_seq = torch.cat(act_seq, dim=0)
-        loss_seq = torch.tensor(loss_seq)
+            init_pose_seq = torch.cat((init_pose_seq, init_pose_seq_opt)) if init_pose_seq != None else init_pose_seq_opt
+            act_seq = torch.cat((act_seq, act_seq_opt)) if act_seq != None else act_seq_opt
+            loss_seq = torch.cat((loss_seq, loss_opt)) if loss_seq != None else loss_opt
 
-        return init_pose_seq, act_seq, loss_seq
+        return init_pose_seq.cpu(), act_seq.cpu(), loss_seq.cpu()
 
 
     def get_state_goal(self, i):
@@ -478,8 +475,7 @@ class Planner(object):
         # act_seqs = act_seqs.detach().cpu().numpy()
         state_seq_batch = []
         for t in range(act_seqs.shape[0]):
-            if not snapshot:
-                self.taichi_env.set_state(**self.env_init_state)
+            self.taichi_env.set_state(**self.env_init_state)
             state_seq = []
             # state_seq_gt = []
             for i in range(act_seqs.shape[1]):
