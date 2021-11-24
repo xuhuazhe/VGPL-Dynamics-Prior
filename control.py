@@ -657,8 +657,8 @@ class Planner(object):
         print(f"Selected top reward seqs: {reward_seqs[idx[-best_k:]]}")
         # print(f"Selected top init pose seqs: {init_pose_seqs[idx[-best_k:], :, self.gripper_mid_pt, :7]}")
 
-        visualize_sampled_init_pos(init_pose_seqs, reward_seqs, idx, \
-            os.path.join(self.rollout_path, f'plot_cem_s{self.grip_cur}_o{self.opt_iter_cur}'))
+        # visualize_sampled_init_pos(init_pose_seqs, reward_seqs, idx, \
+        #     os.path.join(self.rollout_path, f'plot_cem_s{self.grip_cur}_o{self.opt_iter_cur}'))
 
         # pdb.set_trace()
         init_pose_seqs_pool = []
@@ -675,7 +675,10 @@ class Planner(object):
             for k in range(self.gripper_rate_sample_size - 1):
                 # gripper_rate_noise = torch.clamp(torch.tensor(np.random.randn(init_pose_seq.shape[0])*0.02), max=0.05, min=-0.05)
                 # gripper_rate_sample = gripper_rate_seq + gripper_rate_noise
-                gripper_rate_sample = torch.tensor([np.random.uniform(*self.gripper_rate_limits)])
+                gripper_rate_sample = []
+                for s in range(init_pose_seq.shape[0]):
+                    gripper_rate_sample.append(np.random.uniform(*self.gripper_rate_limits))
+                gripper_rate_sample = torch.tensor(gripper_rate_sample)
                 # print(f"{i} gripper_rate_sample: {gripper_rate_sample}")
                 act_seq_sample = get_action_seq_from_pose(init_pose_seq, gripper_rate_sample)
 
@@ -706,7 +709,10 @@ class Planner(object):
                 for k in range(self.gripper_rate_sample_size):
                     # gripper_rate_noise = torch.tensor(np.random.randn(init_pose_seq.shape[0])*0.01).to(device)
                     # gripper_rate_sample = torch.clamp(gripper_rate_seq + gripper_rate_noise, max=self.gripper_rate_limits[1], min=self.gripper_rate_limits[0])
-                    gripper_rate_sample = torch.tensor([np.random.uniform(*self.gripper_rate_limits)])
+                    gripper_rate_sample = []
+                    for s in range(init_pose_seq.shape[0]):
+                        gripper_rate_sample.append(np.random.uniform(*self.gripper_rate_limits))
+                    gripper_rate_sample = torch.tensor(gripper_rate_sample)
                     # print(f"gripper_rate_sample: {gripper_rate_sample}")
                     act_seq_sample = get_action_seq_from_pose(init_pose_seq_sample, gripper_rate_sample)
 
