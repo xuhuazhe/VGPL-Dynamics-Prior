@@ -52,7 +52,12 @@ def main():
         test_name = f'sim_{args.use_sim}+{args.rewardtype}+sample_iter_{args.sample_iter}+opt_{args.opt_algo}_{args.opt_iter}+debug_{args.debug}'
 
     vid_idx = 0
-    control_out_dir = os.path.join(args.outf, 'control', str(vid_idx).zfill(3), test_name)
+    if len(args.goal_shape_name) > 0 and args.goal_shape_name != 'none':
+        shape_goal_dir = args.goal_shape_name
+    else:
+        shape_goal_dir = str(vid_idx).zfill(3)
+
+    control_out_dir = os.path.join(args.outf, 'control', shape_goal_dir, test_name)
     os.system('mkdir -p ' + control_out_dir)
 
     # set up the env

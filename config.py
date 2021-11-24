@@ -137,9 +137,8 @@ parser.add_argument('--n_grips', type=int, default=3)
 parser.add_argument('--debug', type=int, default=0)
 parser.add_argument('--goal_shape_name', type=str, default='')
 parser.add_argument('--CEM_init_pose_sample_size', type=int, default=40)
-parser.add_argument('--CEM_act_delta_sample_size', type=int, default=8)
-parser.add_argument('--GD_epochs', type=int, default=100)
-parser.add_argument('--GD_batch_size', type=int, default=4)
+parser.add_argument('--CEM_gripper_rate_sample_size', type=int, default=8)
+parser.add_argument('--GD_batch_size', type=int, default=1)
 
 def gen_args():
     args = parser.parse_args()
