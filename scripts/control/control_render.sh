@@ -17,7 +17,7 @@ python control_render.py \
 	--opt_algo GD \
 	--n_grips 3 \
 	--opt_iter 3 \
-	--sample_iter 3 \
+	--subgoal 0 \
 	--rewardtype emd \
 	--use_sim 0 \
 	--gt_action 0 \

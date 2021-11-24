@@ -279,8 +279,8 @@ class Planner(object):
         self.dist_func = args.rewardtype
         self.batch_size = args.control_batch_size
         self.GD_batch_size = args.GD_batch_size
-        self.sample_iter = args.sample_iter
-        self.sample_iter_cur = 0
+        self.subgoal= args.subgoal
+        self.grip_cur = 0
         self.opt_iter = args.opt_iter
         self.opt_iter_cur = 0
         self.n_sample = args.control_sample_size
@@ -299,7 +299,6 @@ class Planner(object):
         self.gripper_mid_pt = task_params["gripper_mid_pt"]
         self.gripper_rate_limits = task_params["gripper_rate_limits"]
 
-        self.n_grips_per_iter = int(self.n_grips / self.sample_iter)
         self.sim_correction = True
 
         if args.debug:
@@ -315,22 +314,27 @@ class Planner(object):
         act_seq = torch.Tensor()
         loss_seq = torch.Tensor()
         state_cur = None
-        for i in range(self.sample_iter):
-            self.sample_iter_cur = i
+        for i in range(self.n_grips):
+            self.grip_cur = i
 
-            init_pose_seqs_pool, act_seqs_pool = self.sample_action_params(self.n_grips_per_iter)
+            if self.subgoal:
+                n_grips_sample = 1
+                state_goal = self.get_state_goal(i)
+            else:
+                n_grips_sample = self.n_grips - i
+                state_goal = self.get_state_goal(self.n_grips - 1)
 
-            start_idx = i * self.n_grips_per_iter * (self.len_per_grip + self.len_per_grip_back)
+            init_pose_seqs_pool, act_seqs_pool = self.sample_action_params(n_grips_sample)
+            
+            start_idx = i * (self.len_per_grip + self.len_per_grip_back)
             state_cur_gt = torch.FloatTensor(np.stack(self.all_p[start_idx:start_idx+self.args.n_his]))
             state_cur_gt_particles = state_cur_gt[:, :self.n_particle].clone()
 
-            state_goal = self.get_state_goal(i)
-            
             # pdb.set_trace()
             # state_cur = state_cur_gt
             if state_cur == None:
                 init_pose_seq_cur = init_pose_seqs_pool[0]
-                act_seq_cur = act_seqs_pool[0, :, 0, :].unsqueeze(1)
+                act_seq_cur = act_seqs_pool[0, 0, 0].unsqueeze(0).unsqueeze(0)
             else:
                 init_pose_seq_cur = init_pose_seq
                 act_seq_cur = act_seq
@@ -393,6 +397,10 @@ class Planner(object):
                 raise NotImplementedError
 
             # print(init_pose.shape, actions.shape)
+            if not self.subgoal:
+                init_pose_seq_opt = init_pose_seq_opt[0].unsqueeze(0)
+                act_seq_opt = act_seq_opt[0].unsqueeze(0)
+                loss_opt = loss_opt[0].unsqueeze(0)
 
             init_pose_seq = torch.cat((init_pose_seq, init_pose_seq_opt))
             act_seq = torch.cat((act_seq, act_seq_opt))
@@ -402,7 +410,7 @@ class Planner(object):
 
 
     def get_state_goal(self, i):
-        goal_idx = min((i + 1) * self.n_grips_per_iter * (self.len_per_grip + self.len_per_grip_back) - 1, len(self.all_p) - 1)
+        goal_idx = min((i + 1) * (self.len_per_grip + self.len_per_grip_back) - 1, len(self.all_p) - 1)
         state_goal = torch.FloatTensor(self.all_p[goal_idx]).unsqueeze(0)[:, :self.n_particle, :]
 
         if len(self.args.goal_shape_name) > 0 and self.args.goal_shape_name != 'none':
@@ -533,9 +541,10 @@ class Planner(object):
         # pdb.set_trace()
         states_pred_list = []
         for i in range(act_seqs.shape[1]):
+            # pdb.set_trace()
             shape1 = init_pose_seqs[:, i, :, :3]
             shape2 = init_pose_seqs[:, i, :, 7:10]
-            state_cur = torch.cat([state_cur, floor_state, shape1.unsqueeze(1).expand([-1, self.n_his, -1, -1]), 
+            state_cur = torch.cat([state_cur[:, :, :self.n_particle, :], floor_state, shape1.unsqueeze(1).expand([-1, self.n_his, -1, -1]), 
                         shape2.unsqueeze(1).expand([-1, self.n_his, -1, -1])], dim=2)
             for j in range(act_seqs.shape[2]):
                 attrs = []
@@ -630,7 +639,7 @@ class Planner(object):
         print(f"Selected idx: {idx[-1]} with reward {reward_seqs[idx[-1]]}")
 
         visualize_sampled_init_pos(init_pose_seqs, reward_seqs, idx, \
-            os.path.join(self.rollout_path, f'plot_max_{self.sample_iter_cur}'))
+            os.path.join(self.rollout_path, f'plot_max_{self.grip_cur}'))
 
         # pdb.set_trace()
         return init_pose_seqs[idx[-1]], act_seqs[idx[-1]], loss_opt, state_cur_seqs[idx[-1]]
@@ -649,7 +658,7 @@ class Planner(object):
         # print(f"Selected top init pose seqs: {init_pose_seqs[idx[-best_k:], :, self.gripper_mid_pt, :7]}")
 
         visualize_sampled_init_pos(init_pose_seqs, reward_seqs, idx, \
-            os.path.join(self.rollout_path, f'plot_cem_s{self.sample_iter_cur}_o{self.opt_iter_cur}'))
+            os.path.join(self.rollout_path, f'plot_cem_s{self.grip_cur}_o{self.opt_iter_cur}'))
 
         # pdb.set_trace()
         init_pose_seqs_pool = []
@@ -825,7 +834,7 @@ class Planner(object):
 
         # print(f"Params:\nmid_point: {mid_points}\nangle: {angles}\ngripper_rate: {gripper_rates}")
 
-        visualize_loss(loss_list_all, os.path.join(self.rollout_path, f'plot_GD_loss_{self.sample_iter_cur}'))
+        visualize_loss(loss_list_all, os.path.join(self.rollout_path, f'plot_GD_loss_{self.grip_cur}'))
 
         # pdb.set_trace()
         idx = torch.argsort(reward_list)
@@ -862,7 +871,7 @@ def main():
     if args.gt_action:
         test_name = f'sim_{args.use_sim}+{args.rewardtype}+gt_action_{args.gt_action}'
     else:
-        test_name = f'sim_{args.use_sim}+{args.rewardtype}+sample_iter_{args.sample_iter}+opt_{args.opt_algo}_{args.opt_iter}+debug_{args.debug}'
+        test_name = f'sim_{args.use_sim}+{args.rewardtype}+subgoal_{args.subgoal}+opt_{args.opt_algo}_{args.opt_iter}+debug_{args.debug}'
 
     vid_idx = 0
     if len(args.goal_shape_name) > 0 and args.goal_shape_name != 'none':
