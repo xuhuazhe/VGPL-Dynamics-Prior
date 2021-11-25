@@ -397,14 +397,16 @@ class Planner(object):
                 raise NotImplementedError
 
             # print(init_pose.shape, actions.shape)
+            # pdb.set_trace()
             if not self.subgoal:
-                init_pose_seq_opt = init_pose_seq_opt[0].unsqueeze(0)
-                act_seq_opt = act_seq_opt[0].unsqueeze(0)
-                loss_opt = loss_opt[0].unsqueeze(0)
+                if not self.sim_correction:
+                    return init_pose_seq_opt.cpu(), act_seq_opt.cpu(), loss_opt.cpu()
+                init_pose_seq_opt = init_pose_seq_opt[0].unsqueeze(0).clone()
+                act_seq_opt = act_seq_opt[0].unsqueeze(0).clone()
 
             init_pose_seq = torch.cat((init_pose_seq, init_pose_seq_opt))
             act_seq = torch.cat((act_seq, act_seq_opt))
-            loss_seq = torch.cat((loss_seq, loss_opt))
+            loss_seq = loss_opt.clone()
 
         return init_pose_seq.cpu(), act_seq.cpu(), loss_seq.cpu()
 
@@ -657,8 +659,8 @@ class Planner(object):
         print(f"Selected top reward seqs: {reward_seqs[idx[-best_k:]]}")
         # print(f"Selected top init pose seqs: {init_pose_seqs[idx[-best_k:], :, self.gripper_mid_pt, :7]}")
 
-        # visualize_sampled_init_pos(init_pose_seqs, reward_seqs, idx, \
-        #     os.path.join(self.rollout_path, f'plot_cem_s{self.grip_cur}_o{self.opt_iter_cur}'))
+        visualize_sampled_init_pos(init_pose_seqs, reward_seqs, idx, \
+            os.path.join(self.rollout_path, f'plot_cem_s{self.grip_cur}_o{self.opt_iter_cur}'))
 
         # pdb.set_trace()
         init_pose_seqs_pool = []
@@ -721,7 +723,7 @@ class Planner(object):
 
                 j += 1
 
-        # import pdb; pdb.set_trace()
+        # pdb.set_trace()
         init_pose_seqs_pool = torch.stack(init_pose_seqs_pool)
         act_seqs_pool = torch.stack(act_seqs_pool)
         print(f"Init pose seq pool shape: {init_pose_seqs_pool.shape}; Act seq pool shape: {act_seqs_pool.shape}")
@@ -1071,9 +1073,10 @@ def main():
             for i in range(task_params['n_grips']):
                 state_cur_sim = planner.sim_rollout(init_pose_seq[:i+1].unsqueeze(0), act_seq[:i+1].unsqueeze(0)).squeeze()
                 visualize_points(state_cur_sim[-1], n_particle, os.path.join(control_out_dir, f'sim_particles_final_{i}'))
-                state_goal = planner.get_state_goal(i)
-                loss_sim = planner.evaluate_traj(state_cur_sim[:, :n_particle].unsqueeze(0), state_goal)
-                loss_sim_seq = torch.cat((loss_sim_seq, torch.neg(loss_sim)))
+                if args.subgoal or i == task_params['n_grips'] - 1:
+                    state_goal = planner.get_state_goal(i)
+                    loss_sim = planner.evaluate_traj(state_cur_sim[:, :n_particle].unsqueeze(0), state_goal)
+                    loss_sim_seq = torch.cat((loss_sim_seq, torch.neg(loss_sim)))
 
     print(init_pose_seq.shape, act_seq.shape)
     print(f"Best init pose: {init_pose_seq[:, task_params['gripper_mid_pt'], :7]}")

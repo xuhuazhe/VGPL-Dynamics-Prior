@@ -3,7 +3,7 @@
 # cd /viscam/u/hshi74/projects/deformable/VGPL-Dynamics-Prior
 
 # currently a placeholder
-declare -a arr=("emd") # rewardtype: emd, l1shape
+declare -a arr=("emd") # opt_algo: CEM, GD, CEM_GD
 declare -a arr2=("1") # use_sim: 0, 1
 declare -a arr2=("0") # gt_action: 0, 1
 declare -a arr3=("1") # gt_state_goal: 0, 1
