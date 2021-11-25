@@ -21,17 +21,17 @@ kernprof -l control.py \
 	--augment_ratio 0.05 \
 	--shape_aug 1 \
 	--n_grips 3 \
-	--opt_algo CEM \
-	--opt_iter 3 \
-	--subgoal 0 \
-	--rewardtype emd \
 	--use_sim 0 \
 	--gt_action 0 \
 	--gt_state_goal 0 \
 	--control_sample_size 200 \
 	--control_batch_size 4 \
-	--CEM_init_pose_sample_size 40 \
-	--CEM_gripper_rate_sample_size 8 \
+	--CEM_init_pose_sample_size 80 \
+	--CEM_gripper_rate_sample_size 4 \
 	--GD_batch_size 1 \
-	--goal_shape_name none \
-	--debug 0
+	--opt_algo $1 \
+	--CEM_opt_iter $2 \
+	--subgoal $3 \
+	--rewardtype $4 \
+	--goal_shape_name $5 \
+	--debug $6

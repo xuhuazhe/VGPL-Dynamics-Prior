@@ -281,8 +281,8 @@ class Planner(object):
         self.GD_batch_size = args.GD_batch_size
         self.subgoal= args.subgoal
         self.grip_cur = 0
-        self.opt_iter = args.opt_iter
-        self.opt_iter_cur = 0
+        self.CEM_opt_iter = args.CEM_opt_iter
+        self.CEM_opt_iter_cur = 0
         self.n_sample = args.control_sample_size
         self.init_pose_sample_size = args.CEM_init_pose_sample_size
         self.gripper_rate_sample_size = args.CEM_gripper_rate_sample_size
@@ -370,9 +370,9 @@ class Planner(object):
                     init_pose_seqs_pool, act_seqs_pool, reward_seqs, state_cur_seqs)
             
             elif self.args.opt_algo == 'CEM':
-                for j in range(self.opt_iter):
-                    self.opt_iter_cur = j
-                    if j == self.opt_iter - 1:
+                for j in range(self.CEM_opt_iter):
+                    self.CEM_opt_iter_cur = j
+                    if j == self.CEM_opt_iter - 1:
                         init_pose_seq_opt, act_seq_opt, loss_opt, state_cur_opt = self.optimize_action_max(
                             init_pose_seqs_pool, act_seqs_pool, reward_seqs, state_cur_seqs)
                     else:
@@ -384,9 +384,9 @@ class Planner(object):
                     init_pose_seq_opt, act_seq_opt, loss_opt, state_cur_opt = self.optimize_action_GD(init_pose_seqs_pool, act_seqs_pool, reward_seqs, state_cur, state_goal)
             
             elif self.args.opt_algo == "CEM_GD":
-                for j in range(self.opt_iter):
-                    self.opt_iter_cur = j
-                    if j == self.opt_iter - 1:
+                for j in range(self.CEM_opt_iter):
+                    self.CEM_opt_iter_cur = j
+                    if j == self.CEM_opt_iter - 1:
                         with torch.set_grad_enabled(True):
                             init_pose_seq_opt, act_seq_opt, loss_opt, state_cur_opt = self.optimize_action_GD(init_pose_seqs_pool, act_seqs_pool, reward_seqs, state_cur, state_goal)
                     else:
@@ -415,7 +415,7 @@ class Planner(object):
         goal_idx = min((i + 1) * (self.len_per_grip + self.len_per_grip_back) - 1, len(self.all_p) - 1)
         state_goal = torch.FloatTensor(self.all_p[goal_idx]).unsqueeze(0)[:, :self.n_particle, :]
 
-        if len(self.args.goal_shape_name) > 0 and self.args.goal_shape_name != 'none':
+        if len(self.args.goal_shape_name) > 0 and self.args.goal_shape_name != 'none' and self.args.goal_shape_name[:3] != 'vid':
             state_goal = self.goal_shapes[i]
 
         return state_goal
@@ -660,7 +660,7 @@ class Planner(object):
         # print(f"Selected top init pose seqs: {init_pose_seqs[idx[-best_k:], :, self.gripper_mid_pt, :7]}")
 
         visualize_sampled_init_pos(init_pose_seqs, reward_seqs, idx, \
-            os.path.join(self.rollout_path, f'plot_cem_s{self.grip_cur}_o{self.opt_iter_cur}'))
+            os.path.join(self.rollout_path, f'plot_cem_s{self.grip_cur}_o{self.CEM_opt_iter_cur}'))
 
         # pdb.set_trace()
         init_pose_seqs_pool = []
@@ -879,13 +879,18 @@ def main():
     if args.gt_action:
         test_name = f'sim_{args.use_sim}+{args.rewardtype}+gt_action_{args.gt_action}'
     else:
-        test_name = f'sim_{args.use_sim}+{args.rewardtype}+subgoal_{args.subgoal}+opt_{args.opt_algo}_{args.opt_iter}+debug_{args.debug}'
+        test_name = f'sim_{args.use_sim}+{args.rewardtype}+subgoal_{args.subgoal}+opt_{args.opt_algo}_{args.CEM_opt_iter}+debug_{args.debug}'
 
-    vid_idx = 0
     if len(args.goal_shape_name) > 0 and args.goal_shape_name != 'none':
-        shape_goal_dir = args.goal_shape_name
+        vid_idx = 0
+        if args.goal_shape_name[:3] == 'vid':
+            vid_idx = int(args.goal_shape_name[4:])
+            shape_goal_dir = str(vid_idx).zfill(3)
+        else:
+            shape_goal_dir = args.goal_shape_name
     else:
-        shape_goal_dir = str(vid_idx).zfill(3)
+        print("Please specify a valid goal shape name!")
+        raise ValueError
 
     control_out_dir = os.path.join(args.outf, 'control', shape_goal_dir, test_name)
     os.system('mkdir -p ' + control_out_dir)
@@ -1034,8 +1039,8 @@ def main():
     cam_params = np.load(rollout_dir + "../cam_params.npy", allow_pickle=True)
 
     # load goal shape
-    if len(args.goal_shape_name) > 0 and args.goal_shape_name != 'none':
-        shape_dir = f"/home/haochen/projects/deformable/PlasticineLab/interactive/shapes/{args.goal_shape_name}/"
+    if len(args.goal_shape_name) > 0 and args.goal_shape_name != 'none' and args.goal_shape_name[:3] != 'vid':
+        shape_dir = os.path.join(os.getcwd(), 'shapes', args.goal_shape_name)
         goal_shapes = []
         for i in range(args.n_grips):
             goal_frame_name = f'{args.goal_shape_name}_{i}.h5'

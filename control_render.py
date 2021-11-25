@@ -49,13 +49,24 @@ def main():
     if args.gt_action:
         test_name = f'sim_{args.use_sim}+{args.rewardtype}+gt_action_{args.gt_action}'
     else:
-        test_name = f'sim_{args.use_sim}+{args.rewardtype}+subgoal_{args.subgoal}+opt_{args.opt_algo}_{args.opt_iter}+debug_{args.debug}'
+        test_name = f'sim_{args.use_sim}+{args.rewardtype}+subgoal_{args.subgoal}+opt_{args.opt_algo}_{args.CEM_opt_iter}+debug_{args.debug}'
 
     vid_idx = 0
     if len(args.goal_shape_name) > 0 and args.goal_shape_name != 'none':
         shape_goal_dir = args.goal_shape_name
     else:
         shape_goal_dir = str(vid_idx).zfill(3)
+    
+    if len(args.goal_shape_name) > 0 and args.goal_shape_name != 'none':
+        vid_idx = 0
+        if args.goal_shape_name[:3] == 'vid':
+            vid_idx = int(args.goal_shape_name[4:])
+            shape_goal_dir = str(vid_idx).zfill(3)
+        else:
+            shape_goal_dir = args.goal_shape_name
+    else:
+        print("Please specify a valid goal shape name!")
+        raise ValueError
 
     control_out_dir = os.path.join(args.outf, 'control', shape_goal_dir, test_name)
     os.system('mkdir -p ' + control_out_dir)
