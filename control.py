@@ -1043,13 +1043,15 @@ def main():
         shape_dir = os.path.join(os.getcwd(), 'shapes', args.goal_shape_name)
         goal_shapes = []
         for i in range(args.n_grips):
-            goal_frame_name = f'{args.goal_shape_name}_{i}.h5'
-            if args.shape_aug:
-                goal_frame_name = 'shape_' + goal_frame_name
+            if args.subgoal:
+                goal_frame_name = f'{args.goal_shape_name}_{i}.h5'
+            else:
+                goal_frame_name = f'{args.goal_shape_name}.h5'
+            # if args.shape_aug:
+            #     goal_frame_name = 'shape_' + goal_frame_name
             goal_frame_path = os.path.join(shape_dir, goal_frame_name)
             goal_data = load_data(data_names, goal_frame_path)
             goal_shapes.append(torch.FloatTensor(goal_data[0]).unsqueeze(0)[:, :n_particle, :])
-        # goal_shapes = torch.stack(goal_shapes)
     else:
         goal_shapes = torch.FloatTensor(all_p[-1]).unsqueeze(0)[:, :n_particle, :]
 
