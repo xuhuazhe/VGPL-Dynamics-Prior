@@ -469,7 +469,7 @@ def get_env_group(args, n_particles, scene_params, use_gpu=False):
     elif args.env == 'Gripper':
         norm_g = normalize_scene_param(scene_params, 1, args.physics_param_range)
         physics_param[:] = torch.FloatTensor(norm_g).view(B, 1)
-        p_rigid[:] = 0
+        p_rigid[:] = args.p_rigid
         for i in range(args.n_instance):
             p_instance[:, :, i] = 1
 

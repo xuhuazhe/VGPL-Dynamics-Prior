@@ -53,4 +53,5 @@ kernprof -l train.py \
 	--chamfer_weight $4 \
 	--uh_weight $5 \
 	--clip_weight $6 \
-	--augment_ratio $7
+	--augment_ratio $7 \
+	--p_rigid $8
