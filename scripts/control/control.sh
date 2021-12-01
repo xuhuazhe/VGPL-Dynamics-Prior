@@ -25,7 +25,7 @@ kernprof -l control.py \
 	--gt_action 0 \
 	--gt_state_goal 0 \
 	--control_sample_size 200 \
-	--control_batch_size 4 \
+	--control_batch_size 2 \
 	--CEM_init_pose_sample_size 80 \
 	--CEM_gripper_rate_sample_size 4 \
 	--GD_batch_size 1 \
