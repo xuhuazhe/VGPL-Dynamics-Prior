@@ -20,7 +20,7 @@ kernprof -l control.py \
 	--n_his 4 \
 	--augment_ratio 0.05 \
 	--shape_aug 1 \
-	--n_grips 3 \
+	--n_grips 6 \
 	--use_sim 0 \
 	--gt_action 0 \
 	--gt_state_goal 0 \
