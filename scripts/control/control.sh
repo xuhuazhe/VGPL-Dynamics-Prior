@@ -2,9 +2,9 @@
 #SBATCH --job-name=VGPL-Gripper
 #SBATCH --partition=svl
 #SBATCH --gres=gpu:1
-#SBATCH --mem=16G
+#SBATCH --mem=8G
 #SBATCH --time=3-00:00:00
-#SBATCH --cpus-per-task=4
+#SBATCH --cpus-per-task=2
 #SBATCH --output=/sailhome/hshi74/output/deformable/%A.out
 
 kernprof -l control.py \
@@ -20,7 +20,6 @@ kernprof -l control.py \
 	--n_his 4 \
 	--augment_ratio 0.05 \
 	--shape_aug 1 \
-	--n_grips 6 \
 	--use_sim 0 \
 	--gt_action 0 \
 	--gt_state_goal 0 \
@@ -29,9 +28,11 @@ kernprof -l control.py \
 	--CEM_init_pose_sample_size 80 \
 	--CEM_gripper_rate_sample_size 4 \
 	--GD_batch_size 1 \
-	--opt_algo $1 \
-	--CEM_opt_iter $2 \
-	--subgoal $3 \
-	--rewardtype $4 \
-	--goal_shape_name $5 \
-	--debug $6
+	--n_grips $1 \
+	--opt_algo $2 \
+	--CEM_opt_iter $3 \
+	--subgoal $4 \
+	--correction $5 \
+	--rewardtype $6 \
+	--goal_shape_name $7 \
+	--debug $8

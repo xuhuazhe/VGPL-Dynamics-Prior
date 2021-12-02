@@ -287,6 +287,7 @@ class Planner(object):
         self.n_sample = args.control_sample_size
         self.init_pose_sample_size = args.CEM_init_pose_sample_size
         self.gripper_rate_sample_size = args.CEM_gripper_rate_sample_size
+        self.correction = args.correction
 
         self.mid_point = task_params["mid_point"]
         self.default_h = task_params["default_h"]
@@ -300,13 +301,12 @@ class Planner(object):
         self.gripper_rate_limits = task_params["gripper_rate_limits"]
         self.good_loss_threshold = task_params["good_loss_threshold"]
 
-        self.sim_correction = True
 
         if args.debug:
             self.n_sample = 8
             self.init_pose_sample_size = 8
             self.gripper_rate_sample_size = 4
-            self.batch_size = 2
+            self.batch_size = 1
 
 
     @profile
@@ -353,7 +353,7 @@ class Planner(object):
                 state_cur = state_cur_sim_particles
                 # sim_gt_diff = self.evaluate_traj(state_cur_sim_particles.unsqueeze(0), state_cur_gt_particles[-1].unsqueeze(0))
                 # print(f"sim-gt diff: {sim_gt_diff}")
-            elif self.sim_correction:
+            elif self.correction:
                 state_cur = state_cur_sim_particles
                 model_sim_diff = self.evaluate_traj(state_cur_opt.unsqueeze(0), state_cur_sim_particles[-1].unsqueeze(0))
                 # sim_gt_diff = self.evaluate_traj(state_cur_sim_particles.unsqueeze(0), state_cur_gt_particles[-1].unsqueeze(0))
@@ -402,8 +402,8 @@ class Planner(object):
             # print(init_pose.shape, actions.shape)
             # pdb.set_trace()
             if not self.subgoal:
-                if not self.sim_correction:
-                    return init_pose_seq_opt.cpu(), act_seq_opt.cpu(), loss_opt.cpu()
+                if not self.correction:
+                    return init_pose_seq_opt.detach().cpu(), act_seq_opt.detach().cpu(), loss_opt.detach().cpu()
                 init_pose_seq_opt = init_pose_seq_opt[0].unsqueeze(0).clone()
                 act_seq_opt = act_seq_opt[0].unsqueeze(0).clone()
 
@@ -890,7 +890,7 @@ def main():
     if args.gt_action:
         test_name = f'sim_{args.use_sim}+{args.rewardtype}+gt_action_{args.gt_action}'
     else:
-        test_name = f'sim_{args.use_sim}+{args.rewardtype}+subgoal_{args.subgoal}+opt_{args.opt_algo}_{args.CEM_opt_iter}+debug_{args.debug}'
+        test_name = f'sim_{args.use_sim}+{args.n_grips}_grips+{args.rewardtype}+subgoal_{args.subgoal}+correction_{args.correction}+opt_{args.opt_algo}_{args.CEM_opt_iter}+debug_{args.debug}'
 
     if len(args.goal_shape_name) > 0 and args.goal_shape_name != 'none':
         vid_idx = 0

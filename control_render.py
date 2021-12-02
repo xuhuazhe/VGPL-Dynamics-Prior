@@ -49,7 +49,7 @@ def main():
     if args.gt_action:
         test_name = f'sim_{args.use_sim}+{args.rewardtype}+gt_action_{args.gt_action}'
     else:
-        test_name = f'sim_{args.use_sim}+{args.rewardtype}+subgoal_{args.subgoal}+opt_{args.opt_algo}_{args.CEM_opt_iter}+debug_{args.debug}'
+        test_name = f'sim_{args.use_sim}+{args.n_grips}_grips+{args.rewardtype}+subgoal_{args.subgoal}+correction_{args.correction}+opt_{args.opt_algo}_{args.CEM_opt_iter}+debug_{args.debug}'
 
     vid_idx = 0
     if len(args.goal_shape_name) > 0 and args.goal_shape_name != 'none':
