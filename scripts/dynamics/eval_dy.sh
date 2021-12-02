@@ -9,8 +9,7 @@ python eval.py \
 	--vispy 1 \
 	--data_type ngrip \
 	--n_rollout 50 \
-	--dataf data/data_ngrip_500_11-11 \
-	--outf_eval dump/dump_ngrip/files_dy_25-Oct-2021-15:09:15.587966_nHis4_aug0.05_gt0_seqlen6_emd0.3_chamfer0.7_uh0.1_clip0.0 \
+	--outf_eval dump/dump_ngrip/files_dy_30-Nov-2021-13:47:38.742559_nHis4_aug0.05_gt0_seqlen6_emd0.3_chamfer0.7_uh0.1_clip0.0 \
 	--eval_epoch 95 \
 	--eval_iter 225 \
 	--sequence_length 6 \
