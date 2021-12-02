@@ -186,7 +186,7 @@ def gen_args():
         args.env_idx = 1001
 
         # args.n_rollout = 50
-        if args.data_type == 'ngrip':
+        if args.data_type == 'ngrip' or args.data_type == 'ngrip_3d':
             args.time_step = 89
         else:
             args.time_step = 49
@@ -210,10 +210,10 @@ def gen_args():
 
         args.physics_param_range = (-5., -5.)
 
-        if args.data_type == 'ngrip':
-            args.outf =  'dump/dump_ngrip/' + args.outf + '_' + args.stage + suffix + '_' + datetime.now().strftime(
+        if args.data_type == 'ngrip' or args.data_type == 'ngrip_3d':
+            args.outf =  f'dump/dump_{args.data_type}/' + args.outf + '_' + args.stage + suffix + '_' + datetime.now().strftime(
                 "%d-%b-%Y-%H:%M:%S.%f")
-            args.evalf = 'dump/dump_ngrip/' + args.evalf + '_' + args.stage + suffix # + '_' + datetime.now().strftime("%d-%b-%Y-%H:%M:%S.%f")
+            args.evalf = f'dump/dump_{args.data_type}/' + args.evalf + '_' + args.stage + suffix # + '_' + datetime.now().strftime("%d-%b-%Y-%H:%M:%S.%f")
         else:
             args.outf = 'dump/dump_Gripper/' + args.outf + '_' + args.stage + suffix + '_' + datetime.now().strftime(
                 "%d-%b-%Y-%H:%M:%S.%f")
@@ -301,8 +301,10 @@ def gen_args():
 
 
     # path to data
-    if args.data_type != 'none':
-        args.dataf = 'data/' + args.dataf + '_' + args.data_type + '_new' # + '_' + args.env
+    if args.data_type == 'ngrip':
+        args.dataf = 'data/data_ngrip_new'
+    elif args.data_type == 'ngrip_3d':
+        args.dataf = 'data/data_ngrip_3d_rot'
     else:
         args.dataf = 'data/' + args.dataf + '_' + args.env + '_new'
 

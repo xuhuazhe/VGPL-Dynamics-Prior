@@ -834,7 +834,7 @@ class PhysicsFleXDataset(Dataset):
         if args.stage in ['dy']:
             # load ground truth data
             attrs, particles, Rrs, Rss, cluster_onehots= [], [], [], [], []
-            sdf_list = []
+            # sdf_list = []
             max_n_rel = 0
             for t in range(st_idx, ed_idx):
                 # load data
@@ -853,7 +853,7 @@ class PhysicsFleXDataset(Dataset):
                 else:
                     data_path = os.path.join(self.data_dir, str(idx_rollout), str(t) + '.h5')
                 data = load_data(self.data_names, data_path)
-                sdf_data = load_data(['sdf'], os.path.join(self.data_dir, str(idx_rollout).zfill(3), 'sdf_' + str(t) + '.h5')), 
+                # sdf_data = load_data(['sdf'], os.path.join(self.data_dir, str(idx_rollout).zfill(3), 'sdf_' + str(t) + '.h5')), 
 
                 # load scene param
                 if t == st_idx:
@@ -869,9 +869,9 @@ class PhysicsFleXDataset(Dataset):
                 particles.append(particle.numpy())
                 Rrs.append(Rr)
                 Rss.append(Rs)
-                sdf_data = np.array(sdf_data).squeeze()
+                # sdf_data = np.array(sdf_data).squeeze()
                 # print(np.array(sdf_data.shape)
-                sdf_list.append(sdf_data)
+                # sdf_list.append(sdf_data)
 
                 if cluster_onehot is not None:
                     cluster_onehots.append(cluster_onehot)
@@ -943,8 +943,8 @@ class PhysicsFleXDataset(Dataset):
         attr = torch.FloatTensor(attrs[0])
         particles = torch.FloatTensor(np.stack(particles))
         scene_params = torch.FloatTensor(scene_params)
-        sdf_list = torch.FloatTensor(np.stack(sdf_list))
- 
+        # sdf_list = torch.FloatTensor(np.stack(sdf_list))
+
         # pad the relation set
         # Rr, Rs: seq_length x n_rel x (n_p + n_s)
         if args.stage in ['dy']:
@@ -960,7 +960,7 @@ class PhysicsFleXDataset(Dataset):
             else:
                 cluster_onehot = None
         if args.stage in ['dy']:
-            return attr, particles, sdf_list, n_particle, n_shape, scene_params, Rr, Rs, cluster_onehot
+            return attr, particles, n_particle, n_shape, scene_params, Rr, Rs, cluster_onehot
 
 
 def p2g(x, size=64, p_mass=1.):

@@ -21,7 +21,7 @@
 CUDA_VISIBLE_DEVICES=0 \
 kernprof -l train.py \
 	--env Gripper \
-	--data_type ngrip \
+	--data_type ngrip_3d \
 	--stage dy \
 	--gen_data 0 \
 	--gen_stat 0 \
@@ -45,7 +45,7 @@ kernprof -l train.py \
 	--gt_particles 0 \
     --shape_aug 1 \
 	--n_epoch 100 \
-	--n_rollout 50 \
+	--n_rollout 90 \
 	--ckp_per_iter 10000 \
 	--losstype $1 \
 	--sequence_length $2 \
