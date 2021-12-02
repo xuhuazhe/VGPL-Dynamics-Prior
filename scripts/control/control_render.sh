@@ -18,9 +18,11 @@ python control_render.py \
 	--use_sim 0 \
 	--gt_action 0 \
 	--gt_state_goal 0 \
-	--opt_algo $1 \
-	--CEM_opt_iter $2 \
-	--subgoal $3 \
-	--rewardtype $4 \
-	--goal_shape_name $5 \
-	--debug $6
+	--n_grips $1 \
+	--opt_algo $2 \
+	--CEM_opt_iter $3 \
+	--subgoal $4 \
+	--correction $5 \
+	--rewardtype $6 \
+	--goal_shape_name $7 \
+	--debug $8
