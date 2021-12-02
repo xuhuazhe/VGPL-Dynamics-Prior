@@ -315,109 +315,108 @@ class Planner(object):
         act_seq = torch.Tensor()
         loss_seq = torch.Tensor()
         state_cur = None
-        for n_grips in range(1, self.n_grips_max + 1):
-            for i in range(n_grips):
-                self.grip_cur = f'{i+1}of{n_grips}'
-                print(f'grip_cur: {self.grip_cur}')
+        for i in range(self.n_grips_max):
+            self.grip_cur = f'{i+1}of{self.n_grips_max}'
+            print(f'grip_cur: {self.grip_cur}')
 
-                if self.subgoal:
-                    n_grips_sample = 1
-                    state_goal = self.get_state_goal(i)
-                else:
-                    n_grips_sample = n_grips - i
-                    state_goal = self.get_state_goal(self.n_grips_max - 1)
+            if self.subgoal:
+                n_grips_sample = 1
+                state_goal = self.get_state_goal(i)
+            else:
+                n_grips_sample = self.n_grips_max - i
+                state_goal = self.get_state_goal(self.n_grips_max - 1)
 
-                init_pose_seqs_pool, act_seqs_pool = self.sample_action_params(n_grips_sample)
-                
-                start_idx = i * (self.len_per_grip + self.len_per_grip_back)
-                state_cur_gt = torch.FloatTensor(np.stack(self.all_p[start_idx:start_idx+self.args.n_his]))
-                state_cur_gt_particles = state_cur_gt[:, :self.n_particle].clone()
+            init_pose_seqs_pool, act_seqs_pool = self.sample_action_params(n_grips_sample)
+            
+            start_idx = i * (self.len_per_grip + self.len_per_grip_back)
+            state_cur_gt = torch.FloatTensor(np.stack(self.all_p[start_idx:start_idx+self.args.n_his]))
+            state_cur_gt_particles = state_cur_gt[:, :self.n_particle].clone()
 
-                # pdb.set_trace()
-                # state_cur = state_cur_gt
-                if state_cur == None:
-                    init_pose_seq_cur = init_pose_seqs_pool[0]
-                    act_seq_cur = act_seqs_pool[0, 0, 0].unsqueeze(0).unsqueeze(0)
-                else:
-                    init_pose_seq_cur = init_pose_seq
-                    act_seq_cur = act_seq
+            # pdb.set_trace()
+            # state_cur = state_cur_gt
+            if state_cur == None:
+                init_pose_seq_cur = init_pose_seqs_pool[0]
+                act_seq_cur = act_seqs_pool[0, 0, 0].unsqueeze(0).unsqueeze(0)
+            else:
+                init_pose_seq_cur = init_pose_seq
+                act_seq_cur = act_seq
 
-                state_cur_sim = self.sim_rollout(init_pose_seq_cur.unsqueeze(0), act_seq_cur.unsqueeze(0)).squeeze()
-                state_cur_sim_particles = state_cur_sim[:, :self.n_particle].clone()
-                self.floor_state = state_cur_sim[:, self.n_particle: self.n_particle + self.n_shapes_floor].clone()
+            state_cur_sim = self.sim_rollout(init_pose_seq_cur.unsqueeze(0), act_seq_cur.unsqueeze(0)).squeeze()
+            state_cur_sim_particles = state_cur_sim[:, :self.n_particle].clone()
+            self.floor_state = state_cur_sim[:, self.n_particle: self.n_particle + self.n_shapes_floor].clone()
 
-                visualize_points(state_cur_sim[-1], self.n_particle, os.path.join(self.rollout_path, f'sim_particles_{i}'))
-                visualize_points(state_cur_gt[-1], self.n_particle, os.path.join(self.rollout_path, f'gt_particles_{i}'))
-                visualize_points(state_goal[-1], self.n_particle, os.path.join(self.rollout_path, f'goal_particles_{i}'))
+            visualize_points(state_cur_sim[-1], self.n_particle, os.path.join(self.rollout_path, f'sim_particles_{i}'))
+            visualize_points(state_cur_gt[-1], self.n_particle, os.path.join(self.rollout_path, f'gt_particles_{i}'))
+            visualize_points(state_goal[-1], self.n_particle, os.path.join(self.rollout_path, f'goal_particles_{i}'))
 
-                if state_cur == None:
-                    state_cur = state_cur_sim_particles
-                    sim_gt_diff = self.evaluate_traj(state_cur_sim_particles.unsqueeze(0), state_cur_gt_particles[-1].unsqueeze(0))
-                    print(f"sim-gt diff: {sim_gt_diff}")
-                elif self.sim_correction:
-                    state_cur = state_cur_sim_particles
-                    model_sim_diff = self.evaluate_traj(state_cur_opt.unsqueeze(0), state_cur_sim_particles[-1].unsqueeze(0))
-                    sim_gt_diff = self.evaluate_traj(state_cur_sim_particles.unsqueeze(0), state_cur_gt_particles[-1].unsqueeze(0))
-                    model_gt_diff = self.evaluate_traj(state_cur_opt.unsqueeze(0), state_cur_gt_particles[-1].unsqueeze(0))
-                    print(f"model-sim diff: {model_sim_diff}; sim-gt diff: {sim_gt_diff}; model-gt diff: {model_gt_diff}")
-                else:
-                    state_cur = state_cur_opt.clone()
+            if state_cur == None:
+                state_cur = state_cur_sim_particles
+                sim_gt_diff = self.evaluate_traj(state_cur_sim_particles.unsqueeze(0), state_cur_gt_particles[-1].unsqueeze(0))
+                print(f"sim-gt diff: {sim_gt_diff}")
+            elif self.sim_correction:
+                state_cur = state_cur_sim_particles
+                model_sim_diff = self.evaluate_traj(state_cur_opt.unsqueeze(0), state_cur_sim_particles[-1].unsqueeze(0))
+                sim_gt_diff = self.evaluate_traj(state_cur_sim_particles.unsqueeze(0), state_cur_gt_particles[-1].unsqueeze(0))
+                model_gt_diff = self.evaluate_traj(state_cur_opt.unsqueeze(0), state_cur_gt_particles[-1].unsqueeze(0))
+                print(f"model-sim diff: {model_sim_diff}; sim-gt diff: {sim_gt_diff}; model-gt diff: {model_gt_diff}")
+            else:
+                state_cur = state_cur_opt.clone()
 
-                print(f"state_cur: {state_cur.shape}, state_goal: {state_goal.shape}")
+            print(f"state_cur: {state_cur.shape}, state_goal: {state_goal.shape}")
 
-                reward_seqs, state_cur_seqs = self.rollout(init_pose_seqs_pool, act_seqs_pool, state_cur, state_goal)
-                print('sampling: max: %.4f, mean: %.4f, std: %.4f' % (torch.max(reward_seqs), torch.mean(reward_seqs), torch.std(reward_seqs)))
+            reward_seqs, state_cur_seqs = self.rollout(init_pose_seqs_pool, act_seqs_pool, state_cur, state_goal)
+            print('sampling: max: %.4f, mean: %.4f, std: %.4f' % (torch.max(reward_seqs), torch.mean(reward_seqs), torch.std(reward_seqs)))
 
-                if self.args.opt_algo == 'max':
-                    init_pose_seq_opt, act_seq_opt, loss_opt, state_cur_opt = self.optimize_action_max(
-                        init_pose_seqs_pool, act_seqs_pool, reward_seqs, state_cur_seqs)
-                
-                elif self.args.opt_algo == 'CEM':
-                    for j in range(self.CEM_opt_iter):
-                        self.CEM_opt_iter_cur = j
-                        if j == self.CEM_opt_iter - 1:
-                            init_pose_seq_opt, act_seq_opt, loss_opt, state_cur_opt = self.optimize_action_max(
-                                init_pose_seqs_pool, act_seqs_pool, reward_seqs, state_cur_seqs)
-                        else:
-                            init_pose_seqs_pool, act_seqs_pool = self.optimize_action_CEM(init_pose_seqs_pool, act_seqs_pool, reward_seqs)
-                            reward_seqs, state_cur_seqs = self.rollout(init_pose_seqs_pool, act_seqs_pool, state_cur, state_goal)
-                
-                elif self.args.opt_algo == "GD":
-                    with torch.set_grad_enabled(True):
-                        init_pose_seq_opt, act_seq_opt, loss_opt, state_cur_opt = self.optimize_action_GD(init_pose_seqs_pool, act_seqs_pool, reward_seqs, state_cur, state_goal)
-                
-                elif self.args.opt_algo == "CEM_GD":
-                    for j in range(self.CEM_opt_iter):
-                        self.CEM_opt_iter_cur = j
-                        if j == self.CEM_opt_iter - 1:
-                            with torch.set_grad_enabled(True):
-                                init_pose_seq_opt, act_seq_opt, loss_opt, state_cur_opt = self.optimize_action_GD(init_pose_seqs_pool, act_seqs_pool, reward_seqs, state_cur, state_goal)
-                        else:
-                            init_pose_seqs_pool, act_seqs_pool = self.optimize_action_CEM(init_pose_seqs_pool, act_seqs_pool, reward_seqs)
-                            reward_seqs, state_cur_seqs = self.rollout(init_pose_seqs_pool, act_seqs_pool, state_cur, state_goal)
+            if self.args.opt_algo == 'max':
+                init_pose_seq_opt, act_seq_opt, loss_opt, state_cur_opt = self.optimize_action_max(
+                    init_pose_seqs_pool, act_seqs_pool, reward_seqs, state_cur_seqs)
+            
+            elif self.args.opt_algo == 'CEM':
+                for j in range(self.CEM_opt_iter):
+                    self.CEM_opt_iter_cur = j
+                    if j == self.CEM_opt_iter - 1:
+                        init_pose_seq_opt, act_seq_opt, loss_opt, state_cur_opt = self.optimize_action_max(
+                            init_pose_seqs_pool, act_seqs_pool, reward_seqs, state_cur_seqs)
+                    else:
+                        init_pose_seqs_pool, act_seqs_pool = self.optimize_action_CEM(init_pose_seqs_pool, act_seqs_pool, reward_seqs)
+                        reward_seqs, state_cur_seqs = self.rollout(init_pose_seqs_pool, act_seqs_pool, state_cur, state_goal)
+            
+            elif self.args.opt_algo == "GD":
+                with torch.set_grad_enabled(True):
+                    init_pose_seq_opt, act_seq_opt, loss_opt, state_cur_opt = self.optimize_action_GD(init_pose_seqs_pool, act_seqs_pool, reward_seqs, state_cur, state_goal)
+            
+            elif self.args.opt_algo == "CEM_GD":
+                for j in range(self.CEM_opt_iter):
+                    self.CEM_opt_iter_cur = j
+                    if j == self.CEM_opt_iter - 1:
+                        with torch.set_grad_enabled(True):
+                            init_pose_seq_opt, act_seq_opt, loss_opt, state_cur_opt = self.optimize_action_GD(init_pose_seqs_pool, act_seqs_pool, reward_seqs, state_cur, state_goal)
+                    else:
+                        init_pose_seqs_pool, act_seqs_pool = self.optimize_action_CEM(init_pose_seqs_pool, act_seqs_pool, reward_seqs)
+                        reward_seqs, state_cur_seqs = self.rollout(init_pose_seqs_pool, act_seqs_pool, state_cur, state_goal)
 
-                else:
-                    raise NotImplementedError
+            else:
+                raise NotImplementedError
 
-                # print(init_pose.shape, actions.shape)
-                # pdb.set_trace()
-                if not self.subgoal:
-                    if not self.sim_correction:
-                        return init_pose_seq_opt.cpu(), act_seq_opt.cpu(), loss_opt.cpu()
-                    init_pose_seq_opt = init_pose_seq_opt[0].unsqueeze(0).clone()
-                    act_seq_opt = act_seq_opt[0].unsqueeze(0).clone()
+            # print(init_pose.shape, actions.shape)
+            # pdb.set_trace()
+            if not self.subgoal:
+                if not self.sim_correction:
+                    return init_pose_seq_opt.cpu(), act_seq_opt.cpu(), loss_opt.cpu()
+                init_pose_seq_opt = init_pose_seq_opt[0].unsqueeze(0).clone()
+                act_seq_opt = act_seq_opt[0].unsqueeze(0).clone()
 
-                init_pose_seq = torch.cat((init_pose_seq, init_pose_seq_opt))
-                act_seq = torch.cat((act_seq, act_seq_opt))
-                loss_seq = loss_opt.clone()
+            init_pose_seq = torch.cat((init_pose_seq, init_pose_seq_opt))
+            act_seq = torch.cat((act_seq, act_seq_opt))
+            loss_seq = loss_opt.clone()
 
-            state_final_sim = self.sim_rollout(init_pose_seq.unsqueeze(0), act_seq.unsqueeze(0)).squeeze()
-            # visualize_points(state_cur_sim[-1], n_particle, os.path.join(control_out_dir, f'sim_particles_final_{i}'))
-            reward_sim = self.evaluate_traj(state_final_sim[:, :self.n_particle].unsqueeze(0), state_goal)
-            loss_sim = torch.neg(reward_sim)
-            print(f"With {n_grips} grips: model_loss: {loss_seq}; sim_loss: {loss_sim}")
-            if loss_sim < self.good_loss_threshold: 
-                break
+        # state_final_sim = self.sim_rollout(init_pose_seq.unsqueeze(0), act_seq.unsqueeze(0)).squeeze()
+        # visualize_points(state_cur_sim[-1], n_particle, os.path.join(control_out_dir, f'sim_particles_final_{i}'))
+        # reward_sim = self.evaluate_traj(state_final_sim[:, :self.n_particle].unsqueeze(0), state_goal)
+        # loss_sim = torch.neg(reward_sim)
+        # print(f"With {n_grips} grips: model_loss: {loss_seq}; sim_loss: {loss_sim}")
+        # if loss_sim < self.good_loss_threshold: 
+        #     break
 
         return init_pose_seq.cpu(), act_seq.cpu(), loss_seq.cpu()
 
