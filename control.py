@@ -15,7 +15,7 @@ import pdb
 
 from config import gen_args
 from data_utils import load_data, get_scene_info, get_env_group, prepare_input
-from models import Model, EarthMoverLoss, L1ShapeLoss
+from models import Model, ChamferLoss, EarthMoverLoss, L1ShapeLoss
 from utils import create_instance_colors, set_seed,  Tee, count_parameters
 
 from plb.engine.taichi_env import TaichiEnv
@@ -629,6 +629,9 @@ class Planner(object):
             # smaller loss, larger reward
             if self.dist_func == "emd":
                 dist_func = EarthMoverLoss()
+                loss = dist_func(state_final, state_goal)
+            elif self.dist_func == "chamfer":
+                dist_func = ChamferLoss()
                 loss = dist_func(state_final, state_goal)
             else:
                 raise NotImplementedError
