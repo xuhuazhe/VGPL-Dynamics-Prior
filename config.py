@@ -119,7 +119,7 @@ parser.add_argument('--eval_set', default='train')
 
 # visualization flog
 parser.add_argument('--pyflex', type=int, default=1)
-parser.add_argument('--vispy', type=int, default=1)
+parser.add_argument('--vis', type=str, default='plt')
 
 
 '''
