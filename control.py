@@ -241,6 +241,7 @@ def visualize_points(all_points, n_particles, path):
 
     fig = plt.figure()
     ax = fig.add_subplot(111, projection='3d')
+    ax.view_init(45, 135)
     ax.scatter(points[:, 0], points[:, 2], points[:, 1], c='b', s=20)
     ax.scatter(shapes[:, 0], shapes[:, 2], shapes[:, 1], c='r', s=20)
     
@@ -251,6 +252,8 @@ def visualize_points(all_points, n_particles, path):
     r = 0.25  # maxsize / 2
     for ctr, dim in zip(centers, 'xyz'):
         getattr(ax, 'set_{}lim'.format(dim))(ctr - r, ctr + r)
+
+    ax.invert_yaxis()
 
     plt.savefig(path)
     # plt.show()

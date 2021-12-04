@@ -498,7 +498,8 @@ class EarthMoverLoss(torch.nn.Module):
             try:
                 ind1, ind2 = scipy.optimize.linear_sum_assignment(cost_matrix, maximize=False)
             except:
-                import pdb; pdb.set_trace()
+                # import pdb; pdb.set_trace()
+                print("Error in linear sum assignment!")
             x_list.append(x[i, ind1])
             y_list.append(y[i, ind2])
             # x[i] = x[i, ind1]
