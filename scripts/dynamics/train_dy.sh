@@ -81,7 +81,7 @@ kernprof -l train.py \
 # 	--matched_motion_weight 0.0 \
 # 	--eval 0 \
 # 	--gt_particles 0 \
-#   --shape_aug 1 \
+# 	--shape_aug 1 \
 # 	--n_epoch 100 \
 # 	--n_rollout 90 \
 # 	--ckp_per_iter 10000 \
