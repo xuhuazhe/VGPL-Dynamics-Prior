@@ -350,13 +350,16 @@ class DynamicsPredictor(nn.Module):
         
         do_rigid = n_gripper_touch == 1
         do_non_rigid = n_gripper_touch == 2
+        # print(n_gripper_touch, do_rigid, do_non_rigid)
 
         pred_motion = torch.zeros(B, n_p, state_dim)
         if self.use_gpu:
             pred_motion = pred_motion.cuda()
+        pred_motion = (pred_motion - mean_d) / std_d
 
-        pred_motion[do_rigid] += torch.sum(p_rigid[:, :, None, None] * p_instance.transpose(1, 2)[:, :, :, None] * rigid_motion, 1)[do_rigid]
-        pred_motion[do_non_rigid] += ((1. - p_rigid_per_particle) * non_rigid_motion)[do_non_rigid]
+        # pdb.set_trace()
+        pred_motion[do_non_rigid] = non_rigid_motion[do_non_rigid]
+        pred_motion[do_rigid] = torch.sum(p_instance.transpose(1, 2)[:, :, :, None] * rigid_motion, 1)[do_rigid]
 
         pred_pos = state[:, -1, :n_p] + torch.clamp(pred_motion * std_d + mean_d, max=0.025, min=-0.025)
         # pred_pos = state[:, -1, :n_p] + torch.tanh(pred_motion * std_d + mean_d) * 0.025
