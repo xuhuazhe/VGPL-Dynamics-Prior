@@ -683,7 +683,7 @@ class Planner(object):
         reward_seqs,    # [n_sample]
         best_k_ratio=0.1
     ):
-        best_k = max(5, int(init_pose_seqs.shape[0] * best_k_ratio))
+        best_k = max(4, int(init_pose_seqs.shape[0] * best_k_ratio))
         idx = torch.argsort(reward_seqs)
         print(f"Selected top reward seqs: {reward_seqs[idx[-best_k:]]}")
         # print(f"Selected top init pose seqs: {init_pose_seqs[idx[-best_k:], :, self.gripper_mid_pt, :7]}")
@@ -768,10 +768,10 @@ class Planner(object):
         state_cur,
         state_goal,
         lr=1e-1,
-        best_k_ratio=0.3
+        best_k_ratio=0.1
     ):
         idx = torch.argsort(reward_seqs)
-        best_k = max(8, int(reward_seqs.shape[0] * best_k_ratio))
+        best_k = max(4, int(reward_seqs.shape[0] * best_k_ratio))
         print(f"Selected top reward seqs: {reward_seqs[idx[-best_k:]]}")
 
         best_mid_point_seqs = []
@@ -806,7 +806,7 @@ class Planner(object):
         for b in range(n_batch):
             print(f"Batch {b}/{n_batch}:")
 
-            optimizer = torch.optim.LBFGS([mid_points, angles, gripper_rates], lr=lr, tolerance_change=1e-5, line_search_fn="strong_wolfe")
+            optimizer = torch.optim.LBFGS([mid_points, angles, gripper_rates], lr=lr, tolerance_change=1e-4, line_search_fn="strong_wolfe")
             
             start_idx = b * self.GD_batch_size
             end_idx = (b + 1) * self.GD_batch_size
