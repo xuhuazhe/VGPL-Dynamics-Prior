@@ -8,9 +8,9 @@ declare -a arr2=("GD") # opt_algo: CEM, GD, CEM_GD
 declare -a arr3=("3") # CEM_opt_iter
 declare -a arr4=("0") # subgoal: 0, 1
 declare -a arr5=("1") # correction: 0, 1
-declare -a arr6=("emd" "chamfer") # reward_type: emd, chamfer
+declare -a arr6=("emd") # reward_type: emd, chamfer
 # goal_shape_name: vid_0-49, I, T "butterfly" "car" "elephant" "fish" "flower" "heart" "house" "panda" "star"
-declare -a arr7=("vid_0" "vid_8" "I" "T" "butterfly") 
+declare -a arr7=("vid_0" "vid_8" "I" "T" "butterfly" "car" "elephant" "fish" "flower" "heart" "house" "panda" "star") 
 declare -a arr8=("0") # debug: 0, 1
 for i in "${arr[@]}"
 do

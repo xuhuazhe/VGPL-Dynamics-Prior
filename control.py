@@ -42,7 +42,7 @@ task_params = {
     "n_shapes_per_gripper": 11,
     "gripper_mid_pt": int((11 - 1) / 2),
     "gripper_rate_limits": (0.00675, 0.00875),
-    "good_loss_threshold": 0.04
+    "d_loss_threshold": 0.002
 }
 
 
@@ -302,7 +302,7 @@ class Planner(object):
         self.n_shapes_floor = task_params["n_shapes_floor"]
         self.gripper_mid_pt = task_params["gripper_mid_pt"]
         self.gripper_rate_limits = task_params["gripper_rate_limits"]
-        self.good_loss_threshold = task_params["good_loss_threshold"]
+        self.d_loss_threshold = task_params["d_loss_threshold"]
 
 
         if args.debug:
@@ -326,7 +326,7 @@ class Planner(object):
                 n_grips_sample = 1
                 state_goal = self.get_state_goal(i)
             else:
-                n_grips_sample = self.n_grips - i
+                n_grips_sample = self.n_grips
                 state_goal = self.get_state_goal(self.n_grips - 1)
 
             init_pose_seqs_pool, act_seqs_pool = self.sample_action_params(n_grips_sample)
@@ -341,8 +341,12 @@ class Planner(object):
                 init_pose_seq_cur = init_pose_seqs_pool[0]
                 act_seq_cur = act_seqs_pool[0, 0, 0].unsqueeze(0).unsqueeze(0)
             else:
-                init_pose_seq_cur = init_pose_seq
-                act_seq_cur = act_seq
+                if self.subgoal:
+                    init_pose_seq_cur = init_pose_seq
+                    act_seq_cur = act_seq
+                else:
+                    init_pose_seq_cur = init_pose_seq[:1-self.n_grips]
+                    act_seq_cur = act_seq[:1-self.n_grips]
 
             state_cur_sim = self.sim_rollout(init_pose_seq_cur.unsqueeze(0), act_seq_cur.unsqueeze(0)).squeeze()
             state_cur_sim_particles = state_cur_sim[:, :self.n_particle].clone()
@@ -407,19 +411,27 @@ class Planner(object):
             if not self.subgoal:
                 if not self.correction:
                     return init_pose_seq_opt.detach().cpu(), act_seq_opt.detach().cpu(), loss_opt.detach().cpu()
-                init_pose_seq_opt = init_pose_seq_opt[0].unsqueeze(0).clone()
-                act_seq_opt = act_seq_opt[0].unsqueeze(0).clone()
 
-            init_pose_seq = torch.cat((init_pose_seq, init_pose_seq_opt))
-            act_seq = torch.cat((act_seq, act_seq_opt))
+                if i > 0:
+                    d_loss = loss_seq - loss_opt
+                    print(f"The loss improves by {d_loss} at the {i} iteration!")
+                    if d_loss < self.d_loss_threshold:
+                        return init_pose_seq.cpu(), act_seq.cpu(), loss_seq.cpu()
+                    else:
+                        init_pose_seq = init_pose_seq[:1-self.n_grips]
+                        act_seq = act_seq[:1-self.n_grips]
+
+            init_pose_seq = torch.cat((init_pose_seq, init_pose_seq_opt.clone()))
+            act_seq = torch.cat((act_seq, act_seq_opt.clone()))
             loss_seq = loss_opt.clone()
+            print(init_pose_seq.shape)
 
         # state_final_sim = self.sim_rollout(init_pose_seq.unsqueeze(0), act_seq.unsqueeze(0)).squeeze()
         # visualize_points(state_cur_sim[-1], n_particle, os.path.join(control_out_dir, f'sim_particles_final_{i}'))
         # reward_sim = self.evaluate_traj(state_final_sim[:, :self.n_particle].unsqueeze(0), state_goal)
         # loss_sim = torch.neg(reward_sim)
         # print(f"With {n_grips} grips: model_loss: {loss_seq}; sim_loss: {loss_sim}")
-        # if loss_sim < self.good_loss_threshold: 
+        # if loss_sim < self.d_loss_threshold: 
         #     break
 
         return init_pose_seq.cpu(), act_seq.cpu(), loss_seq.cpu()
@@ -671,7 +683,7 @@ class Planner(object):
         reward_seqs,    # [n_sample]
         best_k_ratio=0.1
     ):
-        best_k = max(5, int(init_pose_seqs.shape[0] * best_k_ratio))
+        best_k = max(4, int(init_pose_seqs.shape[0] * best_k_ratio))
         idx = torch.argsort(reward_seqs)
         print(f"Selected top reward seqs: {reward_seqs[idx[-best_k:]]}")
         # print(f"Selected top init pose seqs: {init_pose_seqs[idx[-best_k:], :, self.gripper_mid_pt, :7]}")
@@ -756,10 +768,10 @@ class Planner(object):
         state_cur,
         state_goal,
         lr=1e-1,
-        best_k_ratio=0.3
+        best_k_ratio=0.1
     ):
         idx = torch.argsort(reward_seqs)
-        best_k = max(8, int(reward_seqs.shape[0] * best_k_ratio))
+        best_k = max(4, int(reward_seqs.shape[0] * best_k_ratio))
         print(f"Selected top reward seqs: {reward_seqs[idx[-best_k:]]}")
 
         best_mid_point_seqs = []
@@ -794,7 +806,7 @@ class Planner(object):
         for b in range(n_batch):
             print(f"Batch {b}/{n_batch}:")
 
-            optimizer = torch.optim.LBFGS([mid_points, angles, gripper_rates], lr=lr, tolerance_change=1e-5, line_search_fn="strong_wolfe")
+            optimizer = torch.optim.LBFGS([mid_points, angles, gripper_rates], lr=lr, tolerance_change=1e-4, line_search_fn="strong_wolfe")
             
             start_idx = b * self.GD_batch_size
             end_idx = (b + 1) * self.GD_batch_size
@@ -1098,7 +1110,7 @@ def main():
                 state_cur_sim = planner.sim_rollout(init_pose_seq[:i+1].unsqueeze(0), act_seq[:i+1].unsqueeze(0)).squeeze()
                 visualize_points(state_cur_sim[-1], n_particle, os.path.join(control_out_dir, f'sim_particles_final_{i}'))
                 if args.subgoal or i == init_pose_seq.shape[0] - 1:
-                    state_goal = planner.get_state_goal(i)
+                    state_goal = planner.get_state_goal(min(i, args.n_grips - 1))
                     loss_sim = planner.evaluate_traj(state_cur_sim[:, :n_particle].unsqueeze(0), state_goal)
                     loss_sim_seq = torch.cat((loss_sim_seq, torch.neg(loss_sim)))
 
