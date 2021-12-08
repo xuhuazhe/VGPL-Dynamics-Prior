@@ -3,7 +3,7 @@
 # cd /viscam/u/hshi74/projects/deformable/VGPL-Dynamics-Prior
 
 # currently a placeholder
-declare -a arr=("3") # n_grips: 3-8
+declare -a arr=("6") # n_grips: 1-6
 declare -a arr2=("GD") # opt_algo: CEM, GD, CEM_GD
 declare -a arr3=("3") # CEM_opt_iter
 declare -a arr4=("0") # subgoal: 0, 1

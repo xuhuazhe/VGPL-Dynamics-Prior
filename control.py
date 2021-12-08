@@ -42,7 +42,7 @@ task_params = {
     "n_shapes_per_gripper": 11,
     "gripper_mid_pt": int((11 - 1) / 2),
     "gripper_rate_limits": (0.00675, 0.00875),
-    "d_loss_threshold": 0.002
+    "d_loss_threshold": 0.001
 }
 
 
@@ -326,7 +326,7 @@ class Planner(object):
                 n_grips_sample = 1
                 state_goal = self.get_state_goal(i)
             else:
-                n_grips_sample = self.n_grips
+                n_grips_sample = 1
                 state_goal = self.get_state_goal(self.n_grips - 1)
 
             init_pose_seqs_pool, act_seqs_pool = self.sample_action_params(n_grips_sample)
@@ -341,12 +341,12 @@ class Planner(object):
                 init_pose_seq_cur = init_pose_seqs_pool[0]
                 act_seq_cur = act_seqs_pool[0, 0, 0].unsqueeze(0).unsqueeze(0)
             else:
-                if self.subgoal:
-                    init_pose_seq_cur = init_pose_seq
-                    act_seq_cur = act_seq
-                else:
-                    init_pose_seq_cur = init_pose_seq[:1-self.n_grips]
-                    act_seq_cur = act_seq[:1-self.n_grips]
+                # if self.subgoal:
+                init_pose_seq_cur = init_pose_seq
+                act_seq_cur = act_seq
+                # else:
+                #     init_pose_seq_cur = init_pose_seq[:1-self.n_grips]
+                #     act_seq_cur = act_seq[:1-self.n_grips]
 
             state_cur_sim = self.sim_rollout(init_pose_seq_cur.unsqueeze(0), act_seq_cur.unsqueeze(0)).squeeze()
             state_cur_sim_particles = state_cur_sim[:, :self.n_particle].clone()
@@ -414,12 +414,12 @@ class Planner(object):
 
                 if i > 0:
                     d_loss = loss_seq - loss_opt
-                    print(f"The loss improves by {d_loss} at the {i} iteration!")
+                    print(f"The loss improves by {d_loss} at iteration {i}!")
                     if d_loss < self.d_loss_threshold:
                         return init_pose_seq.cpu(), act_seq.cpu(), loss_seq.cpu()
-                    else:
-                        init_pose_seq = init_pose_seq[:1-self.n_grips]
-                        act_seq = act_seq[:1-self.n_grips]
+                    # else:
+                    #     init_pose_seq = init_pose_seq[:1-self.n_grips]
+                    #     act_seq = act_seq[:1-self.n_grips]
 
             init_pose_seq = torch.cat((init_pose_seq, init_pose_seq_opt.clone()))
             act_seq = torch.cat((act_seq, act_seq_opt.clone()))
