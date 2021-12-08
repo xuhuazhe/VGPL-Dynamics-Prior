@@ -152,12 +152,12 @@ def main():
                     # n_shapes: B
                     # scene_params: B x param_dim
                     # Rrs, Rss: B x seq_length x n_rel x (n_p + n_s)
-                    attrs, particles, sdf_list, n_particles, n_shapes, scene_params, Rrs, Rss, cluster_onehots = data
+                    attrs, particles, n_particles, n_shapes, scene_params, Rrs, Rss, cluster_onehots = data
 
                     if use_gpu:
                         attrs = attrs.cuda()
                         particles = particles.cuda()
-                        sdf_list = sdf_list.cuda()
+                        # sdf_list = sdf_list.cuda()
                         Rrs, Rss = Rrs.cuda(), Rss.cuda()
                         if cluster_onehots is not None:
                             cluster_onehots = cluster_onehots.cuda()
@@ -221,7 +221,7 @@ def main():
                             # pred_pos (unnormalized): B x (n_p + n_s) x state_dim
                             gt_pos = particles[:, args.n_his]
                             gt_pos_p = gt_pos[:, :n_particle]
-                            gt_sdf = sdf_list[:, args.n_his]
+                            # gt_sdf = sdf_list[:, args.n_his]
                             pred_pos = torch.cat([pred_pos_p, gt_pos[:, n_particle:]], 1)
 
                             # gt_motion_norm (normalized): B x (n_p + n_s) x state_dim

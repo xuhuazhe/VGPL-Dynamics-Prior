@@ -1,4 +1,5 @@
 import numpy as np
+import pdb
 
 import torch
 import torch.nn as nn
@@ -337,12 +338,29 @@ class DynamicsPredictor(nn.Module):
         #         this_std = torch.std(this_cluster_mo, dim=0)
         #         total_std.append(this_std)
         # total_std = torch.stack(total_std)
-        # import pdb; pdb.set_trace()
+        # pdb.set_trace()
         # merge rigid and non-rigid motion
         # rigid_motion      (B x n_instance x n_p x state_dim)
         # non_rigid_motion  (B x n_p x state_dim)
-        pred_motion = (1. - p_rigid_per_particle) * non_rigid_motion
-        pred_motion += torch.sum(p_rigid[:, :, None, None] * p_instance.transpose(1, 2)[:, :, :, None] * rigid_motion, 1)
+        # pdb.set_trace()
+        n_gripper_touch = torch.zeros(B)
+        if self.use_gpu:
+            n_gripper_touch = n_gripper_touch.cuda()
+        n_gripper_touch[torch.count_nonzero(Rs_cur[:, :, 310:321], dim=(1, 2)) > 0] += 1
+        n_gripper_touch[torch.count_nonzero(Rs_cur[:, :, 321:], dim=(1, 2)) > 0] += 1
+        
+        do_rigid = n_gripper_touch == 1
+        do_non_rigid = n_gripper_touch == 2
+        # print(n_gripper_touch, do_rigid, do_non_rigid)
+
+        pred_motion = torch.zeros(B, n_p, state_dim)
+        if self.use_gpu:
+            pred_motion = pred_motion.cuda()
+        pred_motion = (pred_motion - mean_d) / std_d
+
+        # pdb.set_trace()
+        pred_motion[do_non_rigid] = non_rigid_motion[do_non_rigid]
+        pred_motion[do_rigid] = torch.sum(p_instance.transpose(1, 2)[:, :, :, None] * rigid_motion, 1)[do_rigid]
 
         pred_pos = state[:, -1, :n_p] + torch.clamp(pred_motion * std_d + mean_d, max=0.025, min=-0.025)
         # pred_pos = state[:, -1, :n_p] + torch.tanh(pred_motion * std_d + mean_d) * 0.025
@@ -499,7 +517,8 @@ class EarthMoverLoss(torch.nn.Module):
             try:
                 ind1, ind2 = scipy.optimize.linear_sum_assignment(cost_matrix, maximize=False)
             except:
-                import pdb; pdb.set_trace()
+                # pdb.set_trace()
+                print("Error in linear sum assignment!")
             x_list.append(x[i, ind1])
             y_list.append(y[i, ind2])
             # x[i] = x[i, ind1]

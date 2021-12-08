@@ -78,6 +78,7 @@ parser.add_argument('--uh_weight', type=float, default=0.0)
 parser.add_argument('--clip_weight', type=float, default=0.0)
 parser.add_argument('--emd_weight', type=float, default=0.0)
 parser.add_argument('--chamfer_weight', type=float, default=0.0)
+parser.add_argument('--p_rigid', type=float, default=1.)
 
 # use a flexible number of frames for each training iteration
 parser.add_argument('--n_his', type=int, default=4)
@@ -118,7 +119,7 @@ parser.add_argument('--eval_set', default='train')
 
 # visualization flog
 parser.add_argument('--pyflex', type=int, default=1)
-parser.add_argument('--vispy', type=int, default=1)
+parser.add_argument('--vis', type=str, default='plt')
 
 
 '''
@@ -133,6 +134,7 @@ parser.add_argument('--gt_action', type=int, default=0)
 parser.add_argument('--gt_state_goal', type=int, default=0)
 parser.add_argument('--CEM_opt_iter', type=int, default=1)
 parser.add_argument('--subgoal', type=int, default=0)
+parser.add_argument('--correction', type=int, default=0)
 parser.add_argument('--n_grips', type=int, default=3)
 parser.add_argument('--debug', type=int, default=0)
 parser.add_argument('--goal_shape_name', type=str, default='')
@@ -184,7 +186,7 @@ def gen_args():
         args.env_idx = 1001
 
         # args.n_rollout = 50
-        if args.data_type == 'ngrip':
+        if args.data_type == 'ngrip' or args.data_type == 'ngrip_3d':
             args.time_step = 89
         else:
             args.time_step = 49
@@ -208,10 +210,10 @@ def gen_args():
 
         args.physics_param_range = (-5., -5.)
 
-        if args.data_type == 'ngrip':
-            args.outf =  'dump/dump_ngrip/' + args.outf + '_' + args.stage + suffix + '_' + datetime.now().strftime(
+        if args.data_type == 'ngrip' or args.data_type == 'ngrip_3d':
+            args.outf =  f'dump/dump_{args.data_type}/' + args.outf + '_' + args.stage + suffix + '_' + datetime.now().strftime(
                 "%d-%b-%Y-%H:%M:%S.%f")
-            args.evalf = 'dump/dump_ngrip/' + args.evalf + '_' + args.stage + suffix # + '_' + datetime.now().strftime("%d-%b-%Y-%H:%M:%S.%f")
+            args.evalf = f'dump/dump_{args.data_type}/' + args.evalf + '_' + args.stage + suffix # + '_' + datetime.now().strftime("%d-%b-%Y-%H:%M:%S.%f")
         else:
             args.outf = 'dump/dump_Gripper/' + args.outf + '_' + args.stage + suffix + '_' + datetime.now().strftime(
                 "%d-%b-%Y-%H:%M:%S.%f")
@@ -299,8 +301,10 @@ def gen_args():
 
 
     # path to data
-    if args.data_type != 'none':
-        args.dataf = 'data/' + args.dataf + '_' + args.data_type + '_new' # + '_' + args.env
+    if args.data_type == 'ngrip':
+        args.dataf = 'data/data_ngrip_new'
+    elif args.data_type == 'ngrip_3d':
+        args.dataf = 'data/data_ngrip_3d'
     else:
         args.dataf = 'data/' + args.dataf + '_' + args.env + '_new'
 

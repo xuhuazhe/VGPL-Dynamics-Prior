@@ -15,7 +15,7 @@ import pdb
 
 from config import gen_args
 from data_utils import load_data, get_scene_info, get_env_group, prepare_input
-from models import Model, EarthMoverLoss, L1ShapeLoss
+from models import Model, ChamferLoss, EarthMoverLoss, L1ShapeLoss
 from utils import create_instance_colors, set_seed,  Tee, count_parameters
 
 from plb.engine.taichi_env import TaichiEnv
@@ -35,14 +35,14 @@ task_params = {
     "mid_point": np.array([0.5, 0.4, 0.5, 0, 0, 0]),
     "default_h": 0.14,
     "sample_radius": 0.25,
-    "n_grips": 3,
     "gripper_rate": 0.01,
     "len_per_grip": 20,
     "len_per_grip_back": 10,
     "n_shapes_floor": 9,
     "n_shapes_per_gripper": 11,
     "gripper_mid_pt": int((11 - 1) / 2),
-    "gripper_rate_limits": (0.00675, 0.00875)
+    "gripper_rate_limits": (0.00675, 0.00875),
+    "good_loss_threshold": 0.04
 }
 
 
@@ -241,6 +241,7 @@ def visualize_points(all_points, n_particles, path):
 
     fig = plt.figure()
     ax = fig.add_subplot(111, projection='3d')
+    ax.view_init(45, 135)
     ax.scatter(points[:, 0], points[:, 2], points[:, 1], c='b', s=20)
     ax.scatter(shapes[:, 0], shapes[:, 2], shapes[:, 1], c='r', s=20)
     
@@ -251,6 +252,8 @@ def visualize_points(all_points, n_particles, path):
     r = 0.25  # maxsize / 2
     for ctr, dim in zip(centers, 'xyz'):
         getattr(ax, 'set_{}lim'.format(dim))(ctr - r, ctr + r)
+
+    ax.invert_yaxis()
 
     plt.savefig(path)
     # plt.show()
@@ -279,18 +282,19 @@ class Planner(object):
         self.dist_func = args.rewardtype
         self.batch_size = args.control_batch_size
         self.GD_batch_size = args.GD_batch_size
+        self.n_grips = args.n_grips
         self.subgoal= args.subgoal
-        self.grip_cur = 0
+        self.grip_cur = ''
         self.CEM_opt_iter = args.CEM_opt_iter
         self.CEM_opt_iter_cur = 0
         self.n_sample = args.control_sample_size
         self.init_pose_sample_size = args.CEM_init_pose_sample_size
         self.gripper_rate_sample_size = args.CEM_gripper_rate_sample_size
+        self.correction = args.correction
 
         self.mid_point = task_params["mid_point"]
         self.default_h = task_params["default_h"]
         self.sample_radius = task_params["sample_radius"]
-        self.n_grips = task_params["n_grips"]
         self.gripper_rate = task_params["gripper_rate"]
         self.len_per_grip = task_params["len_per_grip"]
         self.len_per_grip_back = task_params["len_per_grip_back"]
@@ -298,14 +302,14 @@ class Planner(object):
         self.n_shapes_floor = task_params["n_shapes_floor"]
         self.gripper_mid_pt = task_params["gripper_mid_pt"]
         self.gripper_rate_limits = task_params["gripper_rate_limits"]
+        self.good_loss_threshold = task_params["good_loss_threshold"]
 
-        self.sim_correction = True
 
         if args.debug:
             self.n_sample = 8
             self.init_pose_sample_size = 8
             self.gripper_rate_sample_size = 4
-            self.batch_size = 2
+            self.batch_size = 1
 
 
     @profile
@@ -315,7 +319,8 @@ class Planner(object):
         loss_seq = torch.Tensor()
         state_cur = None
         for i in range(self.n_grips):
-            self.grip_cur = i
+            self.grip_cur = f'{i+1}of{self.n_grips}'
+            print(f'grip_cur: {self.grip_cur}')
 
             if self.subgoal:
                 n_grips_sample = 1
@@ -326,9 +331,9 @@ class Planner(object):
 
             init_pose_seqs_pool, act_seqs_pool = self.sample_action_params(n_grips_sample)
             
-            start_idx = i * (self.len_per_grip + self.len_per_grip_back)
-            state_cur_gt = torch.FloatTensor(np.stack(self.all_p[start_idx:start_idx+self.args.n_his]))
-            state_cur_gt_particles = state_cur_gt[:, :self.n_particle].clone()
+            # start_idx = i * (self.len_per_grip + self.len_per_grip_back)
+            # state_cur_gt = torch.FloatTensor(np.stack(self.all_p[start_idx:start_idx+self.args.n_his]))
+            # state_cur_gt_particles = state_cur_gt[:, :self.n_particle].clone()
 
             # pdb.set_trace()
             # state_cur = state_cur_gt
@@ -344,19 +349,20 @@ class Planner(object):
             self.floor_state = state_cur_sim[:, self.n_particle: self.n_particle + self.n_shapes_floor].clone()
 
             visualize_points(state_cur_sim[-1], self.n_particle, os.path.join(self.rollout_path, f'sim_particles_{i}'))
-            visualize_points(state_cur_gt[-1], self.n_particle, os.path.join(self.rollout_path, f'gt_particles_{i}'))
+            # visualize_points(state_cur_gt[-1], self.n_particle, os.path.join(self.rollout_path, f'gt_particles_{i}'))
             visualize_points(state_goal[-1], self.n_particle, os.path.join(self.rollout_path, f'goal_particles_{i}'))
 
             if state_cur == None:
                 state_cur = state_cur_sim_particles
-                sim_gt_diff = self.evaluate_traj(state_cur_sim_particles.unsqueeze(0), state_cur_gt_particles[-1].unsqueeze(0))
-                print(f"sim-gt diff: {sim_gt_diff}")
-            elif self.sim_correction:
+                # sim_gt_diff = self.evaluate_traj(state_cur_sim_particles.unsqueeze(0), state_cur_gt_particles[-1].unsqueeze(0))
+                # print(f"sim-gt diff: {sim_gt_diff}")
+            elif self.correction:
                 state_cur = state_cur_sim_particles
                 model_sim_diff = self.evaluate_traj(state_cur_opt.unsqueeze(0), state_cur_sim_particles[-1].unsqueeze(0))
-                sim_gt_diff = self.evaluate_traj(state_cur_sim_particles.unsqueeze(0), state_cur_gt_particles[-1].unsqueeze(0))
-                model_gt_diff = self.evaluate_traj(state_cur_opt.unsqueeze(0), state_cur_gt_particles[-1].unsqueeze(0))
-                print(f"model-sim diff: {model_sim_diff}; sim-gt diff: {sim_gt_diff}; model-gt diff: {model_gt_diff}")
+                # sim_gt_diff = self.evaluate_traj(state_cur_sim_particles.unsqueeze(0), state_cur_gt_particles[-1].unsqueeze(0))
+                # model_gt_diff = self.evaluate_traj(state_cur_opt.unsqueeze(0), state_cur_gt_particles[-1].unsqueeze(0))
+                print(f"model-sim diff: {model_sim_diff}")
+                # print(f"model-sim diff: {model_sim_diff}; sim-gt diff: {sim_gt_diff}; model-gt diff: {model_gt_diff}")
             else:
                 state_cur = state_cur_opt.clone()
 
@@ -399,14 +405,22 @@ class Planner(object):
             # print(init_pose.shape, actions.shape)
             # pdb.set_trace()
             if not self.subgoal:
-                if not self.sim_correction:
-                    return init_pose_seq_opt.cpu(), act_seq_opt.cpu(), loss_opt.cpu()
+                if not self.correction:
+                    return init_pose_seq_opt.detach().cpu(), act_seq_opt.detach().cpu(), loss_opt.detach().cpu()
                 init_pose_seq_opt = init_pose_seq_opt[0].unsqueeze(0).clone()
                 act_seq_opt = act_seq_opt[0].unsqueeze(0).clone()
 
             init_pose_seq = torch.cat((init_pose_seq, init_pose_seq_opt))
             act_seq = torch.cat((act_seq, act_seq_opt))
             loss_seq = loss_opt.clone()
+
+        # state_final_sim = self.sim_rollout(init_pose_seq.unsqueeze(0), act_seq.unsqueeze(0)).squeeze()
+        # visualize_points(state_cur_sim[-1], n_particle, os.path.join(control_out_dir, f'sim_particles_final_{i}'))
+        # reward_sim = self.evaluate_traj(state_final_sim[:, :self.n_particle].unsqueeze(0), state_goal)
+        # loss_sim = torch.neg(reward_sim)
+        # print(f"With {n_grips} grips: model_loss: {loss_seq}; sim_loss: {loss_sim}")
+        # if loss_sim < self.good_loss_threshold: 
+        #     break
 
         return init_pose_seq.cpu(), act_seq.cpu(), loss_seq.cpu()
 
@@ -619,6 +633,9 @@ class Planner(object):
             if self.dist_func == "emd":
                 dist_func = EarthMoverLoss()
                 loss = dist_func(state_final, state_goal)
+            elif self.dist_func == "chamfer":
+                dist_func = ChamferLoss()
+                loss = dist_func(state_final, state_goal)
             else:
                 raise NotImplementedError
             reward_seqs.append(0.0 - loss)
@@ -793,7 +810,7 @@ class Planner(object):
                 nonlocal reward_seqs
                 nonlocal state_cur_seqs
 
-                print(f"Params:\nmid_point: {mid_points}\nangle: {angles}\ngripper_rate: {gripper_rates}")
+                # print(f"Params:\nmid_point: {mid_points}\nangle: {angles}\ngripper_rate: {gripper_rates}")
                 
                 optimizer.zero_grad()
 
@@ -879,7 +896,7 @@ def main():
     if args.gt_action:
         test_name = f'sim_{args.use_sim}+{args.rewardtype}+gt_action_{args.gt_action}'
     else:
-        test_name = f'sim_{args.use_sim}+{args.rewardtype}+subgoal_{args.subgoal}+opt_{args.opt_algo}_{args.CEM_opt_iter}+debug_{args.debug}'
+        test_name = f'sim_{args.use_sim}+{args.n_grips}_grips+{args.rewardtype}+subgoal_{args.subgoal}+correction_{args.correction}+opt_{args.opt_algo}_{args.CEM_opt_iter}+debug_{args.debug}'
 
     if len(args.goal_shape_name) > 0 and args.goal_shape_name != 'none':
         vid_idx = 0
@@ -1043,13 +1060,15 @@ def main():
         shape_dir = os.path.join(os.getcwd(), 'shapes', args.goal_shape_name)
         goal_shapes = []
         for i in range(args.n_grips):
-            goal_frame_name = f'{args.goal_shape_name}_{i}.h5'
-            if args.shape_aug:
-                goal_frame_name = 'shape_' + goal_frame_name
+            if args.subgoal:
+                goal_frame_name = f'{args.goal_shape_name}_{i}.h5'
+            else:
+                goal_frame_name = f'{args.goal_shape_name}.h5'
+            # if args.shape_aug:
+            #     goal_frame_name = 'shape_' + goal_frame_name
             goal_frame_path = os.path.join(shape_dir, goal_frame_name)
             goal_data = load_data(data_names, goal_frame_path)
             goal_shapes.append(torch.FloatTensor(goal_data[0]).unsqueeze(0)[:, :n_particle, :])
-        # goal_shapes = torch.stack(goal_shapes)
     else:
         goal_shapes = torch.FloatTensor(all_p[-1]).unsqueeze(0)[:, :n_particle, :]
 
@@ -1075,10 +1094,10 @@ def main():
         else:
             init_pose_seq, act_seq, loss_seq = planner.trajectory_optimization()
             loss_sim_seq = torch.Tensor()
-            for i in range(task_params['n_grips']):
+            for i in range(init_pose_seq.shape[0]):
                 state_cur_sim = planner.sim_rollout(init_pose_seq[:i+1].unsqueeze(0), act_seq[:i+1].unsqueeze(0)).squeeze()
                 visualize_points(state_cur_sim[-1], n_particle, os.path.join(control_out_dir, f'sim_particles_final_{i}'))
-                if args.subgoal or i == task_params['n_grips'] - 1:
+                if args.subgoal or i == init_pose_seq.shape[0] - 1:
                     state_goal = planner.get_state_goal(i)
                     loss_sim = planner.evaluate_traj(state_cur_sim[:, :n_particle].unsqueeze(0), state_goal)
                     loss_sim_seq = torch.cat((loss_sim_seq, torch.neg(loss_sim)))
