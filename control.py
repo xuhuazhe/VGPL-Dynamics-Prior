@@ -15,7 +15,7 @@ import pdb
 
 from config import gen_args
 from data_utils import load_data, get_scene_info, get_env_group, prepare_input
-from models import Model, ChamferLoss, EarthMoverLoss, L1ShapeLoss
+from models import Model, EarthMoverLoss, ChamferLoss, UpdatedHausdorffLoss, ClipLoss, L1ShapeLoss
 from utils import create_instance_colors, set_seed,  Tee, count_parameters
 
 from plb.engine.taichi_env import TaichiEnv
@@ -42,8 +42,15 @@ task_params = {
     "n_shapes_per_gripper": 11,
     "gripper_mid_pt": int((11 - 1) / 2),
     "gripper_rate_limits": (0.00675, 0.00875),
+    "loss_weights": [0.3, 0.7, 0.1, 0.0],
     "d_loss_threshold": 0.001
 }
+
+emd_loss = EarthMoverLoss()
+chamfer_loss = ChamferLoss()
+h_loss = UpdatedHausdorffLoss()
+clip_loss = ClipLoss()
+shape_loss = L1ShapeLoss()
 
 
 def get_pose(new_mid_point, rot_noise):
@@ -303,7 +310,7 @@ class Planner(object):
         self.gripper_mid_pt = task_params["gripper_mid_pt"]
         self.gripper_rate_limits = task_params["gripper_rate_limits"]
         self.d_loss_threshold = task_params["d_loss_threshold"]
-
+        self.emd_weight, self.chamfer_weight, self.h_weight, self.clip_weight = task_params["loss_weights"]
 
         if args.debug:
             self.n_sample = 8
@@ -314,8 +321,7 @@ class Planner(object):
 
     @profile
     def trajectory_optimization(self):
-        grip_num_min = 1
-        for grip_num in range(grip_num_min, self.n_grips + 1):
+        for grip_num in range(self.n_grips, 0, -1):
             print(f'=============== Test {grip_num} grip(s) in this iteration ===============')
             init_pose_seq = torch.Tensor()
             act_seq = torch.Tensor()
@@ -655,19 +661,28 @@ class Planner(object):
             if state_final.shape != state_goal.shape:
                 print("Data shape doesn't match in evaluate_traj!")
                 raise ValueError
+
             # smaller loss, larger reward
             if self.dist_func == "emd":
-                dist_func = EarthMoverLoss()
-                loss = dist_func(state_final, state_goal)
+                loss = emd_loss(state_final, state_goal)
             elif self.dist_func == "chamfer":
-                dist_func = ChamferLoss()
-                loss = dist_func(state_final, state_goal)
+                loss = chamfer_loss(state_final, state_goal)
+            elif self.dist_func == "emd_chamfer_uh_clip":
+                loss = 0
+                if self.emd_weight > 0:
+                    loss += self.emd_weight * emd_loss(state_final, state_goal)
+                if self.chamfer_weight > 0:
+                    loss += self.chamfer_weight * chamfer_loss(state_final, state_goal)
+                if self.h_weight > 0:
+                    loss += self.h_weight * h_loss(state_final, state_goal)
+                if self.clip_weight > 0:
+                    loss += self.clip_weight * clip_loss(state_final, state_goal)
             else:
                 raise NotImplementedError
+
             reward_seqs.append(0.0 - loss)
 
         reward_seqs = torch.stack(reward_seqs)
-        # print(reward_seqs)
         return reward_seqs
 
 
@@ -877,7 +892,7 @@ class Planner(object):
 
             loss_list_all.append(loss_list)
 
-            print(f"reward seqs after GD: {reward_seqs}")
+            print(f"reward seqs after {len(loss_list)} iterations: {reward_seqs}")
             reward_list = torch.cat((reward_list, reward_seqs)) if reward_list != None else reward_seqs
             state_cur_list = torch.cat((state_cur_list, state_cur_seqs)) if state_cur_list != None else state_cur_seqs
 
