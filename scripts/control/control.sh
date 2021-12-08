@@ -11,7 +11,7 @@ kernprof -l control.py \
 	--env Gripper \
 	--data_type ngrip \
 	--stage dy \
-	--outf_control dump/dump_ngrip/files_dy_05-Dec-2021-14:49:26.288151_nHis4_aug0.05_gt0_seqlen6_emd0.3_chamfer0.7_uh0.1_clip0.0 \
+	--outf_control dump/dump_ngrip/files_dy_06-Dec-2021-11:49:29.971140_nHis4_aug0.05_gt0_seqlen6_emd0.3_chamfer0.7_uh0.1_clip0.0 \
 	--gripperf ../PlasticineLab/plb/envs/gripper.yml \
 	--eval_epoch 95 \
 	--eval_iter 225 \
@@ -24,7 +24,7 @@ kernprof -l control.py \
 	--gt_action 0 \
 	--gt_state_goal 0 \
 	--control_sample_size 200 \
-	--control_batch_size 2 \
+	--control_batch_size 4 \
 	--CEM_init_pose_sample_size 80 \
 	--CEM_gripper_rate_sample_size 4 \
 	--GD_batch_size 1 \

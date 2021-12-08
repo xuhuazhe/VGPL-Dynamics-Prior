@@ -314,7 +314,8 @@ class Planner(object):
 
     @profile
     def trajectory_optimization(self):
-        for grip_num in range(1, self.n_grips):
+        grip_num_min = 1
+        for grip_num in range(grip_num_min, self.n_grips + 1):
             print(f'=============== Test {grip_num} grip(s) in this iteration ===============')
             init_pose_seq = torch.Tensor()
             act_seq = torch.Tensor()
@@ -428,6 +429,7 @@ class Planner(object):
                 act_seq = torch.cat((act_seq, act_seq_opt.clone()))
                 loss_seq = loss_opt.clone()
 
+            print(f'=============== Loss is {loss_seq} in this iteration ===============')
             if grip_num == 1:
                 best_init_pose_seq = init_pose_seq
                 best_act_seq = act_seq
@@ -510,7 +512,7 @@ class Planner(object):
                 state_seqs = self.model_rollout(state_cur, init_pose_seqs, act_seqs)
             
             reward_seqs = self.evaluate_traj(state_seqs, state_goal)
-            print(f"reward seqs: {reward_seqs}")
+            # print(f"reward seqs: {reward_seqs}")
             # reward_seqs = reward_seqs.data.cpu().numpy()
 
             reward_seqs_rollout.append(reward_seqs)
@@ -875,6 +877,7 @@ class Planner(object):
 
             loss_list_all.append(loss_list)
 
+            print(f"reward seqs after GD: {reward_seqs}")
             reward_list = torch.cat((reward_list, reward_seqs)) if reward_list != None else reward_seqs
             state_cur_list = torch.cat((state_cur_list, state_cur_seqs)) if state_cur_list != None else state_cur_seqs
 
