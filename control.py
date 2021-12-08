@@ -48,7 +48,7 @@ task_params = {
 
 emd_loss = EarthMoverLoss()
 chamfer_loss = ChamferLoss()
-h_loss = UpdatedHausdorffLoss()
+uh_loss = UpdatedHausdorffLoss()
 clip_loss = ClipLoss()
 shape_loss = L1ShapeLoss()
 
@@ -310,7 +310,7 @@ class Planner(object):
         self.gripper_mid_pt = task_params["gripper_mid_pt"]
         self.gripper_rate_limits = task_params["gripper_rate_limits"]
         self.d_loss_threshold = task_params["d_loss_threshold"]
-        self.emd_weight, self.chamfer_weight, self.h_weight, self.clip_weight = task_params["loss_weights"]
+        self.emd_weight, self.chamfer_weight, self.uh_weight, self.clip_weight = task_params["loss_weights"]
 
         if args.debug:
             self.n_sample = 8
@@ -321,6 +321,9 @@ class Planner(object):
 
     @profile
     def trajectory_optimization(self):
+        state_goal = self.get_state_goal(self.n_grips - 1)
+        visualize_points(state_goal, self.n_particle, os.path.join(self.rollout_path, f'goal_particles'))
+        
         for grip_num in range(self.n_grips, 0, -1):
             print(f'=============== Test {grip_num} grip(s) in this iteration ===============')
             init_pose_seq = torch.Tensor()
@@ -328,15 +331,14 @@ class Planner(object):
             loss_seq = torch.Tensor()
             state_cur = None
             for i in range(grip_num):
-                self.grip_cur = f'{i+1}of{grip_num}'
+                self.grip_cur = f'{grip_num}-{i+1}'
                 print(f'=============== {i+1}/{grip_num} ===============')
 
                 if self.subgoal:
-                    n_grips_sample = 1
                     state_goal = self.get_state_goal(i)
+                    n_grips_sample = 1
                 else:
                     n_grips_sample = grip_num - i
-                    state_goal = self.get_state_goal(self.n_grips - 1)
 
                 init_pose_seqs_pool, act_seqs_pool = self.sample_action_params(n_grips_sample)
                 
@@ -359,9 +361,8 @@ class Planner(object):
                 state_cur_sim_particles = state_cur_sim[:, :self.n_particle].clone()
                 self.floor_state = state_cur_sim[:, self.n_particle: self.n_particle + self.n_shapes_floor].clone()
 
-                visualize_points(state_cur_sim[-1], self.n_particle, os.path.join(self.rollout_path, f'sim_particles_{i}'))
+                visualize_points(state_cur_sim[-1], self.n_particle, os.path.join(self.rollout_path, f'sim_particles_{self.grip_cur}'))
                 # visualize_points(state_cur_gt[-1], self.n_particle, os.path.join(self.rollout_path, f'gt_particles_{i}'))
-                visualize_points(state_goal[-1], self.n_particle, os.path.join(self.rollout_path, f'goal_particles_{i}'))
 
                 if state_cur == None:
                     state_cur = state_cur_sim_particles
@@ -369,10 +370,10 @@ class Planner(object):
                     # print(f"sim-gt diff: {sim_gt_diff}")
                 elif self.correction:
                     state_cur = state_cur_sim_particles
-                    model_sim_diff = self.evaluate_traj(state_cur_opt.unsqueeze(0), state_cur_sim_particles[-1].unsqueeze(0))
+                    # model_sim_diff = self.evaluate_traj(state_cur_opt.unsqueeze(0), state_cur_sim_particles[-1].unsqueeze(0))
                     # sim_gt_diff = self.evaluate_traj(state_cur_sim_particles.unsqueeze(0), state_cur_gt_particles[-1].unsqueeze(0))
                     # model_gt_diff = self.evaluate_traj(state_cur_opt.unsqueeze(0), state_cur_gt_particles[-1].unsqueeze(0))
-                    print(f"model-sim diff: {model_sim_diff}")
+                    # print(f"model-sim diff: {model_sim_diff}")
                     # print(f"model-sim diff: {model_sim_diff}; sim-gt diff: {sim_gt_diff}; model-gt diff: {model_gt_diff}")
                 else:
                     state_cur = state_cur_opt.clone()
@@ -436,7 +437,7 @@ class Planner(object):
                 loss_seq = loss_opt.clone()
 
             print(f'=============== Loss is {loss_seq} in this iteration ===============')
-            if grip_num == 1:
+            if grip_num == self.n_grips:
                 best_init_pose_seq = init_pose_seq
                 best_act_seq = act_seq
                 best_loss_seq = loss_seq
@@ -673,10 +674,10 @@ class Planner(object):
                     loss += self.emd_weight * emd_loss(state_final, state_goal)
                 if self.chamfer_weight > 0:
                     loss += self.chamfer_weight * chamfer_loss(state_final, state_goal)
-                if self.h_weight > 0:
-                    loss += self.h_weight * h_loss(state_final, state_goal)
+                if self.uh_weight > 0:
+                    loss += self.uh_weight * uh_loss(state_final, state_goal)
                 if self.clip_weight > 0:
-                    loss += self.clip_weight * clip_loss(state_final, state_goal)
+                    loss += self.clip_weight * clip_loss(state_final, state_final)
             else:
                 raise NotImplementedError
 
