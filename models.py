@@ -182,7 +182,6 @@ class DynamicsPredictor(nn.Module):
 
         # add offset to center-of-mass for rigids to attr
         # offset: B x N x (n_his * state_dim)
-        import pdb; pdb.set_trace()
         offset = torch.zeros(B, N, n_his * state_dim)
         if self.use_gpu:
             offset = offset.cuda()
