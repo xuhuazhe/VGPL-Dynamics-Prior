@@ -322,7 +322,7 @@ class Planner(object):
     @profile
     def trajectory_optimization(self):
         state_goal = self.get_state_goal(self.n_grips - 1)
-        visualize_points(state_goal, self.n_particle, os.path.join(self.rollout_path, f'goal_particles'))
+        visualize_points(state_goal[-1], self.n_particle, os.path.join(self.rollout_path, f'goal_particles'))
         
         for grip_num in range(self.n_grips, 0, -1):
             print(f'=============== Test {grip_num} grip(s) in this iteration ===============')
