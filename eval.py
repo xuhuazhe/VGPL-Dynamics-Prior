@@ -28,10 +28,13 @@ import io
 use_gpu = True
 device = torch.device("cuda" if torch.cuda.is_available() and use_gpu else "cpu")
 
+
 def visualize_points(ax, all_points, n_particles):
-    points = ax.scatter(all_points[:n_particles, 0], all_points[:n_particles, 2], all_points[:n_particles, 1], c='b', s=10)
-    shapes = ax.scatter(all_points[n_particles:, 0], all_points[n_particles:, 2], all_points[n_particles:, 1], c='r', s=10)
-    
+    points = ax.scatter(all_points[:n_particles, 0], all_points[:n_particles, 2], all_points[:n_particles, 1], c='b',
+                        s=10)
+    shapes = ax.scatter(all_points[n_particles:, 0], all_points[n_particles:, 2], all_points[n_particles:, 1], c='r',
+                        s=10)
+
     extents = np.array([getattr(ax, 'get_{}lim'.format(dim))() for dim in 'xyz'])
     sz = extents[:, 1] - extents[:, 0]
     centers = np.mean(extents, axis=1)
@@ -69,6 +72,7 @@ def plt_render(particles_set, n_particle, render_path):
         plot_info_all[row_titles[i]] = plot_info
 
     plt.tight_layout()
+
     # plt.show()
 
     def update(step):
@@ -77,14 +81,16 @@ def plt_render(particles_set, n_particle, render_path):
             states = particles_set[i]
             for j in range(cols):
                 points, shapes = plot_info_all[row_titles[i]][j]
-                points._offsets3d = (states[step, :n_particle, 0], states[step, :n_particle, 2], states[step, :n_particle, 1])
-                shapes._offsets3d = (states[step, n_particle:, 0], states[step, n_particle:, 2], states[step, n_particle:, 1])
+                points._offsets3d = (
+                states[step, :n_particle, 0], states[step, :n_particle, 2], states[step, :n_particle, 1])
+                shapes._offsets3d = (
+                states[step, n_particle:, 0], states[step, n_particle:, 2], states[step, n_particle:, 1])
                 outputs.append(points)
                 outputs.append(shapes)
         return outputs
 
     anim = animation.FuncAnimation(fig, update, frames=np.arange(0, n_frames), blit=False)
-    
+
     # plt.show()
     anim.save(render_path, writer=animation.PillowWriter(fps=20))
 
@@ -134,7 +140,7 @@ def evaluate(args, eval_epoch, eval_iter):
 
     for idx_episode in range(args.n_rollout):
         loss_list = []
-        
+
         print("Rollout %d / %d" % (idx_episode, args.n_rollout))
 
         n_particle, n_shape = 0, 0
@@ -153,10 +159,10 @@ def evaluate(args, eval_epoch, eval_iter):
 
             gt_data_path = os.path.join(args.dataf, 'train', str(idx_episode).zfill(3), gt_frame_name)
             data_path = os.path.join(args.dataf, 'train', str(idx_episode).zfill(3), frame_name)
-            
+
             gt_data = load_data(data_names, gt_data_path)
             data = load_data(data_names, data_path)
-            
+
             if n_particle == 0 and n_shape == 0:
                 n_particle, n_shape, scene_params = get_scene_info(data)
                 scene_params = torch.FloatTensor(scene_params).unsqueeze(0)
@@ -164,13 +170,13 @@ def evaluate(args, eval_epoch, eval_iter):
             if args.verbose_data:
                 print("n_particle", n_particle)
                 print("n_shape", n_shape)
-            
+
             gt_data_list.append(gt_data)
             data_list.append(data)
 
             p_gt.append(gt_data[0])
             p_sample.append(data[0])
-    
+
         # p_sample: time_step x N x state_dim
         p_gt = torch.FloatTensor(np.stack(p_gt))
         p_sample = torch.FloatTensor(np.stack(p_sample))
@@ -204,7 +210,8 @@ def evaluate(args, eval_epoch, eval_iter):
                 # attr: B x (n_p + n_s) x attr_dim
                 # Rr_cur, Rs_cur: B x n_rel x (n_p + n_s)
                 # state_cur (unnormalized): B x n_his x (n_p + n_s) x state_dim
-                attr, _, Rr_cur, Rs_cur, cluster_onehot = prepare_input(state_cur[-1].cpu().numpy(), n_particle, n_shape, args, stdreg=args.stdreg)
+                attr, _, Rr_cur, Rs_cur, cluster_onehot = prepare_input(state_cur[-1].cpu().numpy(), n_particle,
+                                                                        n_shape, args, stdreg=args.stdreg)
                 attr = attr.to(device).unsqueeze(0)
                 Rr_cur = Rr_cur.to(device).unsqueeze(0)
                 Rs_cur = Rs_cur.to(device).unsqueeze(0)
@@ -214,14 +221,14 @@ def evaluate(args, eval_epoch, eval_iter):
 
                 if args.stage in ['dy']:
                     inputs = [attr, state_cur, Rr_cur, Rs_cur, memory_init, group_info, cluster_onehot]
-                
+
                 # pred_pos (unnormalized): B x n_p x state_dim
                 # pred_motion_norm (normalized): B x n_p x state_dim
-                if args.sequence_length > args.n_his+1:
-                    pred_pos_p, pred_motion_norm, std_cluster = model.predict_dynamics(inputs, (step_id-args.n_his))
+                if args.sequence_length > args.n_his + 1:
+                    pred_pos_p, pred_motion_norm, std_cluster = model.predict_dynamics(inputs, (step_id - args.n_his))
                 else:
                     pred_pos_p, pred_motion_norm, std_cluster = model.predict_dynamics(inputs)
-                
+
                 # concatenate the state of the shapes
                 # pred_pos (unnormalized): B x (n_p + n_s) x state_dim
                 sample_pos = p_sample[step_id].to(device).unsqueeze(0)
@@ -232,7 +239,7 @@ def evaluate(args, eval_epoch, eval_iter):
                 # pred_motion_norm (normalized): B x (n_p + n_s) x state_dim
                 sample_motion = (p_sample[step_id] - p_sample[step_id - 1]).unsqueeze(0)
                 sample_motion = sample_motion.to(device)
-                
+
                 mean_d, std_d = model.stat[2:]
                 sample_motion_norm = (sample_motion - mean_d) / std_d
                 pred_motion_norm = torch.cat([pred_motion_norm, sample_motion_norm[:, n_particle:]], 1)
@@ -263,12 +270,12 @@ def evaluate(args, eval_epoch, eval_iter):
 
         # visualization
         group_info = [d.data.cpu().numpy()[0, ...] for d in group_info]
-        
+
         if args.gt_particles:
             p_pred = np.concatenate((p_gt.numpy()[:st_idx], p_pred.numpy()[st_idx:ed_idx]))
         else:
             p_pred = np.concatenate((p_sample.numpy()[:st_idx], p_pred.numpy()[st_idx:ed_idx]))
-        
+
         p_sample = p_sample.numpy()[:ed_idx]
         p_gt = p_gt.numpy()[:ed_idx]
 
@@ -284,18 +291,26 @@ def evaluate(args, eval_epoch, eval_iter):
     with open(os.path.join(args.outf, 'train.npy'), 'rb') as f:
         train_log = np.load(f, allow_pickle=True)
         train_log = train_log[None][0]
-        train_plot_curves(train_log['iters'], train_log['loss'], path=os.path.join(args.evalf, 'plot', 'train_loss_curves.png'))
+        train_plot_curves(train_log['iters'], train_log['loss'],
+                          path=os.path.join(args.evalf, 'plot', 'train_loss_curves.png'))
 
     loss_list_over_episodes = np.array(loss_list_over_episodes)
-    eval_plot_curves(np.mean(loss_list_over_episodes, axis=0), path=os.path.join(args.evalf, 'plot', 'eval_loss_curves.png'))
+    eval_plot_curves(np.mean(loss_list_over_episodes, axis=0),
+                     path=os.path.join(args.evalf, 'plot', 'eval_loss_curves.png'))
 
-    print(f"\nAverage emd loss at last frame: {np.mean(loss_list_over_episodes[:, -1, 1])} (+- {np.std(loss_list_over_episodes[:, -1, 1])})")
-    print(f"Average chamfer loss at last frame: {np.mean(loss_list_over_episodes[:, -1, 2])} (+- {np.std(loss_list_over_episodes[:, -1, 2])})")
-    print(f"Average hausdorff loss at last frame: {np.mean(loss_list_over_episodes[:, -1, 3])} (+- {np.std(loss_list_over_episodes[:, -1, 3])})")
+    print(
+        f"\nAverage emd loss at last frame: {np.mean(loss_list_over_episodes[:, -1, 1])} (+- {np.std(loss_list_over_episodes[:, -1, 1])})")
+    print(
+        f"Average chamfer loss at last frame: {np.mean(loss_list_over_episodes[:, -1, 2])} (+- {np.std(loss_list_over_episodes[:, -1, 2])})")
+    print(
+        f"Average hausdorff loss at last frame: {np.mean(loss_list_over_episodes[:, -1, 3])} (+- {np.std(loss_list_over_episodes[:, -1, 3])})")
 
-    print(f"\nAverage emd loss over episodes: {np.mean(loss_list_over_episodes[:, :, 1])} (+- {np.std(loss_list_over_episodes[:, :, 1])})")
-    print(f"Average chamfer loss over episodes: {np.mean(loss_list_over_episodes[:, :, 2])} (+- {np.std(loss_list_over_episodes[:, :, 2])})")
-    print(f"Average hausdorff loss over episodes: {np.mean(loss_list_over_episodes[:, :, 3])} (+- {np.std(loss_list_over_episodes[:, :, 3])})")
+    print(
+        f"\nAverage emd loss over episodes: {np.mean(loss_list_over_episodes[:, :, 1])} (+- {np.std(loss_list_over_episodes[:, :, 1])})")
+    print(
+        f"Average chamfer loss over episodes: {np.mean(loss_list_over_episodes[:, :, 2])} (+- {np.std(loss_list_over_episodes[:, :, 2])})")
+    print(
+        f"Average hausdorff loss over episodes: {np.mean(loss_list_over_episodes[:, :, 3])} (+- {np.std(loss_list_over_episodes[:, :, 3])})")
 
 
 if __name__ == '__main__':
