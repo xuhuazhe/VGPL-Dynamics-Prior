@@ -83,6 +83,7 @@ class DynamicsPredictor(nn.Module):
         attr_dim = args.attr_dim
         state_dim = args.state_dim
         mem_dim = args.nf_effect * args.mem_nlayer
+        quat_dim = args.quat_dim
 
         nf_particle = args.nf_particle
         nf_relation = args.nf_relation
@@ -97,7 +98,7 @@ class DynamicsPredictor(nn.Module):
             self.quat_offset = self.quat_offset.cuda()
 
         # ParticleEncoder
-        input_dim = attr_dim + 1 + n_his * state_dim * 2 + mem_dim
+        input_dim = attr_dim + 1 + n_his * state_dim * 2 + mem_dim + quat_dim
         self.particle_encoder = Encoder(input_dim, nf_particle, nf_effect)
 
         # RelationEncoder
@@ -157,7 +158,7 @@ class DynamicsPredictor(nn.Module):
         #   p_instance: B x n_particle x n_instance
         #   physics_param: B x n_particle
         # cluster: num_of_particles (N) x num_of_clusters (k)
-        attrs, state, Rr_cur, Rs_cur, memory, group, cluster = inputs
+        attrs, state, Rr_cur, Rs_cur, memory, group, cluster, shape_quats = inputs
         p_rigid, p_instance, physics_param = group
         # Rr_cur_t, Rs_cur_t: B x N x n_rel
         Rr_cur_t = Rr_cur.transpose(1, 2).contiguous()
@@ -207,8 +208,7 @@ class DynamicsPredictor(nn.Module):
         if self.use_gpu:
             physics_param_s = physics_param_s.cuda()
         physics_param = torch.cat([physics_param[:, :, None], physics_param_s], 1)
-        attrs = torch.cat([attrs, physics_param, offset, memory_t], 2)
-
+        attrs = torch.cat([attrs, physics_param, offset, memory_t, shape_quats[:, -1, :, :]], 2)
         # group info
         # g: B x N x n_instance
         g = p_instance

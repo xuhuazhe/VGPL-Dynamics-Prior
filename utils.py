@@ -96,7 +96,7 @@ def my_collate(batch):
     len_rel = 2
 
     ret = []
-    for i in range(len_batch - len_rel - 1):
+    for i in range(len_batch - len_rel - 2):
         d = [item[i] for item in batch]
         if isinstance(d[0], int):
             d = torch.LongTensor(d)
@@ -107,7 +107,7 @@ def my_collate(batch):
     # processing relations
     # R: B x seq_length x n_rel x (n_p + n_s)
     for i in range(len_rel):
-        R = [item[-len_rel + i - 1] for item in batch]
+        R = [item[len_batch - len_rel - 2 + i] for item in batch]
         max_n_rel = 0
         seq_length, _, N = R[0].size()
         for j in range(len(R)):
@@ -122,7 +122,7 @@ def my_collate(batch):
         ret.append(R)
 
     # std reg
-    d = [item[-1] for item in batch]
+    d = [item[7] for item in batch]
     if d[0] is not None:
         if isinstance(d[0], int):
             d = torch.LongTensor(d)
@@ -131,6 +131,15 @@ def my_collate(batch):
         ret.append(d)
     else:
         ret.append(None)
+
+    quat = [item[8] for item in batch]
+    if isinstance(quat[0], int):
+        quat = torch.LongTensor(quat)
+    else:
+        quat = torch.FloatTensor(torch.stack(quat))
+    ret.append(quat)
+
+
     return tuple(ret)
 
 

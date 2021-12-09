@@ -447,8 +447,8 @@ def get_scene_info(data):
     n_shapes = shape_quats.shape[0]
     count_nodes = positions.shape[0]
     n_particles = count_nodes - n_shapes
-
-    return n_particles, n_shapes, scene_params
+    shape_quats = np.concatenate([np.zeros([n_particles, shape_quats.shape[-1]]), shape_quats], 0)
+    return n_particles, n_shapes, scene_params, shape_quats
 
 
 def get_env_group(args, n_particles, scene_params, use_gpu=False):
@@ -833,7 +833,7 @@ class PhysicsFleXDataset(Dataset):
 
         if args.stage in ['dy']:
             # load ground truth data
-            attrs, particles, Rrs, Rss, cluster_onehots= [], [], [], [], []
+            attrs, particles, Rrs, Rss, cluster_onehots, shape_quats= [], [], [], [], [], []
             # sdf_list = []
             max_n_rel = 0
             for t in range(st_idx, ed_idx):
@@ -857,7 +857,7 @@ class PhysicsFleXDataset(Dataset):
 
                 # load scene param
                 if t == st_idx:
-                    n_particle, n_shape, scene_params = get_scene_info(data)
+                    n_particle, n_shape, scene_params, shape_quat = get_scene_info(data)
 
                 # attr: (n_p + n_s) x attr_dim
                 # particle (unnormalized): (n_p + n_s) x state_dim
@@ -869,6 +869,7 @@ class PhysicsFleXDataset(Dataset):
                 particles.append(particle.numpy())
                 Rrs.append(Rr)
                 Rss.append(Rs)
+                shape_quats.append(shape_quat)
                 # sdf_data = np.array(sdf_data).squeeze()
                 # print(np.array(sdf_data.shape)
                 # sdf_list.append(sdf_data)
@@ -943,6 +944,7 @@ class PhysicsFleXDataset(Dataset):
         attr = torch.FloatTensor(attrs[0])
         particles = torch.FloatTensor(np.stack(particles))
         scene_params = torch.FloatTensor(scene_params)
+        shape_quats = torch.FloatTensor(np.stack(shape_quats))
         # sdf_list = torch.FloatTensor(np.stack(sdf_list))
 
         # pad the relation set
@@ -960,7 +962,7 @@ class PhysicsFleXDataset(Dataset):
             else:
                 cluster_onehot = None
         if args.stage in ['dy']:
-            return attr, particles, n_particle, n_shape, scene_params, Rr, Rs, cluster_onehot
+            return attr, particles, n_particle, n_shape, scene_params, Rr, Rs, cluster_onehot, shape_quats
 
 
 def p2g(x, size=64, p_mass=1.):

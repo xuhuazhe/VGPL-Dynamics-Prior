@@ -150,6 +150,7 @@ def evaluate(args, eval_epoch, eval_iter):
         data_list = []
         p_gt = []
         p_sample = []
+        shape_quats = []
         for step in range(args.time_step):
             gt_frame_name = 'gt_' + str(step) + '.h5'
             frame_name = str(step) + '.h5'
@@ -164,7 +165,7 @@ def evaluate(args, eval_epoch, eval_iter):
             data = load_data(data_names, data_path)
 
             if n_particle == 0 and n_shape == 0:
-                n_particle, n_shape, scene_params = get_scene_info(data)
+                n_particle, n_shape, scene_params, shape_quat = get_scene_info(data)
                 scene_params = torch.FloatTensor(scene_params).unsqueeze(0)
 
             if args.verbose_data:
@@ -176,10 +177,11 @@ def evaluate(args, eval_epoch, eval_iter):
 
             p_gt.append(gt_data[0])
             p_sample.append(data[0])
-
+            shape_quats.append(shape_quat)
         # p_sample: time_step x N x state_dim
         p_gt = torch.FloatTensor(np.stack(p_gt))
         p_sample = torch.FloatTensor(np.stack(p_sample))
+        shape_quats = torch.FloatTensor(np.stack(shape_quats))
         p_pred = torch.zeros(args.time_step, n_particle + n_shape, args.state_dim)
         # initialize particle grouping
         group_info = get_env_group(args, n_particle, scene_params, use_gpu=use_gpu)
@@ -216,11 +218,12 @@ def evaluate(args, eval_epoch, eval_iter):
                 Rr_cur = Rr_cur.to(device).unsqueeze(0)
                 Rs_cur = Rs_cur.to(device).unsqueeze(0)
                 state_cur = state_cur.unsqueeze(0)
+                shape_quats = shape_quats.to(device)
                 if cluster_onehot:
                     cluster_onehot = cluster_onehot.unsqueeze(0)
 
                 if args.stage in ['dy']:
-                    inputs = [attr, state_cur, Rr_cur, Rs_cur, memory_init, group_info, cluster_onehot]
+                    inputs = [attr, state_cur, Rr_cur, Rs_cur, memory_init, group_info, cluster_onehot, shape_quats]
 
                 # pred_pos (unnormalized): B x n_p x state_dim
                 # pred_motion_norm (normalized): B x n_p x state_dim

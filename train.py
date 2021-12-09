@@ -152,13 +152,13 @@ def main():
                     # n_shapes: B
                     # scene_params: B x param_dim
                     # Rrs, Rss: B x seq_length x n_rel x (n_p + n_s)
-                    attrs, particles, n_particles, n_shapes, scene_params, Rrs, Rss, cluster_onehots = data
-
+                    attrs, particles, n_particles, n_shapes, scene_params, Rrs, Rss, cluster_onehots, shape_quats = data
                     if use_gpu:
                         attrs = attrs.cuda()
                         particles = particles.cuda()
                         # sdf_list = sdf_list.cuda()
                         Rrs, Rss = Rrs.cuda(), Rss.cuda()
+                        shape_quats = shape_quats.cuda()
                         if cluster_onehots is not None:
                             cluster_onehots = cluster_onehots.cuda()
 
@@ -211,7 +211,7 @@ def main():
                             else:
                                 cluster_onehot = None
                             # predict the velocity at the next time step
-                            inputs = [attrs, state_cur, Rr_cur, Rs_cur, memory_init, groups_gt, cluster_onehot]
+                            inputs = [attrs, state_cur, Rr_cur, Rs_cur, memory_init, groups_gt, cluster_onehot, shape_quats]
 
                             # pred_pos (unnormalized): B x n_p x state_dim
                             # pred_motion_norm (normalized): B x n_p x state_dim

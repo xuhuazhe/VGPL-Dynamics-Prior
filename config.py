@@ -58,6 +58,9 @@ parser.add_argument('--state_dim', type=int, default=0)
 # relation attr:
 parser.add_argument('--relation_dim', type=int, default=0)
 
+# quaternion dimension
+parser.add_argument('--quat_dim', type=int, default=4)
+
 # physics parameter
 parser.add_argument('--physics_param_range', type=float, nargs=2, default=None)
 
