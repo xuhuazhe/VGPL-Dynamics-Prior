@@ -4,9 +4,15 @@
 #SBATCH --gres=gpu:1
 #SBATCH --mem=32G
 #SBATCH --time=3-00:00:00
-#SBATCH --cpus-per-task=8
-#SBATCH --output=/sailhome/hshi74/output/deformable/%A.out
+#SBATCH --cpus-per-task=16
+#SBATCH --output=/sailhome/hxu/VGPL/%A.out
 
+source ~/.bashrc
+conda activate deformable2
+
+export PYTHONPATH="/viscam/u/hxu/projects/deformable/baselines:/viscam/u/hxu/projects/deformable/PlasticineLab"
+cd /viscam/u/hxu/projects/deformable/VGPL-Dynamics-Prior
+export LD_LIBRARY_PATH="/sailhome/hxu/my_lib/:$LD_LIBRARY_PATH"
 
 # export PYTHONPATH="/viscam/u/hshi74/projects/deformable/baselines:/viscam/u/hshi74/projects/deformable/PlasticineLab"
 # cd /viscam/u/hshi74/projects/deformable/VGPL-Dynamics-Prior
@@ -16,7 +22,7 @@
 # Task 1: N Grip
 kernprof -l train.py \
 	--env Gripper \
-	--data_type ngrip_smooth \
+	--data_type ngrip \
 	--stage dy \
 	--gen_data 0 \
 	--gen_stat 0 \
@@ -50,7 +56,6 @@ kernprof -l train.py \
 	--clip_weight $6 \
 	--augment_ratio $7 \
 	--p_rigid $8
-
 
 # Task 2: N Grip 3D
 # kernprof -l train.py \
