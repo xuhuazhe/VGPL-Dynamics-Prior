@@ -836,7 +836,7 @@ class Planner(object):
         for b in range(n_batch):
             print(f"Batch {b}/{n_batch}:")
 
-            optimizer = torch.optim.LBFGS([mid_points, angles, gripper_rates], lr=lr, tolerance_change=1e-4, line_search_fn="strong_wolfe")
+            optimizer = torch.optim.LBFGS([mid_points, angles, gripper_rates], lr=lr, tolerance_change=1e-5, line_search_fn="strong_wolfe")
             
             start_idx = b * self.GD_batch_size
             end_idx = (b + 1) * self.GD_batch_size
@@ -867,7 +867,7 @@ class Planner(object):
                     # pdb.set_trace()
                     init_pose_seq_sample = torch.stack(init_pose_seq_sample)
 
-                    gripper_rate_clamp = torch.clamp(gripper_rates[start_idx + i], min=self.gripper_rate_limits[0], max=self.gripper_rate_limits[1])
+                    gripper_rate_clamp = torch.clamp(gripper_rates[start_idx + i], min=0, max=self.gripper_rate_limits[1])
                     act_seq_sample = get_action_seq_from_pose(init_pose_seq_sample, gripper_rate_clamp)
 
                     init_pose_seq_samples.append(init_pose_seq_sample)
@@ -914,7 +914,7 @@ class Planner(object):
 
         init_pose_seq_opt = torch.stack(init_pose_seq_opt)
 
-        gripper_rate_opt = torch.clamp(gripper_rates[idx[-1]], min=self.gripper_rate_limits[0], max=self.gripper_rate_limits[1])
+        gripper_rate_opt = torch.clamp(gripper_rates[idx[-1]], min=0, max=self.gripper_rate_limits[1])
         act_seq_opt = get_action_seq_from_pose(init_pose_seq_opt, gripper_rate_opt)
 
         print(f"Optimal set of params:\nmid_point: {mid_points[idx[-1]]}\nangle: {angles[idx[-1]]}\ngripper_rate: {gripper_rates[idx[-1]]}")
