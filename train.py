@@ -153,6 +153,7 @@ def main():
                     # scene_params: B x param_dim
                     # Rrs, Rss: B x seq_length x n_rel x (n_p + n_s)
                     attrs, particles, n_particles, n_shapes, scene_params, Rrs, Rss, cluster_onehots, shape_quats = data
+                    import pdb; pdb.set_trace()
                     if use_gpu:
                         attrs = attrs.cuda()
                         particles = particles.cuda()
@@ -211,7 +212,7 @@ def main():
                             else:
                                 cluster_onehot = None
                             # predict the velocity at the next time step
-                            inputs = [attrs, state_cur, Rr_cur, Rs_cur, memory_init, groups_gt, cluster_onehot, shape_quats]
+                            inputs = [attrs, state_cur, Rr_cur, Rs_cur, memory_init, groups_gt, cluster_onehot, shape_quats[:, :args.n_his]]
 
                             # pred_pos (unnormalized): B x n_p x state_dim
                             # pred_motion_norm (normalized): B x n_p x state_dim

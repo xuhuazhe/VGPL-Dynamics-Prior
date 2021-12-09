@@ -163,7 +163,7 @@ def evaluate(args, eval_epoch, eval_iter):
 
             gt_data = load_data(data_names, gt_data_path)
             data = load_data(data_names, data_path)
-
+            print(data[1])
             if n_particle == 0 and n_shape == 0:
                 n_particle, n_shape, scene_params, shape_quat = get_scene_info(data)
                 scene_params = torch.FloatTensor(scene_params).unsqueeze(0)
