@@ -9,7 +9,7 @@ python eval.py \
 	--n_his 4 \
 	--augment 0.05 \
 	--vis plt \
-	--data_type ngrip \
+	--data_type ngrip_3d \
 	--n_rollout 10 \
 	--outf_eval dump/dump_ngrip_3d/files_dy_09-Dec-2021-01:07:18.765478_nHis4_aug0.05_gt0_seqlen6_emd0.3_chamfer0.7_uh0.1_clip0.0 \
 	--eval_epoch 95 \
