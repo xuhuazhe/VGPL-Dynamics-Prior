@@ -208,6 +208,7 @@ class DynamicsPredictor(nn.Module):
         if self.use_gpu:
             physics_param_s = physics_param_s.cuda()
         physics_param = torch.cat([physics_param[:, :, None], physics_param_s], 1)
+        import pdb; pdb.set_trace()
         attrs = torch.cat([attrs, physics_param, offset, memory_t, shape_quats[:, -1, :, :]], 2)
         # group info
         # g: B x N x n_instance
