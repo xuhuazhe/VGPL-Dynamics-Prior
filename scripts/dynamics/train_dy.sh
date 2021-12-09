@@ -8,7 +8,7 @@
 #SBATCH --output=/sailhome/hxu/VGPL/%A.out
 
 source ~/.bashrc
-conda activate deformable2
+conda activate deformable4
 
 export PYTHONPATH="/viscam/u/hxu/projects/deformable/baselines:/viscam/u/hxu/projects/deformable/PlasticineLab"
 cd /viscam/u/hxu/projects/deformable/VGPL-Dynamics-Prior
