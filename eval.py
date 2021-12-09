@@ -218,13 +218,13 @@ def evaluate(args, eval_epoch, eval_iter):
                 Rr_cur = Rr_cur.to(device).unsqueeze(0)
                 Rs_cur = Rs_cur.to(device).unsqueeze(0)
                 state_cur = state_cur.unsqueeze(0)
-                shape_quats = shape_quats[step_id-args.n_his:step_id].unsqueeze(0).to(device)
-                print(shape_quats.shape)
+                shape_quats_input = shape_quats[step_id-args.n_his:step_id].unsqueeze(0).to(device)
+                # print(shape_quats.shape)
                 if cluster_onehot:
                     cluster_onehot = cluster_onehot.unsqueeze(0)
 
                 if args.stage in ['dy']:
-                    inputs = [attr, state_cur, Rr_cur, Rs_cur, memory_init, group_info, cluster_onehot, shape_quats]
+                    inputs = [attr, state_cur, Rr_cur, Rs_cur, memory_init, group_info, cluster_onehot, shape_quats_input]
 
                 # pred_pos (unnormalized): B x n_p x state_dim
                 # pred_motion_norm (normalized): B x n_p x state_dim
