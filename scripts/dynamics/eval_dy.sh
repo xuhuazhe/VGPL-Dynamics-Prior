@@ -11,7 +11,7 @@ python eval.py \
 	--vis plt \
 	--data_type ngrip \
 	--n_rollout 10 \
-	--outf_eval dump/dump_ngrip/files_dy_05-Dec-2021-14:49:26.288151_nHis4_aug0.05_gt0_seqlen6_emd0.3_chamfer0.7_uh0.1_clip0.0 \
+	--outf_eval dump/dump_ngrip_3d/files_dy_09-Dec-2021-01:07:18.765478_nHis4_aug0.05_gt0_seqlen6_emd0.3_chamfer0.7_uh0.1_clip0.0 \
 	--eval_epoch 95 \
 	--eval_iter 225 \
 	--sequence_length 6 \
