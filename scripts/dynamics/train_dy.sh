@@ -22,7 +22,7 @@ export LD_LIBRARY_PATH="/sailhome/hxu/my_lib/:$LD_LIBRARY_PATH"
 # Task 1: N Grip
 python train.py \
 	--env Gripper \
-	--data_type ngrip \
+	--data_type ngrip_3d \
 	--stage dy \
 	--gen_data 0 \
 	--gen_stat 0 \
