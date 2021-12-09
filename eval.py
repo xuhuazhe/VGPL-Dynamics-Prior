@@ -218,8 +218,8 @@ def evaluate(args, eval_epoch, eval_iter):
                 Rr_cur = Rr_cur.to(device).unsqueeze(0)
                 Rs_cur = Rs_cur.to(device).unsqueeze(0)
                 state_cur = state_cur.unsqueeze(0)
-                shape_quats = shape_quats[step_id-args.n_his:step_id].to(device).unsqueeze(0)
-                print(shape_quats)
+                shape_quats = shape_quats[step_id-args.n_his:step_id].unsqueeze(0).to(device)
+                print(shape_quats.shape)
                 if cluster_onehot:
                     cluster_onehot = cluster_onehot.unsqueeze(0)
 
