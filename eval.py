@@ -30,10 +30,8 @@ device = torch.device("cuda" if torch.cuda.is_available() and use_gpu else "cpu"
 
 
 def visualize_points(ax, all_points, n_particles):
-    points = ax.scatter(all_points[:n_particles, 0], all_points[:n_particles, 2], all_points[:n_particles, 1], c='b',
-                        s=10)
-    shapes = ax.scatter(all_points[n_particles:, 0], all_points[n_particles:, 2], all_points[n_particles:, 1], c='r',
-                        s=10)
+    points = ax.scatter(all_points[:n_particles, 0], all_points[:n_particles, 2], all_points[:n_particles, 1], c='b', s=10)
+    shapes = ax.scatter(all_points[n_particles:, 0], all_points[n_particles:, 2], all_points[n_particles:, 1], c='r', s=10)
 
     extents = np.array([getattr(ax, 'get_{}lim'.format(dim))() for dim in 'xyz'])
     sz = extents[:, 1] - extents[:, 0]
@@ -291,26 +289,18 @@ def evaluate(args, eval_epoch, eval_iter):
     with open(os.path.join(args.outf, 'train.npy'), 'rb') as f:
         train_log = np.load(f, allow_pickle=True)
         train_log = train_log[None][0]
-        train_plot_curves(train_log['iters'], train_log['loss'],
-                          path=os.path.join(args.evalf, 'plot', 'train_loss_curves.png'))
+        train_plot_curves(train_log['iters'], train_log['loss'], path=os.path.join(args.evalf, 'plot', 'train_loss_curves.png'))
 
     loss_list_over_episodes = np.array(loss_list_over_episodes)
-    eval_plot_curves(np.mean(loss_list_over_episodes, axis=0),
-                     path=os.path.join(args.evalf, 'plot', 'eval_loss_curves.png'))
+    eval_plot_curves(np.mean(loss_list_over_episodes, axis=0), path=os.path.join(args.evalf, 'plot', 'eval_loss_curves.png'))
 
-    print(
-        f"\nAverage emd loss at last frame: {np.mean(loss_list_over_episodes[:, -1, 1])} (+- {np.std(loss_list_over_episodes[:, -1, 1])})")
-    print(
-        f"Average chamfer loss at last frame: {np.mean(loss_list_over_episodes[:, -1, 2])} (+- {np.std(loss_list_over_episodes[:, -1, 2])})")
-    print(
-        f"Average hausdorff loss at last frame: {np.mean(loss_list_over_episodes[:, -1, 3])} (+- {np.std(loss_list_over_episodes[:, -1, 3])})")
+    print(f"\nAverage emd loss at last frame: {np.mean(loss_list_over_episodes[:, -1, 1])} (+- {np.std(loss_list_over_episodes[:, -1, 1])})")
+    print(f"Average chamfer loss at last frame: {np.mean(loss_list_over_episodes[:, -1, 2])} (+- {np.std(loss_list_over_episodes[:, -1, 2])})")
+    print(f"Average hausdorff loss at last frame: {np.mean(loss_list_over_episodes[:, -1, 3])} (+- {np.std(loss_list_over_episodes[:, -1, 3])})")
 
-    print(
-        f"\nAverage emd loss over episodes: {np.mean(loss_list_over_episodes[:, :, 1])} (+- {np.std(loss_list_over_episodes[:, :, 1])})")
-    print(
-        f"Average chamfer loss over episodes: {np.mean(loss_list_over_episodes[:, :, 2])} (+- {np.std(loss_list_over_episodes[:, :, 2])})")
-    print(
-        f"Average hausdorff loss over episodes: {np.mean(loss_list_over_episodes[:, :, 3])} (+- {np.std(loss_list_over_episodes[:, :, 3])})")
+    print(f"\nAverage emd loss over episodes: {np.mean(loss_list_over_episodes[:, :, 1])} (+- {np.std(loss_list_over_episodes[:, :, 1])})")
+    print(f"Average chamfer loss over episodes: {np.mean(loss_list_over_episodes[:, :, 2])} (+- {np.std(loss_list_over_episodes[:, :, 2])})")
+    print(f"Average hausdorff loss over episodes: {np.mean(loss_list_over_episodes[:, :, 3])} (+- {np.std(loss_list_over_episodes[:, :, 3])})")
 
 
 if __name__ == '__main__':
@@ -321,3 +311,4 @@ if __name__ == '__main__':
         args.outf = args.outf_eval
 
     evaluate(args, args.eval_epoch, args.eval_iter)
+    

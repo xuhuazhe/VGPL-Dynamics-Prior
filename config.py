@@ -185,11 +185,7 @@ def gen_args():
     elif args.env == 'Gripper':
         args.env_idx = 1001
 
-        # args.n_rollout = 50
-        if args.data_type == 'ngrip' or args.data_type == 'ngrip_3d':
-            args.time_step = 89
-        else:
-            args.time_step = 49
+        args.time_step = 89
 
         # object states:
         # [x, y, z]
