@@ -279,8 +279,9 @@ def visualize_points(all_points, n_particles, path):
     # plt.show()
 
 
-def visualize_points_helper(ax, all_points, n_particles, p_color='b'):
-    points = ax.scatter(all_points[:n_particles, 0], all_points[:n_particles, 2], all_points[:n_particles, 1], c=p_color, s=10)
+def visualize_points_helper(ax, all_points, target_shape, n_particles):
+    target = ax.scatter(target_shape[:, 0], target_shape[:, 2], target_shape[:, 1], c='c', s=10)
+    points = ax.scatter(all_points[:n_particles, 0], all_points[:n_particles, 2], all_points[:n_particles, 1], c='b', s=10)
     shapes = ax.scatter(all_points[n_particles:, 0], all_points[n_particles:, 2], all_points[n_particles:, 1], c='r', s=10)
 
     extents = np.array([getattr(ax, 'get_{}lim'.format(dim))() for dim in 'xyz'])
@@ -314,8 +315,7 @@ def plt_render(particles_set, target_shape, n_particle, render_path):
         for j in range(cols):
             ax = fig.add_subplot(rows, cols, i * cols + j + 1, projection='3d')
             ax.view_init(*views[j])
-            visualize_points_helper(ax, target_shape, n_particle, p_color='c')
-            points, shapes = visualize_points_helper(ax, particles_set[i][0], n_particle)
+            points, shapes = visualize_points_helper(ax, particles_set[i][0], target_shape, n_particle)
             plot_info.append((points, shapes))
 
         plot_info_all[row_titles[i]] = plot_info
@@ -329,10 +329,8 @@ def plt_render(particles_set, target_shape, n_particle, render_path):
             states = particles_set[i]
             for j in range(cols):
                 points, shapes = plot_info_all[row_titles[i]][j]
-                points._offsets3d = (
-                states[step, :n_particle, 0], states[step, :n_particle, 2], states[step, :n_particle, 1])
-                shapes._offsets3d = (
-                states[step, n_particle:, 0], states[step, n_particle:, 2], states[step, n_particle:, 1])
+                points._offsets3d = (states[step, :n_particle, 0], states[step, :n_particle, 2], states[step, :n_particle, 1])
+                shapes._offsets3d = (states[step, n_particle:, 0], states[step, n_particle:, 2], states[step, n_particle:, 1])
                 outputs.append(points)
                 outputs.append(shapes)
         return outputs
