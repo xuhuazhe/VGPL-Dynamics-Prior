@@ -517,9 +517,9 @@ class Planner(object):
             model_state_seq = self.model_rollout(initial_state, init_pose_seq.unsqueeze(0), act_seq.unsqueeze(0))
             model_state_seq = add_shapes(model_state_seq[0], init_pose_seq, act_seq, self.n_particle)
             sample_state_seq, sim_state_seq = self.sim_rollout(init_pose_seq.unsqueeze(0), act_seq.unsqueeze(0))
-            sample_state_seq = add_shapes(sample_state_seq[0], init_pose_seq, act_seq, self.n_particle)
+            sim_state_seq = add_shapes(sim_state_seq[0], init_pose_seq, act_seq, self.n_particle)
 
-            visualize_points(sample_state_seq[0][-1], self.n_particle, os.path.join(self.rollout_path, f'sim_particles_final_grip_{grip_num}'))
+            visualize_points(sample_state_seq[-1], self.n_particle, os.path.join(self.rollout_path, f'sim_particles_final_grip_{grip_num}'))
             plt_render([np.stack(self.all_p)[:model_state_seq.shape[0]], sim_state_seq, model_state_seq], 
                         state_goal, self.n_particle, os.path.join(self.rollout_path, f'grip_{grip_num}_anim.gif'))
             
