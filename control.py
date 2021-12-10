@@ -954,6 +954,7 @@ def main():
         raise ValueError
 
     control_out_dir = os.path.join(args.outf, 'control', shape_goal_dir, test_name)
+    os.system('rm -r ' + control_out_dir)
     os.system('mkdir -p ' + control_out_dir)
 
     tee = Tee(os.path.join(control_out_dir, 'control.log'), 'w')

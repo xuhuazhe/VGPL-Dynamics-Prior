@@ -69,7 +69,6 @@ def main():
         raise ValueError
 
     control_out_dir = os.path.join(args.outf, 'control', shape_goal_dir, test_name)
-    os.system('mkdir -p ' + control_out_dir)
 
     # set up the env
     cfg = load(args.gripperf)
