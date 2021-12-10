@@ -173,11 +173,12 @@ def sample_particles(env, cam_params, k_fps_particles, n_shapes=3, n_particles=2
     prim_pos1 = env.primitives.primitives[0].get_state(0)
     prim_pos2 = env.primitives.primitives[1].get_state(0)
     prim_pos = [prim_pos1[:3], prim_pos2[:3]]
+    prim_rot = [prim_pos1[3:], prim_pos2[3:]]
 
     img = env.render_multi(mode='rgb_array', spp=3)
     rgb, depth = img[0], img[1]
 
-    sampled_points = sample_data.gen_data_one_frame(rgb, depth, cam_params, prim_pos, n_particles, k_fps_particles)
+    sampled_points = sample_data.gen_data_one_frame(rgb, depth, cam_params, prim_pos, prim_rot, n_particles, k_fps_particles)
 
     positions = sample_data.update_position(n_shapes, prim_pos, pts=sampled_points, floor=floor_pos, k_fps_particles=k_fps_particles)
     shape_positions = sample_data.shape_aug(positions, k_fps_particles)
@@ -1029,7 +1030,7 @@ def main():
     unit_quat_pad = np.tile([1, 0, 0, 0], (task_params["n_shapes_per_gripper"], 1))
     task_name = 'gripper'
     data_names = ['positions', 'shape_quats', 'scene_params']
-    rollout_dir = f"./data/data_ngrip_new/train/"
+    rollout_dir = f"./data/{args.data_type}/train/"
     steps_per_grip = task_params["len_per_grip"] + task_params["len_per_grip_back"]
 
     # init_pose_gt = []

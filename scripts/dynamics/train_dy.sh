@@ -16,7 +16,7 @@
 # Task 1: N Grip
 kernprof -l train.py \
 	--env Gripper \
-	--data_type ngrip_smooth \
+	--data_type ngrip \
 	--stage dy \
 	--gen_data 0 \
 	--gen_stat 0 \

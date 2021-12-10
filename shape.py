@@ -1,12 +1,16 @@
+
+import cv2
+import matplotlib.pyplot as plt
+import numpy as np
+import open3d as o3d
+import pdb
+import torch
+import trimesh
+
 from sdf import *
 from string import ascii_uppercase
 from plb.algorithms.sample_data import *
 from data_utils import load_data
-
-import matplotlib.pyplot as plt
-import open3d as o3d
-import torch
-import trimesh
 
 n_particle_sample = 2000
 n_particle = 300
@@ -54,14 +58,33 @@ if __name__ == "__main__":
     debug = False
     prefix = 'shapes'
     image_names = ['butterfly', 'car', 'elephant', 'fish', 'flower', 'heart', 'house', 'panda', 'star']
+    shape_size = (0.25, 0.15, 0.25)
+    shape_pos = (0.5, 0.125, 0.5)
     for i, n in enumerate(image_names):
         if debug and i > 0: break
 
         point_cloud_path = f'{prefix}/{n}/{n}.ply'
         if not os.path.exists(point_cloud_path) or update:
+            # pdb.set_trace()
             image_path = f'{prefix}/{n}/{n}.png'
-            w, h = measure_image(image_path)
-            f = image(image_path).scale((0.33/w, 0.33/h)).extrude(0.175).orient(Y).translate((0.5, 0.1, 0.5))
+            scaled_image_path = f'{prefix}/{n}/{n}_scaled.png'
+            
+            orig_image = cv2.imread(image_path)
+            size = min(orig_image.shape[0], orig_image.shape[1])
+            orig_image = cv2.resize(orig_image, (size, size))
+            cv2.imwrite(scaled_image_path, orig_image)
+
+            scaled_image = cv2.imread(scaled_image_path)
+            gray = cv2.cvtColor(scaled_image, cv2.COLOR_BGR2GRAY)
+
+            thresh = cv2.threshold(gray,0,255,cv2.THRESH_OTSU + cv2.THRESH_BINARY)[1]
+            pixels = cv2.countNonZero(thresh)
+            image_area = scaled_image.shape[0] * scaled_image.shape[1]
+            size_ratio = np.sqrt(pixels / image_area)
+
+            w, h = measure_image(scaled_image_path)
+            f = image(scaled_image_path).scale((shape_size[0] / size_ratio / w, shape_size[2] / size_ratio / h))\
+                                        .extrude(shape_size[1]).orient(Y).translate(shape_pos)
             f.save(point_cloud_path, step=0.01)
 
         h5_path = f'{prefix}/{n}/{n}.h5'
@@ -73,7 +96,7 @@ if __name__ == "__main__":
 
             tri_mesh = trimesh.load_mesh(point_cloud_path)
 
-            sampled_points = sampling(lower, upper, tri_mesh, [], n_particle_sample)
+            sampled_points = sampling(lower, upper, tri_mesh, [], [], n_particle_sample)
 
             sampled_pcd = o3d.geometry.PointCloud()
             sampled_pcd.points = o3d.utility.Vector3dVector(sampled_points)
