@@ -437,26 +437,23 @@ class Planner(object):
                 act_seq = torch.cat((act_seq, act_seq_opt.clone()))
                 loss_seq = loss_opt.clone()
 
-            print(f'=============== Loss is {loss_seq} in this iteration ===============')
+            state_final_sim = self.sim_rollout(init_pose_seq.unsqueeze(0), act_seq.unsqueeze(0)).squeeze()
+            visualize_points(state_final_sim[-1], self.n_particle, os.path.join(self.rollout_path, f'sim_particles_final_grip_{grip_num}'))
+            loss_sim = torch.neg(self.evaluate_traj(state_final_sim[:, :self.n_particle].unsqueeze(0), state_goal))
+            print(f"=============== With {grip_num} grips -> model_loss: {loss_seq}; sim_loss: {loss_sim} ===============")
             if grip_num == self.n_grips:
                 best_init_pose_seq = init_pose_seq
                 best_act_seq = act_seq
-                best_loss_seq = loss_seq
+                best_model_loss = loss_seq
+                best_sim_loss = loss_sim
             else:
-                if loss_seq < best_loss_seq:
+                if loss_sim < best_sim_loss:
                     best_init_pose_seq = init_pose_seq
                     best_act_seq = act_seq
-                    best_loss_seq = loss_seq
+                    best_model_loss = loss_seq
+                    best_sim_loss = loss_sim
 
-        # state_final_sim = self.sim_rollout(init_pose_seq.unsqueeze(0), act_seq.unsqueeze(0)).squeeze()
-        # visualize_points(state_cur_sim[-1], n_particle, os.path.join(control_out_dir, f'sim_particles_final_{i}'))
-        # reward_sim = self.evaluate_traj(state_final_sim[:, :self.n_particle].unsqueeze(0), state_goal)
-        # loss_sim = torch.neg(reward_sim)
-        # print(f"With {n_grips} grips: model_loss: {loss_seq}; sim_loss: {loss_sim}")
-        # if loss_sim < self.d_loss_threshold: 
-        #     break
-
-        return best_init_pose_seq.cpu(), best_act_seq.cpu(), best_loss_seq.cpu()
+        return best_init_pose_seq.cpu(), best_act_seq.cpu(), best_model_loss.cpu()
 
 
     def get_state_goal(self, i):
