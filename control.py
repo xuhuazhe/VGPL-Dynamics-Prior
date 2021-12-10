@@ -32,12 +32,14 @@ task_params = {
     "gripper_rate": 0.01,
     "len_per_grip": 20,
     "len_per_grip_back": 10,
+    "floor_pos": np.array([0.5, 0, 0.5],
+    "n_shapes": 3, 
     "n_shapes_floor": 9,
     "n_shapes_per_gripper": 11,
     "gripper_mid_pt": int((11 - 1) / 2),
     "gripper_rate_limits": (0.00675, 0.00875),
     "loss_weights": [0.3, 0.7, 0.1, 0.0],
-    "d_loss_threshold": 0.001
+    "d_loss_threshold": 0.001,
 }
 
 emd_loss = EarthMoverLoss()
@@ -162,8 +164,7 @@ def get_gripper_rate_from_action_seq(act_seq):
     return gripper_rate_seq
 
 
-def sample_particles(env, cam_params, k_fps_particles, n_shapes=3, n_particles=2000,
-                    floor_pos=np.array([0.5, 0, 0.5])):
+def sample_particles(env, cam_params, k_fps_particles, n_particles=2000):
     prim_pos1 = env.primitives.primitives[0].get_state(0)
     prim_pos2 = env.primitives.primitives[1].get_state(0)
     prim_pos = [prim_pos1[:3], prim_pos2[:3]]
@@ -174,10 +175,25 @@ def sample_particles(env, cam_params, k_fps_particles, n_shapes=3, n_particles=2
 
     sampled_points = sample_data.gen_data_one_frame(rgb, depth, cam_params, prim_pos, prim_rot, n_particles, k_fps_particles)
 
-    positions = sample_data.update_position(n_shapes, prim_pos, pts=sampled_points, floor=floor_pos, k_fps_particles=k_fps_particles)
+    positions = sample_data.update_position(task_params["n_shapes"], prim_pos, pts=sampled_points, 
+                                            floor=task_params["floor_pos"], k_fps_particles=k_fps_particles)
     shape_positions = sample_data.shape_aug(positions, k_fps_particles)
 
     return shape_positions
+
+
+def add_shapes(state_seq, init_pose_seq, act_seq, k_fps_particles):
+    updated_state_seq = []
+    for i in range(state_seq.shape[0]):
+        init_pose_idx = int(i / (task_params["len_per_grip"] + task_params["len_per_grip_back"))
+        act_idx = i % (task_params["len_per_grip"] + task_params["len_per_grip_back")
+        prim_pos1 = init_pose_seq[init_pose_idx][:3] + act_seq[init_pose_idx][act_idx][:3]
+        prim_pos2 = init_pose_seq[init_pose_idx][7:10] + act_seq[init_pose_idx][act_idx][6:9]
+        positions = sample_data.update_position(task_params["n_shapes"], [prim_pos1, prim_pos2], pts=state_seq[i], 
+                                                floor=task_params["floor_pos"], k_fps_particles=k_fps_particles)
+        shape_positions = sample_data.shape_aug(positions, k_fps_particles)
+        updated_state_seq.append(shape_positions)
+    return np.stack(updated_state_seq)
 
 
 def expand(batch_size, info):
@@ -499,9 +515,13 @@ class Planner(object):
 
             pdb.set_trace()
             model_state_seq = self.model_rollout(initial_state, init_pose_seq.unsqueeze(0), act_seq.unsqueeze(0))
+            model_state_seq = add_shapes(model_state_seq[0], init_pose_seq, act_seq, self.n_particle)
             sample_state_seq, sim_state_seq = self.sim_rollout(init_pose_seq.unsqueeze(0), act_seq.unsqueeze(0))
+            sample_state_seq = add_shapes(sample_state_seq[0], init_pose_seq, act_seq, self.n_particle)
+            
             visualize_points(sample_state_seq[0][-1], self.n_particle, os.path.join(self.rollout_path, f'sim_particles_final_grip_{grip_num}'))
-            plt_render([np.stack(self.all_p), sim_state_seq[0], model_state_seq], state_goal, self.n_particle, os.path.join(self.rollout_path, f'grip_{grip_num}_anim.gif'))
+            plt_render([np.stack(self.all_p)[:model_state_seq.shape[0]], sim_state_seq, model_state_seq], 
+                        state_goal, self.n_particle, os.path.join(self.rollout_path, f'grip_{grip_num}_anim.gif'))
             
             loss_sim = torch.neg(self.evaluate_traj(sample_state_seq[:, :self.n_particle].unsqueeze(0), state_goal))
             print(f"=============== With {grip_num} grips -> model_loss: {loss_seq}; sim_loss: {loss_sim} ===============")
