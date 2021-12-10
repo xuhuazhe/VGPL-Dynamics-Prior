@@ -32,7 +32,7 @@ task_params = {
     "gripper_rate": 0.01,
     "len_per_grip": 20,
     "len_per_grip_back": 10,
-    "floor_pos": np.array([0.5, 0, 0.5],
+    "floor_pos": np.array([0.5, 0, 0.5]),
     "n_shapes": 3, 
     "n_shapes_floor": 9,
     "n_shapes_per_gripper": 11,
@@ -518,7 +518,7 @@ class Planner(object):
             model_state_seq = add_shapes(model_state_seq[0], init_pose_seq, act_seq, self.n_particle)
             sample_state_seq, sim_state_seq = self.sim_rollout(init_pose_seq.unsqueeze(0), act_seq.unsqueeze(0))
             sample_state_seq = add_shapes(sample_state_seq[0], init_pose_seq, act_seq, self.n_particle)
-            
+
             visualize_points(sample_state_seq[0][-1], self.n_particle, os.path.join(self.rollout_path, f'sim_particles_final_grip_{grip_num}'))
             plt_render([np.stack(self.all_p)[:model_state_seq.shape[0]], sim_state_seq, model_state_seq], 
                         state_goal, self.n_particle, os.path.join(self.rollout_path, f'grip_{grip_num}_anim.gif'))
