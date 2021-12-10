@@ -185,8 +185,8 @@ def sample_particles(env, cam_params, k_fps_particles, n_particles=2000):
 def add_shapes(state_seq, init_pose_seq, act_seq, k_fps_particles):
     updated_state_seq = []
     for i in range(act_seq.shape[0]):
-        prim_pos1 = init_pose_seq[i, task_params["gripper_mid_pt"], :3]
-        prim_pos2 = init_pose_seq[i, task_params["gripper_mid_pt"], 7:10]
+        prim_pos1 = init_pose_seq[i, task_params["gripper_mid_pt"], :3].clone()
+        prim_pos2 = init_pose_seq[i, task_params["gripper_mid_pt"], 7:10].clone()
         for j in range(act_seq.shape[1]):
             idx = i * act_seq.shape[1] + j
             prim_pos1 += act_seq[i, j, :3]
@@ -279,9 +279,8 @@ def visualize_points(all_points, n_particles, path):
     # plt.show()
 
 
-def visualize_points_helper(ax, all_points, target_shape, n_particles):
-    target = ax.scatter(target_shape[:, 0], target_shape[:, 2], target_shape[:, 1], c='c', s=10)
-    points = ax.scatter(all_points[:n_particles, 0], all_points[:n_particles, 2], all_points[:n_particles, 1], c='b', s=10)
+def visualize_points_helper(ax, all_points, n_particles, p_color='b'):
+    points = ax.scatter(all_points[:n_particles, 0], all_points[:n_particles, 2], all_points[:n_particles, 1], c=p_color, s=10)
     shapes = ax.scatter(all_points[n_particles:, 0], all_points[n_particles:, 2], all_points[n_particles:, 1], c='r', s=10)
 
     extents = np.array([getattr(ax, 'get_{}lim'.format(dim))() for dim in 'xyz'])
@@ -315,7 +314,8 @@ def plt_render(particles_set, target_shape, n_particle, render_path):
         for j in range(cols):
             ax = fig.add_subplot(rows, cols, i * cols + j + 1, projection='3d')
             ax.view_init(*views[j])
-            points, shapes = visualize_points_helper(ax, particles_set[i][0], target_shape, n_particle)
+            visualize_points_helper(ax, target_shape, n_particle, p_color='c')
+            points, shapes = visualize_points_helper(ax, particles_set[i][0], n_particle)
             plot_info.append((points, shapes))
 
         plot_info_all[row_titles[i]] = plot_info
@@ -514,8 +514,8 @@ class Planner(object):
 
             pdb.set_trace()
             model_state_seq = self.model_rollout(initial_state, init_pose_seq.unsqueeze(0), act_seq.unsqueeze(0))
-            model_state_seq = add_shapes(model_state_seq[0], init_pose_seq, act_seq, self.n_particle)
             sample_state_seq, sim_state_seq = self.sim_rollout(init_pose_seq.unsqueeze(0), act_seq.unsqueeze(0))
+            model_state_seq = add_shapes(model_state_seq[0], init_pose_seq, act_seq, self.n_particle)
             sim_state_seq = add_shapes(sim_state_seq[0], init_pose_seq, act_seq, self.n_particle)
 
             sample_state_seq = sample_state_seq.squeeze()
