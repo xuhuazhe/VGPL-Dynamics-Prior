@@ -14,7 +14,6 @@ python control_render.py \
 	--outf_control dump/dump_ngrip/files_dy_06-Dec-2021-11:49:29.971140_nHis4_aug0.05_gt0_seqlen6_emd0.3_chamfer0.7_uh0.1_clip0.0 \
 	--gripperf ../PlasticineLab/plb/envs/gripper.yml \
 	--shape_aug 1 \
-	--n_grips 3 \
 	--use_sim 0 \
 	--gt_action 0 \
 	--gt_state_goal 0 \

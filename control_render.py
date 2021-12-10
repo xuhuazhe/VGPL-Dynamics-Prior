@@ -51,12 +51,6 @@ def main():
     else:
         test_name = f'sim_{args.use_sim}+{args.n_grips}_grips+{args.rewardtype}+subgoal_{args.subgoal}+correction_{args.correction}+opt_{args.opt_algo}_{args.CEM_opt_iter}+debug_{args.debug}'
 
-    vid_idx = 0
-    if len(args.goal_shape_name) > 0 and args.goal_shape_name != 'none':
-        shape_goal_dir = args.goal_shape_name
-    else:
-        shape_goal_dir = str(vid_idx).zfill(3)
-    
     if len(args.goal_shape_name) > 0 and args.goal_shape_name != 'none':
         vid_idx = 0
         if args.goal_shape_name[:3] == 'vid':
@@ -69,6 +63,7 @@ def main():
         raise ValueError
 
     control_out_dir = os.path.join(args.outf, 'control', shape_goal_dir, test_name)
+    print(control_out_dir)
 
     # set up the env
     cfg = load(args.gripperf)
@@ -116,6 +111,7 @@ def main():
 
     init_pose_seq = np.load(f"{control_out_dir}/init_pose_seq_opt.npy", allow_pickle=True)
     act_seq = np.load(f"{control_out_dir}/act_seq_opt.npy", allow_pickle=True)
+    print(init_pose_seq.shape, act_seq.shape)
 
     for i in range(act_seq.shape[0]):
         env.primitives.primitives[0].set_state(0, init_pose_seq[i, task_params["gripper_mid_pt"], :7])
