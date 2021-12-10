@@ -447,8 +447,8 @@ def get_scene_info(data):
     n_shapes = shape_quats.shape[0]
     count_nodes = positions.shape[0]
     n_particles = count_nodes - n_shapes
-    shape_quats = np.concatenate([np.zeros([n_particles, shape_quats.shape[-1]]), shape_quats], 0)
-    return n_particles, n_shapes, scene_params, shape_quats
+    # shape_quats = np.concatenate([np.zeros([n_particles, shape_quats.shape[-1]]), shape_quats], 0)
+    return n_particles, n_shapes, scene_params#, shape_quats
 
 
 def get_env_group(args, n_particles, scene_params, use_gpu=False):
@@ -504,6 +504,10 @@ def get_env_group(args, n_particles, scene_params, use_gpu=False):
     # p_instance: B x n_p x n_instance
     # physics_param: B x n_p
     return [p_rigid, p_instance, physics_param]
+
+def get_shape_quat(shape_quat, n_particles):
+    shape_quats_aug = np.concatenate([np.zeros([n_particles, shape_quat.shape[-1]]), shape_quat], 0)
+    return shape_quats_aug
 
 
 def prepare_input(positions, n_particle, n_shape, args, var=False, stdreg=0):
@@ -857,11 +861,12 @@ class PhysicsFleXDataset(Dataset):
 
                 # load scene param
                 if t == st_idx:
-                    n_particle, n_shape, scene_params, shape_quat = get_scene_info(data)
+                    n_particle, n_shape, scene_params = get_scene_info(data)
 
                 # attr: (n_p + n_s) x attr_dim
                 # particle (unnormalized): (n_p + n_s) x state_dim
                 # Rr, Rs: n_rel x (n_p + n_s)
+                shape_quat = get_shape_quat(data[1], n_particle)
                 attr, particle, Rr, Rs, cluster_onehot = prepare_input(data[0], n_particle, n_shape, self.args, stdreg=self.args.stdreg)
                 max_n_rel = max(max_n_rel, Rr.size(0))
 

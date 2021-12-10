@@ -12,7 +12,7 @@ import torch.nn.functional as F
 from torch.autograd import Variable
 
 from config import gen_args
-from data_utils import load_data, get_scene_info, normalize_scene_param
+from data_utils import load_data, get_scene_info, normalize_scene_param, get_shape_quat
 from data_utils import get_env_group, prepare_input, denormalize
 from models import Model
 from utils import train_plot_curves, eval_plot_curves, set_seed, Tee, count_parameters
@@ -163,16 +163,16 @@ def evaluate(args, eval_epoch, eval_iter):
 
             gt_data = load_data(data_names, gt_data_path)
             data = load_data(data_names, data_path)
-            if step == 25 or step == 55 or step == 85:
-                print(step, data[1])
+            # if step == 25 or step == 55 or step == 85:
+            #     print(step, data[1])
             if n_particle == 0 and n_shape == 0:
-                n_particle, n_shape, scene_params, shape_quat = get_scene_info(data)
+                n_particle, n_shape, scene_params = get_scene_info(data)
                 scene_params = torch.FloatTensor(scene_params).unsqueeze(0)
 
             if args.verbose_data:
                 print("n_particle", n_particle)
                 print("n_shape", n_shape)
-
+            shape_quat = get_shape_quat(data[1], n_particle)
             gt_data_list.append(gt_data)
             data_list.append(data)
 
@@ -213,6 +213,7 @@ def evaluate(args, eval_epoch, eval_iter):
                 # attr: B x (n_p + n_s) x attr_dim
                 # Rr_cur, Rs_cur: B x n_rel x (n_p + n_s)
                 # state_cur (unnormalized): B x n_his x (n_p + n_s) x state_dim
+                # shape_quat: B x (np + ns) x quat_dim
                 attr, _, Rr_cur, Rs_cur, cluster_onehot = prepare_input(state_cur[-1].cpu().numpy(), n_particle,
                                                                         n_shape, args, stdreg=args.stdreg)
                 attr = attr.to(device).unsqueeze(0)
