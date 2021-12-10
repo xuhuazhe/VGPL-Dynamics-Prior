@@ -383,7 +383,7 @@ class Planner(object):
     def trajectory_optimization(self):
         state_goal = self.get_state_goal(self.n_grips - 1)
         visualize_points(state_goal[-1], self.n_particle, os.path.join(self.rollout_path, f'goal_particles'))
-        
+        initial_state = None
         for grip_num in range(self.n_grips, 0, -1):
             print(f'=============== Test {grip_num} grip(s) in this iteration ===============')
             init_pose_seq = torch.Tensor()
@@ -426,6 +426,7 @@ class Planner(object):
 
                 if state_cur == None:
                     state_cur = state_cur_sim_particles
+                    initial_state = state_cur_sim_particles
                     # sim_gt_diff = self.evaluate_traj(state_cur_sim_particles.unsqueeze(0), state_cur_gt_particles[-1].unsqueeze(0))
                     # print(f"sim-gt diff: {sim_gt_diff}")
                 elif self.correction:
@@ -436,7 +437,7 @@ class Planner(object):
                     # print(f"model-sim diff: {model_sim_diff}")
                     # print(f"model-sim diff: {model_sim_diff}; sim-gt diff: {sim_gt_diff}; model-gt diff: {model_gt_diff}")
                 else:
-                    state_cur = state_seq_opt.clone()
+                    state_cur = state_seq_opt[-self.n_his:].clone()
 
                 print(f"state_cur: {state_cur.shape}, state_goal: {state_goal.shape}")
 
@@ -496,9 +497,11 @@ class Planner(object):
                 act_seq = torch.cat((act_seq, act_seq_opt.clone()))
                 loss_seq = loss_opt.clone()
 
+            pdb.set_trace()
+            model_state_seq = self.model_rollout(initial_state, init_pose_seq.unsqueeze(0), act_seq.unsqueeze(0))
             sample_state_seq, sim_state_seq = self.sim_rollout(init_pose_seq.unsqueeze(0), act_seq.unsqueeze(0))
             visualize_points(sample_state_seq[0][-1], self.n_particle, os.path.join(self.rollout_path, f'sim_particles_final_grip_{grip_num}'))
-            plt_render([np.stack(self.all_p), sim_state_seq, state_seq_opt], state_goal, self.n_particle, os.path.join(self.rollout_path, f'grip_{grip_num}_anim.gif'))
+            plt_render([np.stack(self.all_p), sim_state_seq[0], model_state_seq], state_goal, self.n_particle, os.path.join(self.rollout_path, f'grip_{grip_num}_anim.gif'))
             
             loss_sim = torch.neg(self.evaluate_traj(sample_state_seq[:, :self.n_particle].unsqueeze(0), state_goal))
             print(f"=============== With {grip_num} grips -> model_loss: {loss_seq}; sim_loss: {loss_sim} ===============")
