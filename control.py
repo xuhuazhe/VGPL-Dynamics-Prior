@@ -189,8 +189,8 @@ def add_shapes(state_seq, init_pose_seq, act_seq, k_fps_particles):
         prim_pos2 = init_pose_seq[i, task_params["gripper_mid_pt"], 7:10].clone()
         for j in range(act_seq.shape[1]):
             idx = i * act_seq.shape[1] + j
-            prim_pos1 += act_seq[i, j, :3]
-            prim_pos2 += act_seq[i, j, 6:9]
+            prim_pos1 += 0.02 * act_seq[i, j, :3]
+            prim_pos2 += 0.02 * act_seq[i, j, 6:9]
             positions = sample_data.update_position(task_params["n_shapes"], [prim_pos1, prim_pos2], pts=state_seq[idx], 
                                                     floor=task_params["floor_pos"], k_fps_particles=k_fps_particles)
             shape_positions = sample_data.shape_aug(positions, k_fps_particles)
