@@ -184,15 +184,17 @@ def sample_particles(env, cam_params, k_fps_particles, n_particles=2000):
 
 def add_shapes(state_seq, init_pose_seq, act_seq, k_fps_particles):
     updated_state_seq = []
-    for i in range(state_seq.shape[0]):
-        init_pose_idx = int(i / (task_params["len_per_grip"] + task_params["len_per_grip_back"]))
-        act_idx = i % (task_params["len_per_grip"] + task_params["len_per_grip_back"])
-        prim_pos1 = init_pose_seq[init_pose_idx, task_params["gripper_mid_pt"], :3] + act_seq[init_pose_idx, act_idx, :3]
-        prim_pos2 = init_pose_seq[init_pose_idx, task_params["gripper_mid_pt"], 7:10] + act_seq[init_pose_idx, act_idx, 6:9]
-        positions = sample_data.update_position(task_params["n_shapes"], [prim_pos1, prim_pos2], pts=state_seq[i], 
-                                                floor=task_params["floor_pos"], k_fps_particles=k_fps_particles)
-        shape_positions = sample_data.shape_aug(positions, k_fps_particles)
-        updated_state_seq.append(shape_positions)
+    for i in range(act_seq.shape[0]):
+        prim_pos1 = init_pose_seq[i, task_params["gripper_mid_pt"], :3]
+        prim_pos2 = init_pose_seq[i, task_params["gripper_mid_pt"], 7:10]
+        for j in range(act_seq.shape[1]):
+            idx = i * act_seq.shape[1] + j
+            prim_pos1 += act_seq[i, j, :3]
+            prim_pos2 += act_seq[i, j, 6:9]
+            positions = sample_data.update_position(task_params["n_shapes"], [prim_pos1, prim_pos2], pts=state_seq[idx], 
+                                                    floor=task_params["floor_pos"], k_fps_particles=k_fps_particles)
+            shape_positions = sample_data.shape_aug(positions, k_fps_particles)
+            updated_state_seq.append(shape_positions)
     return np.stack(updated_state_seq)
 
 
@@ -297,11 +299,11 @@ def visualize_points_helper(ax, all_points, n_particles, p_color='b'):
 def plt_render(particles_set, target_shape, n_particle, render_path):
     # particles_set[0] = np.concatenate((particles_set[0][:, :n_particle], particles_set[1][:, n_particle:]), axis=1)
     n_frames = particles_set[0].shape[0]
-    rows = 3
+    rows = 2
     cols = 3
 
-    fig, big_axes = plt.subplots(rows, 1, figsize=(9, 9))
-    row_titles = ['GT', 'Simulator', 'Model']
+    fig, big_axes = plt.subplots(rows, 1, figsize=(3*cols, 3*rows))
+    row_titles = ['Simulator', 'Model']
     views = [(90, 90), (0, 90), (45, 135)]
     plot_info_all = {}
     for i in range(rows):
@@ -319,7 +321,6 @@ def plt_render(particles_set, target_shape, n_particle, render_path):
         plot_info_all[row_titles[i]] = plot_info
 
     plt.tight_layout()
-
     # plt.show()
 
     def update(step):
@@ -520,8 +521,7 @@ class Planner(object):
             sim_state_seq = add_shapes(sim_state_seq[0], init_pose_seq, act_seq, self.n_particle)
 
             visualize_points(sample_state_seq[-1], self.n_particle, os.path.join(self.rollout_path, f'sim_particles_final_grip_{grip_num}'))
-            plt_render([np.stack(self.all_p)[:model_state_seq.shape[0]], sim_state_seq, model_state_seq], 
-                        state_goal, self.n_particle, os.path.join(self.rollout_path, f'grip_{grip_num}_anim.gif'))
+            plt_render([sim_state_seq, model_state_seq], state_goal[0], self.n_particle, os.path.join(self.rollout_path, f'grip_{grip_num}_anim.gif'))
             
             loss_sim = torch.neg(self.evaluate_traj(sample_state_seq[:, :self.n_particle].unsqueeze(0), state_goal))
             print(f"=============== With {grip_num} grips -> model_loss: {loss_seq}; sim_loss: {loss_sim} ===============")
