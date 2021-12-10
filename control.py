@@ -185,8 +185,8 @@ def sample_particles(env, cam_params, k_fps_particles, n_particles=2000):
 def add_shapes(state_seq, init_pose_seq, act_seq, k_fps_particles):
     updated_state_seq = []
     for i in range(state_seq.shape[0]):
-        init_pose_idx = int(i / (task_params["len_per_grip"] + task_params["len_per_grip_back"))
-        act_idx = i % (task_params["len_per_grip"] + task_params["len_per_grip_back")
+        init_pose_idx = int(i / (task_params["len_per_grip"] + task_params["len_per_grip_back"]))
+        act_idx = i % (task_params["len_per_grip"] + task_params["len_per_grip_back"])
         prim_pos1 = init_pose_seq[init_pose_idx][:3] + act_seq[init_pose_idx][act_idx][:3]
         prim_pos2 = init_pose_seq[init_pose_idx][7:10] + act_seq[init_pose_idx][act_idx][6:9]
         positions = sample_data.update_position(task_params["n_shapes"], [prim_pos1, prim_pos2], pts=state_seq[i], 
