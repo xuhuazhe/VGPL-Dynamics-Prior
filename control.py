@@ -1138,9 +1138,12 @@ def main():
             loss_sim_seq = torch.Tensor()
             for i in range(init_pose_seq.shape[0]):
                 state_cur_sim = planner.sim_rollout(init_pose_seq[:i+1].unsqueeze(0), act_seq[:i+1].unsqueeze(0)).squeeze()
-                visualize_points(state_cur_sim[-1], n_particle, os.path.join(control_out_dir, f'sim_particles_final_{i}'))
+                visualize_points(state_cur_sim[-1], n_particle, os.path.join(control_out_dir, f'sim_particles_answer_{i}'))
                 if args.subgoal or i == init_pose_seq.shape[0] - 1:
-                    state_goal = planner.get_state_goal(min(i, args.n_grips - 1))
+                    if args.subgoal:
+                        state_goal = planner.get_state_goal(i)
+                    else:
+                        state_goal = planner.get_state_goal(args.n_grips - 1)
                     loss_sim = planner.evaluate_traj(state_cur_sim[:, :n_particle].unsqueeze(0), state_goal)
                     loss_sim_seq = torch.cat((loss_sim_seq, torch.neg(loss_sim)))
 
