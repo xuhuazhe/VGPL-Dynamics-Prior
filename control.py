@@ -28,7 +28,7 @@ device = torch.device("cuda" if torch.cuda.is_available() and use_gpu else "cpu"
 task_params = {
     "mid_point": np.array([0.5, 0.4, 0.5, 0, 0, 0]),
     "default_h": 0.14,
-    "sample_radius": 0.25,
+    "sample_radius": 0.3,
     "gripper_rate": 0.01,
     "len_per_grip": 20,
     "len_per_grip_back": 10,
@@ -37,8 +37,9 @@ task_params = {
     "n_shapes_floor": 9,
     "n_shapes_per_gripper": 11,
     "gripper_mid_pt": int((11 - 1) / 2),
-    "gripper_rate_limits": (0.00675, 0.00875),
+    "gripper_rate_limits": ((0.3 * 2 - 0.23) / 40, (0.3 * 2 - 0.15) / 40),
     "p_noise_scale": 0.06,
+    "p_noise_bound": 0.09,
     "loss_weights": [0.3, 0.7, 0.1, 0.0],
     "d_loss_threshold": 0.001,
 }
@@ -908,8 +909,8 @@ class Planner(object):
         angles = best_angle_seqs.requires_grad_()
         gripper_rates = best_gripper_rate_seqs.requires_grad_()
 
-        mid_point_x_bounds = [task_params["mid_point"][0] - task_params["p_noise_scale"], task_params["mid_point"][0] + task_params["p_noise_scale"]]
-        mid_point_z_bounds = [task_params["mid_point"][2] - task_params["p_noise_scale"], task_params["mid_point"][2] + task_params["p_noise_scale"]]
+        mid_point_x_bounds = [task_params["mid_point"][0] - task_params["p_noise_bound"], task_params["mid_point"][0] + task_params["p_noise_bound"]]
+        mid_point_z_bounds = [task_params["mid_point"][2] - task_params["p_noise_bound"], task_params["mid_point"][2] + task_params["p_noise_bound"]]
 
         loss_list_all = []
         n_batch = int(math.ceil(best_k / self.GD_batch_size))
