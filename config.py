@@ -307,7 +307,7 @@ def gen_args():
     if args.data_type == 'ngrip':
         args.dataf = 'data/data_ngrip_new'
     elif args.data_type == 'ngrip_3d':
-        args.dataf = 'data/data_ngrip_3d'
+        args.dataf = 'data/data_ngrip_3d_updated'
     else:
         args.dataf = 'data/' + args.dataf + '_' + args.env + '_new'
 
