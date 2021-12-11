@@ -38,6 +38,7 @@ task_params = {
     "n_shapes_per_gripper": 11,
     "gripper_mid_pt": int((11 - 1) / 2),
     "gripper_rate_limits": (0.00675, 0.00875),
+    "p_noise_scale": 0.06,
     "loss_weights": [0.3, 0.7, 0.1, 0.0],
     "d_loss_threshold": 0.001,
 }
@@ -512,7 +513,7 @@ class Planner(object):
                 act_seq = torch.cat((act_seq, act_seq_opt.clone()))
                 loss_seq = loss_opt.clone()
 
-            pdb.set_trace()
+            # pdb.set_trace()
             model_state_seq = self.model_rollout(initial_state, init_pose_seq.unsqueeze(0), act_seq.unsqueeze(0))
             sample_state_seq, sim_state_seq = self.sim_rollout(init_pose_seq.unsqueeze(0), act_seq.unsqueeze(0))
             model_state_seq = add_shapes(model_state_seq[0], init_pose_seq, act_seq, self.n_particle)
@@ -558,7 +559,9 @@ class Planner(object):
             init_pose_seq = []
             act_seq = []
             for i in range(n_grips):
-                p_noise = np.clip(np.array([0, 0, np.random.randn()*0.06]), a_max=0.1, a_min=-0.1)
+                p_noise_x = task_params["p_noise_scale"] * (np.random.randn() * 2 - 1)
+                p_noise_z = task_params["p_noise_scale"] * (np.random.randn() * 2 - 1)
+                p_noise = np.clip(np.array([p_noise_x, 0, p_noise_z]), a_min=-0.1, a_max=0.1)
                 new_mid_point = self.mid_point[:3] + p_noise
                 rot_noise = np.random.uniform(0, np.pi)
 
@@ -905,10 +908,8 @@ class Planner(object):
         angles = best_angle_seqs.requires_grad_()
         gripper_rates = best_gripper_rate_seqs.requires_grad_()
 
-        # optimizer = torch.optim.Adam([mid_points, angles], lr=lr)
-        # optimizer = torch.optim.SGD([mid_points, angles], lr=lr)
-        # optimizer = torch.optim.LBFGS([mid_points, angles], lr=lr, line_search_fn="strong_wolfe")
-        # optimizer = FullBatchLBFGS([mid_points, angles], lr=lr, history_size=10, line_search='Wolfe', debug=True)
+        mid_point_x_bounds = [task_params["mid_point"][0] - task_params["p_noise_scale"], task_params["mid_point"][0] + task_params["p_noise_scale"]]
+        mid_point_z_bounds = [task_params["mid_point"][2] - task_params["p_noise_scale"], task_params["mid_point"][2] + task_params["p_noise_scale"]]
 
         loss_list_all = []
         n_batch = int(math.ceil(best_k / self.GD_batch_size))
@@ -943,14 +944,18 @@ class Planner(object):
                 for i in range(mid_points[start_idx:end_idx].shape[0]):
                     init_pose_seq_sample = []
                     for j in range(mid_points.shape[1]):
-                        init_pose = get_pose(mid_points[start_idx + i, j, :3], angles[start_idx + i, j])
+                        pdb.set_trace()
+                        mid_point_clipped_x = torch.clamp(mid_points[start_idx + i, j, 0], min=mid_point_x_bounds[0], max=mid_point_x_bounds[1])
+                        mid_point_clipped_z = torch.clamp(mid_points[start_idx + i, j, 2], min=mid_point_z_bounds[0], max=mid_point_z_bounds[1])
+                        mid_point_clipped = [mid_point_clipped_x, mid_points[start_idx + i, j, :3][1], mid_point_clipped_z]
+                        init_pose = get_pose(mid_point_clipped, angles[start_idx + i, j])
                         init_pose_seq_sample.append(init_pose)
 
                     # pdb.set_trace()
                     init_pose_seq_sample = torch.stack(init_pose_seq_sample)
 
-                    gripper_rate_clamp = torch.clamp(gripper_rates[start_idx + i], min=0, max=self.gripper_rate_limits[1])
-                    act_seq_sample = get_action_seq_from_pose(init_pose_seq_sample, gripper_rate_clamp)
+                    gripper_rate_clipped = torch.clamp(gripper_rates[start_idx + i], min=0, max=self.gripper_rate_limits[1])
+                    act_seq_sample = get_action_seq_from_pose(init_pose_seq_sample, gripper_rate_clipped)
 
                     init_pose_seq_samples.append(init_pose_seq_sample)
                     act_seq_samples.append(act_seq_sample)
