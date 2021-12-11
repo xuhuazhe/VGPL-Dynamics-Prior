@@ -38,8 +38,8 @@ task_params = {
     "n_shapes_per_gripper": 11,
     "gripper_mid_pt": int((11 - 1) / 2),
     "gripper_rate_limits": ((0.3 * 2 - 0.23) / 40, (0.3 * 2 - 0.15) / 40),
-    "p_noise_scale": 0.06,
-    "p_noise_bound": 0.09,
+    "p_noise_scale": 0.03,
+    "p_noise_bound": 0.03,
     "loss_weights": [0.3, 0.7, 0.1, 0.0],
     "d_loss_threshold": 0.001,
 }
@@ -1008,7 +1008,7 @@ class Planner(object):
         gripper_rate_opt = torch.clamp(gripper_rates[idx[-1]], min=0, max=self.gripper_rate_limits[1])
         act_seq_opt = get_action_seq_from_pose(init_pose_seq_opt, gripper_rate_opt)
 
-        print(f"Optimal set of params:\nmid_point: {mid_point_clipped}\nangle: {angles[idx[-1]]}\ngripper_rate: {gripper_rate_opt}")
+        print(f"Optimal set of params:\nmid_point: {torch.tensor(mid_point_clipped)}\nangle: {angles[idx[-1]]}\ngripper_rate: {gripper_rate_opt}")
         print(f"Optimal init pose seq: {init_pose_seq_opt[:, self.gripper_mid_pt, :7]}")
 
         return init_pose_seq_opt, act_seq_opt, loss_opt, model_state_seq_list[idx[-1]]
