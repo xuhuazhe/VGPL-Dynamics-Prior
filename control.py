@@ -948,7 +948,7 @@ class Planner(object):
                         # pdb.set_trace()
                         mid_point_clipped_x = torch.clamp(mid_points[start_idx + i, j, 0], min=mid_point_x_bounds[0], max=mid_point_x_bounds[1])
                         mid_point_clipped_z = torch.clamp(mid_points[start_idx + i, j, 2], min=mid_point_z_bounds[0], max=mid_point_z_bounds[1])
-                        mid_point_clipped = [mid_point_clipped_x, mid_points[start_idx + i, j, :3][1], mid_point_clipped_z]
+                        mid_point_clipped = [mid_point_clipped_x, mid_points[start_idx + i, j, 1], mid_point_clipped_z]
                         init_pose = get_pose(mid_point_clipped, angles[start_idx + i, j])
                         init_pose_seq_sample.append(init_pose)
 
@@ -997,7 +997,10 @@ class Planner(object):
         loss_opt = torch.neg(reward_list[idx[-1]]).view(1)
         init_pose_seq_opt = []
         for i in range(mid_points[idx[-1]].shape[0]):
-            init_pose = get_pose(mid_points[idx[-1], i, :3], angles[idx[-1], i])
+            mid_point_clipped_x = torch.clamp(mid_points[idx[-1], i, 0], min=mid_point_x_bounds[0], max=mid_point_x_bounds[1])
+            mid_point_clipped_z = torch.clamp(mid_points[idx[-1], i, 2], min=mid_point_z_bounds[0], max=mid_point_z_bounds[1])
+            mid_point_clipped = [mid_point_clipped_x, mid_points[idx[-1], i, 1], mid_point_clipped_z]
+            init_pose = get_pose(mid_point_clipped, angles[idx[-1], i])
             init_pose_seq_opt.append(init_pose)
 
         init_pose_seq_opt = torch.stack(init_pose_seq_opt)
@@ -1005,7 +1008,7 @@ class Planner(object):
         gripper_rate_opt = torch.clamp(gripper_rates[idx[-1]], min=0, max=self.gripper_rate_limits[1])
         act_seq_opt = get_action_seq_from_pose(init_pose_seq_opt, gripper_rate_opt)
 
-        print(f"Optimal set of params:\nmid_point: {mid_points[idx[-1]]}\nangle: {angles[idx[-1]]}\ngripper_rate: {gripper_rates[idx[-1]]}")
+        print(f"Optimal set of params:\nmid_point: {mid_point_clipped}\nangle: {angles[idx[-1]]}\ngripper_rate: {gripper_rate_opt}")
         print(f"Optimal init pose seq: {init_pose_seq_opt[:, self.gripper_mid_pt, :7]}")
 
         return init_pose_seq_opt, act_seq_opt, loss_opt, model_state_seq_list[idx[-1]]
