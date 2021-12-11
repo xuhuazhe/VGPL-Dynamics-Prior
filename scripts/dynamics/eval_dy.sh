@@ -9,9 +9,9 @@ python eval.py \
 	--n_his 4 \
 	--augment 0.05 \
 	--vis plt \
-	--data_type ngrip_smooth \
+	--data_type ngrip_fixed \
 	--n_rollout 10 \
-	--outf_eval dump/dump_ngrip_smooth/files_dy_08-Dec-2021-10:49:57.281936_nHis4_aug0.05_gt0_seqlen6_emd0.3_chamfer0.7_uh0.1_clip0.0 \
+	--outf_eval dump/dump_ngrip_fixed/files_dy_09-Dec-2021-22:31:50.216984_nHis4_aug0.05_gt0_seqlen6_emd0.3_chamfer0.7_uh0.1_clip0.0 \
 	--eval_epoch 95 \
 	--eval_iter 225 \
 	--sequence_length 6 \

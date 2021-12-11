@@ -3,12 +3,12 @@
 # cd /viscam/u/hshi74/projects/deformable/VGPL-Dynamics-Prior
 
 # currently a placeholder
-declare -a arr=("3") # n_grips: 1-6
+declare -a arr=("5") # n_grips: 1-6
 declare -a arr2=("GD") # opt_algo: CEM, GD, CEM_GD
 declare -a arr3=("3") # CEM_opt_iter
 declare -a arr4=("0") # subgoal: 0, 1
 declare -a arr5=("1") # correction: 0, 1
-declare -a arr6=("emd") # reward_type: emd, chamfer
+declare -a arr6=("emd") # reward_type: emd, chamfer, emd_chamfer_uh_clip
 # goal_shape_name: vid_0-49, I, T "butterfly" "car" "elephant" "fish" "flower" "heart" "house" "panda" "star"
 declare -a arr7=("vid_0" "vid_8" "I" "T" "butterfly" "car" "elephant" "fish" "flower" "heart" "house" "panda" "star") 
 declare -a arr8=("0") # debug: 0, 1
