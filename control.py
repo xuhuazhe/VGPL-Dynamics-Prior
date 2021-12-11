@@ -52,8 +52,8 @@ shape_loss = L1ShapeLoss()
 
 
 def get_pose(new_mid_point, rot_noise):
-    if not torch.is_tensor(new_mid_point):
-        new_mid_point = torch.tensor(new_mid_point)
+    # if not torch.is_tensor(new_mid_point):
+    #     new_mid_point = torch.tensor(new_mid_point)
     
     if not torch.is_tensor(rot_noise):
         rot_noise = torch.tensor(rot_noise)
@@ -945,7 +945,7 @@ class Planner(object):
                 for i in range(mid_points[start_idx:end_idx].shape[0]):
                     init_pose_seq_sample = []
                     for j in range(mid_points.shape[1]):
-                        pdb.set_trace()
+                        # pdb.set_trace()
                         mid_point_clipped_x = torch.clamp(mid_points[start_idx + i, j, 0], min=mid_point_x_bounds[0], max=mid_point_x_bounds[1])
                         mid_point_clipped_z = torch.clamp(mid_points[start_idx + i, j, 2], min=mid_point_z_bounds[0], max=mid_point_z_bounds[1])
                         mid_point_clipped = [mid_point_clipped_x, mid_points[start_idx + i, j, :3][1], mid_point_clipped_z]
