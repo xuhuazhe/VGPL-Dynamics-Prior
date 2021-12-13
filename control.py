@@ -405,25 +405,19 @@ class Planner(object):
             
             for i in range(self.args.n_grips - self.args.predict_horizon + 1):
                 init_pose_seq, act_seq, loss_seq = self.trajectory_optimization_with_horizon(self.args.predict_horizon, checkpoint=checkpoint)
-                if i == 0:
-                    init_pose_seq_final = init_pose_seq
-                    act_seq_final = act_seq
-                else:
-                    init_pose_seq_final = torch.cat((init_pose_seq_final[:1-self.args.predict_horizon], init_pose_seq.clone()))
-                    act_seq_final = torch.cat((act_seq_final[:1-self.args.predict_horizon], act_seq.clone()))
-                checkpoint = [init_pose_seq_final[:1-self.args.predict_horizon], act_seq_final[:1-self.args.predict_horizon]]
+                checkpoint = [init_pose_seq[:1-self.args.predict_horizon], act_seq[:1-self.args.predict_horizon]]
 
-                loss_sim = self.visualize_results(init_pose_seq_final, act_seq_final, state_goal_final, i)
+                loss_sim = self.visualize_results(init_pose_seq, act_seq, state_goal_final, i)
                 print(f"=============== Iteration {i} -> model_loss: {loss_seq}; sim_loss: {loss_sim} ===============")
                 if i == 0:
-                    best_init_pose_seq = init_pose_seq_final
-                    best_act_seq = act_seq_final
+                    best_init_pose_seq = init_pose_seq
+                    best_act_seq = act_seq
                     best_model_loss = loss_seq
                     best_sim_loss = loss_sim
                 else:
                     if loss_sim < best_sim_loss:
-                        best_init_pose_seq = init_pose_seq_final
-                        best_act_seq = act_seq_final
+                        best_init_pose_seq = init_pose_seq
+                        best_act_seq = act_seq
                         best_model_loss = loss_seq
                         best_sim_loss = loss_sim
 
