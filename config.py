@@ -126,21 +126,24 @@ parser.add_argument('--vis', type=str, default='plt')
 control
 '''
 parser.add_argument('--opt_algo', type=str, default='max')
+parser.add_argument('--control_algo', type=str, default='fix')
+parser.add_argument('--predict_horizon', type=int, default=2)
 parser.add_argument('--control_sample_size', type=int, default=8)
 parser.add_argument('--control_batch_size', type=int, default=4)
-parser.add_argument('--rewardtype', type=str, default='emd')
+parser.add_argument('--reward_type', type=str, default='emd')
 parser.add_argument('--use_sim', type=int, default=0)
 parser.add_argument('--gt_action', type=int, default=0)
 parser.add_argument('--gt_state_goal', type=int, default=0)
-parser.add_argument('--CEM_opt_iter', type=int, default=1)
 parser.add_argument('--subgoal', type=int, default=0)
 parser.add_argument('--correction', type=int, default=0)
 parser.add_argument('--n_grips', type=int, default=3)
 parser.add_argument('--debug', type=int, default=0)
 parser.add_argument('--goal_shape_name', type=str, default='')
+parser.add_argument('--CEM_opt_iter', type=int, default=1)
 parser.add_argument('--CEM_init_pose_sample_size', type=int, default=40)
 parser.add_argument('--CEM_gripper_rate_sample_size', type=int, default=8)
 parser.add_argument('--GD_batch_size', type=int, default=1)
+
 
 def gen_args():
     args = parser.parse_args()
