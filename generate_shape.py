@@ -56,7 +56,7 @@ if __name__ == "__main__":
 
     update = True
     debug = False
-    prefix = 'shapes/simple'
+    prefix = 'shapes/alphabet'
     if prefix == 'shapes/simple':
         image_names = ['fish', 'clover', 'heart', 'flower', 'moon', 'controller', 'hat', 'nut', 'butterfly']
     elif prefix == 'shapes/alphabet':
@@ -65,13 +65,17 @@ if __name__ == "__main__":
         raise NotImplementedError
     shape_size = (0.25, 0.15, 0.25)
     shape_pos = (0.5, 0.125, 0.5)
+    # dataset_image_path = f'shapes/alphabet_dataset.png'
+    # dataset_image = cv2.imread(dataset_image_path)
     for i, n in enumerate(image_names):
+        # print(n)
         if debug and i > 0: break
 
         point_cloud_path = f'{prefix}/{n}/{n}.ply'
         if not os.path.exists(point_cloud_path) or update:
             # pdb.set_trace()
             image_path = f'{prefix}/{n}/{n}.png'
+            # cv2.imwrite(image_path, dataset_image[int((i // 9) * size) : int((i // 9) * size + size), int((i % 9) * size) : int((i % 9) * size + size)])
             scaled_image_path = f'{prefix}/{n}/{n}_scaled.png'
             
             orig_image = cv2.imread(image_path)
