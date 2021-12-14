@@ -359,7 +359,7 @@ class DynamicsPredictor(nn.Module):
         pred_motion = (pred_motion - mean_d) / std_d
 
         # pdb.set_trace()
-        pred_motion[do_non_rigid] = non_rigid_motion
+        pred_motion[do_non_rigid] = non_rigid_motion[do_non_rigid]
         # pred_motion[do_non_rigid] = non_rigid_motion[do_non_rigid]
         # pred_motion[do_rigid] = torch.sum(p_instance.transpose(1, 2)[:, :, :, None] * rigid_motion, 1)[do_rigid]
 
