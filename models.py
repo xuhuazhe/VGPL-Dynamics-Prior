@@ -349,7 +349,8 @@ class DynamicsPredictor(nn.Module):
         n_gripper_touch[torch.count_nonzero(Rs_cur[:, :, 321:], dim=(1, 2)) > 0] += 1
 
         do_rigid = n_gripper_touch == 1
-        do_non_rigid = n_gripper_touch != 1
+        # do_non_rigid = n_gripper_touch != 1
+        do_non_rigid = n_gripper_touch == 2
         # print(n_gripper_touch, do_rigid, do_non_rigid)
 
         pred_motion = torch.zeros(B, n_p, state_dim)
