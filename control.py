@@ -1188,7 +1188,8 @@ def main():
 
     # load goal shape
     if len(args.goal_shape_name) > 0 and args.goal_shape_name != 'none' and args.goal_shape_name[:3] != 'vid':
-        shape_dir = os.path.join(os.getcwd(), 'shapes', args.goal_shape_name)
+        shape_type = 'simple'
+        shape_dir = os.path.join(os.getcwd(), 'shapes', shape_type, args.goal_shape_name)
         goal_shapes = []
         for i in range(args.n_grips):
             if args.subgoal:
