@@ -426,21 +426,25 @@ class ChamferLoss(torch.nn.Module):
     def __init__(self):
         super(ChamferLoss, self).__init__()
 
-    def chamfer_distance(self, x, y):
+    def chamfer_distance(self, x, y, height_weight):
         # x: [B, N, D]
         # y: [B, M, D]
         x = x[:, :, None, :].repeat(1, 1, y.size(1), 1) # x: [B, N, M, D]
         y = y[:, None, :, :].repeat(1, x.size(1), 1, 1) # y: [B, N, M, D]
+        hw = torch.zeros_like(x)
+        hw[:, :, :, 1] = height_weight
+        x *= hw
+        y *= hw
         dis = torch.norm(torch.add(x, -y), 2, dim=3)    # dis: [B, N, M]
         dis_xy = torch.mean(torch.min(dis, dim=2)[0])   # dis_xy: mean over N
         dis_yx = torch.mean(torch.min(dis, dim=1)[0])   # dis_yx: mean over M
 
         return dis_xy + dis_yx
 
-    def __call__(self, pred, label):
+    def __call__(self, pred, label, height_weight=1):
         # pred: [B, N, D]
         # label: [B, M, D]
-        return self.chamfer_distance(pred, label)
+        return self.chamfer_distance(pred, label, height_weight)
 
 
 class UpdatedHausdorffLoss(torch.nn.Module):
@@ -503,11 +507,15 @@ class EarthMoverLoss(torch.nn.Module):
     def __init__(self):
         super(EarthMoverLoss, self).__init__()
 
-    def em_distance(self, x, y):
+    def em_distance(self, x, y, height_weight):
         # x: [B, N, D]
         # y: [B, M, D]
         x_ = x[:, :, None, :].repeat(1, 1, y.size(1), 1)  # x: [B, N, M, D]
         y_ = y[:, None, :, :].repeat(1, x.size(1), 1, 1)  # y: [B, N, M, D]
+        hw = torch.zeros_like(x_)
+        hw[:, :, :, 1] = height_weight
+        x_ *= hw
+        y_ *= hw
         dis = torch.norm(torch.add(x_, -y_), 2, dim=3)  # dis: [B, N, M]
         x_list = []
         y_list = []
@@ -531,10 +539,10 @@ class EarthMoverLoss(torch.nn.Module):
         emd = torch.mean(torch.norm(torch.add(new_x, -new_y), 2, dim=2))
         return emd
 
-    def __call__(self, pred, label):
+    def __call__(self, pred, label, height_weight=1):
         # pred: [B, N, D]
         # label: [B, M, D]
-        return self.em_distance(pred, label)
+        return self.em_distance(pred, label, height_weight)
 
 
 class L1ShapeLoss(torch.nn.Module):

@@ -249,10 +249,10 @@ def main():
                                     loss += args.clip_weight * clip_loss(pred_pos_p, pred_pos_p)
                             elif args.losstype == 'emd_chamfer_uh_clip':
                                 if args.emd_weight > 0:
-                                    emd_l = args.emd_weight * emd_loss(pred_pos_p, gt_pos_p)
+                                    emd_l = args.emd_weight * emd_loss(pred_pos_p, gt_pos_p, args.hw)
                                     loss += emd_l
                                 if args.chamfer_weight > 0:
-                                    chamfer_l = args.chamfer_weight * particle_dist_loss(pred_pos_p, gt_pos_p)
+                                    chamfer_l = args.chamfer_weight * particle_dist_loss(pred_pos_p, gt_pos_p, args.hw)
                                     loss += chamfer_l
                                 if args.uh_weight > 0:
                                     uh_l = args.uh_weight * uh_loss(pred_pos_p, gt_pos_p)
