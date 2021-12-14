@@ -29,7 +29,6 @@ task_params = {
     "mid_point": np.array([0.5, 0.4, 0.5, 0, 0, 0]),
     "default_h": 0.14,
     "sample_radius": 0.3,
-    "gripper_rate": 0.01,
     "len_per_grip": 20,
     "len_per_grip_back": 10,
     "floor_pos": np.array([0.5, 0, 0.5]),
@@ -37,9 +36,9 @@ task_params = {
     "n_shapes_floor": 9,
     "n_shapes_per_gripper": 11,
     "gripper_mid_pt": int((11 - 1) / 2),
-    "gripper_rate_limits": ((0.3 * 2 - 0.23) / 40, (0.3 * 2 - 0.15) / 40),
+    "gripper_rate_limits": ((0.3 * 2 - 0.23) / (2 * 20), (0.3 * 2 - 0.15) / (2 * 20)),
     "p_noise_scale": 0.03,
-    "p_noise_bound": 0.03,
+    "p_noise_bound": 0.06,
     "loss_weights": [0.3, 0.7, 0.1, 0.0],
     "d_loss_threshold": 0.001,
 }
@@ -250,7 +249,6 @@ def get_action_seq(rot_noise, gripper_rate):
         counter += 1
 
     # actions = actions[:task_params["len_per_grip"]]
-
     # for _ in range(task_params["len_per_grip"] - len(actions)):
     #     actions.append(torch.zeros(12))
 
