@@ -39,7 +39,7 @@ task_params = {
     "gripper_mid_pt": int((11 - 1) / 2),
     "gripper_rate_limits": ((0.3 * 2 - 0.23) / 40, (0.3 * 2 - 0.15) / 40),
     "p_noise_scale": 0.03,
-    "p_noise_bound": 0.03,
+    "p_noise_bound": 0.06,
     "loss_weights": [0.3, 0.7, 0.1, 0.0],
     "d_loss_threshold": 0.001,
 }
