@@ -689,37 +689,43 @@ class Planner(object):
                 attrs = []
                 Rr_curs = []
                 Rs_curs = []
+                Rn_curs = []
                 max_n_rel = 0
                 for k in range(act_seqs.shape[0]):
                     # pdb.set_trace()
                     state_last = state_cur[k][-1]
-                    attr, _, Rr_cur, Rs_cur, cluster_onehot = prepare_input(state_last.detach().cpu().numpy(), self.n_particle,
+                    attr, _, Rr_cur, Rs_cur, Rn_cur, cluster_onehot = prepare_input(state_last.detach().cpu().numpy(), self.n_particle,
                                                                 self.n_shape, self.args, stdreg=self.args.stdreg)
                     attr = attr.to(device)
                     Rr_cur = Rr_cur.to(device)
                     Rs_cur = Rs_cur.to(device)
+                    Rn_cur = Rn_cur.to(device)
                     max_n_rel = max(max_n_rel, Rr_cur.size(0))
                     attr = attr.unsqueeze(0)
                     Rr_cur = Rr_cur.unsqueeze(0)
                     Rs_cur = Rs_cur.unsqueeze(0)
+                    Rn_cur = Rn_cur.unsqueeze(0)
                     attrs.append(attr)
                     Rr_curs.append(Rr_cur)
                     Rs_curs.append(Rs_cur)
+                    Rn_curs.append(Rn_cur)
 
                 attrs = torch.cat(attrs, dim=0)
                 for k in range(len(Rr_curs)):
-                    Rr, Rs = Rr_curs[k], Rs_curs[k]
+                    Rr, Rs, Rn = Rr_curs[k], Rs_curs[k], Rn_curs[k]
                     Rr = torch.cat([Rr, torch.zeros((1, max_n_rel - Rr.size(1), self.n_particle + self.n_shape)).to(device)], 1)
                     Rs = torch.cat([Rs, torch.zeros((1, max_n_rel - Rs.size(1), self.n_particle + self.n_shape)).to(device)], 1)
-                    Rr_curs[k], Rs_curs[k] = Rr, Rs
+                    Rn = torch.cat([Rn, torch.zeros((1, max_n_rel - Rn.size(1), self.n_particle + self.n_shape)).to(device)], 1)
+                    Rr_curs[k], Rs_curs[k], Rn_curs[k] = Rr, Rs, Rn
 
                 Rr_curs = torch.cat(Rr_curs, dim=0)
                 Rs_curs = torch.cat(Rs_curs, dim=0)
+                Rn_curs = torch.cat(Rn_curs, dim=0)
 
-                inputs = [attrs, state_cur, Rr_curs, Rs_curs, memory_init, group_gt, None]
+                inputs = [attrs, state_cur, Rr_curs, Rs_curs, Rn_curs, memory_init, group_gt, None]
 
                 # pdb.set_trace()
-                pred_pos, pred_motion_norm, std_cluster  = self.model.predict_dynamics(inputs)
+                pred_pos, pred_motion_norm, std_cluster = self.model.predict_dynamics(inputs)
 
                 shape1 += act_seqs[:, i, j, :3].unsqueeze(1).expand(-1, task_params["n_shapes_per_gripper"], -1) * 0.02
                 shape2 += act_seqs[:, i, j, 6:9].unsqueeze(1).expand(-1, task_params["n_shapes_per_gripper"], -1) * 0.02

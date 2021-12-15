@@ -208,17 +208,18 @@ def evaluate(args, eval_epoch, eval_iter):
                 # attr: B x (n_p + n_s) x attr_dim
                 # Rr_cur, Rs_cur: B x n_rel x (n_p + n_s)
                 # state_cur (unnormalized): B x n_his x (n_p + n_s) x state_dim
-                attr, _, Rr_cur, Rs_cur, cluster_onehot = prepare_input(state_cur[-1].cpu().numpy(), n_particle,
+                attr, _, Rr_cur, Rs_cur, Rn_cur, cluster_onehot = prepare_input(state_cur[-1].cpu().numpy(), n_particle,
                                                                         n_shape, args, stdreg=args.stdreg)
                 attr = attr.to(device).unsqueeze(0)
                 Rr_cur = Rr_cur.to(device).unsqueeze(0)
                 Rs_cur = Rs_cur.to(device).unsqueeze(0)
+                Rn_cur = Rn_cur.to(device).unsqueeze(0)
                 state_cur = state_cur.unsqueeze(0)
                 if cluster_onehot:
                     cluster_onehot = cluster_onehot.unsqueeze(0)
 
                 if args.stage in ['dy']:
-                    inputs = [attr, state_cur, Rr_cur, Rs_cur, memory_init, group_info, cluster_onehot]
+                    inputs = [attr, state_cur, Rr_cur, Rs_cur, Rn_cur, memory_init, group_info, cluster_onehot]
 
                 # pred_pos (unnormalized): B x n_p x state_dim
                 # pred_motion_norm (normalized): B x n_p x state_dim

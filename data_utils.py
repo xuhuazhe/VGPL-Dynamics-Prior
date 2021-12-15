@@ -525,6 +525,7 @@ def prepare_input(positions, n_particle, n_shape, args, var=False, stdreg=0):
 
     ##### add env specific graph components
     rels = []
+    rels2 = []
     if args.env == 'Pinch':
         attr[n_particle, 1] = 1
         attr[n_particle+1, 2] = 1
@@ -572,10 +573,13 @@ def prepare_input(positions, n_particle, n_shape, args, var=False, stdreg=0):
                 #     visualize_neighbors(pos, pos, 0, nodes)
                 floor = np.ones(nodes.shape[0], dtype=np.int) * (n_particle + ind)
                 rels += [np.stack([nodes, floor], axis=1)]
+                rels2 += [np.stack([nodes, floor], axis=1)]
             for ind in range(22):
                 # to primitive
                 disp1 = np.sqrt(np.sum((pos[:n_particle] - pos[n_particle + 9 + ind]) ** 2, 1))
                 nodes1 = np.nonzero(disp1 < (args.neighbor_radius + 0.015))[0]
+                # detect how many grippers touching
+                nodes2 = np.nonzero(disp1 < args.neighbor_radius)[0]
                 # print('visualize prim1 neighbors')
                 # print(nodes1)
                 # if ind == 15:
@@ -583,6 +587,8 @@ def prepare_input(positions, n_particle, n_shape, args, var=False, stdreg=0):
                 # visualize_neighbors(pos, pos, 0, nodes1)
                 prim1 = np.ones(nodes1.shape[0], dtype=np.int) * (n_particle + 9 + ind)
                 rels += [np.stack([nodes1, prim1], axis=1)]
+                prim2 = np.ones(nodes2.shape[0], dtype=np.int) * (n_particle + 9 + ind)
+                rels2 += [np.stack([nodes2, prim2], axis=1)]
 
                 # disp2 = np.sqrt(np.sum((pos[:n_particle, [0, 2]] - pos[n_particle + 2, [0, 2]]) ** 2, 1))
                 # disp2 = np.sqrt(np.sum((pos[:n_particle] - pos[n_particle + 2]) ** 2, 1))
@@ -683,10 +689,14 @@ def prepare_input(positions, n_particle, n_shape, args, var=False, stdreg=0):
         anchors = np.arange(n_particle)
 
     rels += find_relations_neighbor(pos, queries, anchors, args.neighbor_radius, 2, var)
+    rels2 += find_relations_neighbor(pos, queries, anchors, args.neighbor_radius, 2, var)
     # rels += find_k_relations_neighbor(args.neighbor_k, pos, queries, anchors, args.neighbor_radius, 2, var)
 
     if len(rels) > 0:
         rels = np.concatenate(rels, 0)
+
+    if len(rels2) > 0:
+        rels2 = np.concatenate(rels2, 0)
 
     if verbose:
         print("Relations neighbor", rels.shape)
@@ -696,6 +706,9 @@ def prepare_input(positions, n_particle, n_shape, args, var=False, stdreg=0):
     Rs = torch.zeros(n_rel, n_particle + n_shape)
     Rr[np.arange(n_rel), rels[:, 0]] = 1
     Rs[np.arange(n_rel), rels[:, 1]] = 1
+
+    Rn = torch.zeros(rels2.shape[0], n_particle + n_shape)
+    Rn[np.arange(rels2.shape[0]), rels2[:, 1]] = 1
 
     if verbose:
         print("Object attr:", np.sum(attr, axis=0))
@@ -731,7 +744,7 @@ def prepare_input(positions, n_particle, n_shape, args, var=False, stdreg=0):
     # attr: (n_p + n_s) x attr_dim
     # particle (unnormalized): (n_p + n_s) x state_dim
     # Rr, Rs: n_rel x (n_p + n_s)
-    return attr, particle, Rr, Rs, cluster_onehot
+    return attr, particle, Rr, Rs, Rn, cluster_onehot
 
 
 class PhysicsFleXDataset(Dataset):
@@ -833,7 +846,7 @@ class PhysicsFleXDataset(Dataset):
 
         if args.stage in ['dy']:
             # load ground truth data
-            attrs, particles, Rrs, Rss, cluster_onehots= [], [], [], [], []
+            attrs, particles, Rrs, Rss, Rns, cluster_onehots= [], [], [], [], [], []
             # sdf_list = []
             max_n_rel = 0
             for t in range(st_idx, ed_idx):
@@ -862,13 +875,14 @@ class PhysicsFleXDataset(Dataset):
                 # attr: (n_p + n_s) x attr_dim
                 # particle (unnormalized): (n_p + n_s) x state_dim
                 # Rr, Rs: n_rel x (n_p + n_s)
-                attr, particle, Rr, Rs, cluster_onehot = prepare_input(data[0], n_particle, n_shape, self.args, stdreg=self.args.stdreg)
+                attr, particle, Rr, Rs, Rn, cluster_onehot = prepare_input(data[0], n_particle, n_shape, self.args, stdreg=self.args.stdreg)
                 max_n_rel = max(max_n_rel, Rr.size(0))
 
                 attrs.append(attr)
                 particles.append(particle.numpy())
                 Rrs.append(Rr)
                 Rss.append(Rs)
+                Rns.append(Rn)
                 # sdf_data = np.array(sdf_data).squeeze()
                 # print(np.array(sdf_data.shape)
                 # sdf_list.append(sdf_data)
@@ -949,18 +963,20 @@ class PhysicsFleXDataset(Dataset):
         # Rr, Rs: seq_length x n_rel x (n_p + n_s)
         if args.stage in ['dy']:
             for i in range(len(Rrs)):
-                Rr, Rs = Rrs[i], Rss[i]
+                Rr, Rs, Rn = Rrs[i], Rss[i], Rns[i]
                 Rr = torch.cat([Rr, torch.zeros(max_n_rel - Rr.size(0), n_particle + n_shape)], 0)
                 Rs = torch.cat([Rs, torch.zeros(max_n_rel - Rs.size(0), n_particle + n_shape)], 0)
-                Rrs[i], Rss[i] = Rr, Rs
+                Rn = torch.cat([Rn, torch.zeros(max_n_rel - Rn.size(0), n_particle + n_shape)], 0)
+                Rrs[i], Rss[i], Rns[i] = Rr, Rs, Rn
             Rr = torch.FloatTensor(np.stack(Rrs))
             Rs = torch.FloatTensor(np.stack(Rss))
+            Rn = torch.FloatTensor(np.stack(Rns))
             if cluster_onehots:
                 cluster_onehot = torch.FloatTensor(np.stack(cluster_onehots))
             else:
                 cluster_onehot = None
         if args.stage in ['dy']:
-            return attr, particles, n_particle, n_shape, scene_params, Rr, Rs, cluster_onehot
+            return attr, particles, n_particle, n_shape, scene_params, Rr, Rs, Rn, cluster_onehot
 
 
 def p2g(x, size=64, p_mass=1.):
