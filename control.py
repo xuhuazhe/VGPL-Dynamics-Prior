@@ -547,15 +547,15 @@ class Planner(object):
 
             # pdb.set_trace()
             if not self.args.subgoal:
-                if not self.args.correction:
-                    return init_pose_seq_opt.detach().cpu(), act_seq_opt.detach().cpu(), loss_opt.detach().cpu()
-
                 init_pose_seq_opt = init_pose_seq_opt[0].unsqueeze(0)
                 act_seq_opt = act_seq_opt[0].unsqueeze(0)
 
             init_pose_seq = torch.cat((init_pose_seq, init_pose_seq_opt.clone()))
             act_seq = torch.cat((act_seq, act_seq_opt.clone()))
             loss_seq = loss_opt.clone()
+
+            if not self.args.subgoal and not self.args.correction:
+                break
 
         return init_pose_seq, act_seq, loss_seq
 
