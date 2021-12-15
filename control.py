@@ -392,12 +392,17 @@ class Planner(object):
                     best_act_seq = act_seq
                     best_model_loss = loss_seq
                     best_sim_loss = loss_sim
+                    best_idx = grip_num
                 else:
                     if loss_sim < best_sim_loss:
                         best_init_pose_seq = init_pose_seq
                         best_act_seq = act_seq
                         best_model_loss = loss_seq
                         best_sim_loss = loss_sim
+                        best_idx = grip_num
+
+            os.system(f"mv {os.path.join(self.rollout_path, f'anim_{best_idx}.gif')} {os.path.join(self.rollout_path, f'best_anim.gif')}")
+
         elif self.args.control_algo == 'predict':
             checkpoint = None
             
@@ -412,12 +417,16 @@ class Planner(object):
                     best_act_seq = act_seq
                     best_model_loss = loss_seq
                     best_sim_loss = loss_sim
+                    best_idx = i
                 else:
                     if loss_sim < best_sim_loss:
                         best_init_pose_seq = init_pose_seq
                         best_act_seq = act_seq
                         best_model_loss = loss_seq
                         best_sim_loss = loss_sim
+                        best_idx = i
+
+            os.system(f"mv {os.path.join(self.rollout_path, f'anim_{best_idx}.gif')} {os.path.join(self.rollout_path, f'best_anim.gif')}")
 
         return best_init_pose_seq.cpu(), best_act_seq.cpu(), best_model_loss.cpu(), best_sim_loss.cpu()
 
