@@ -351,7 +351,7 @@ class DynamicsPredictor(nn.Module):
         do_stationary = n_gripper_touch == 0
         # do_rigid = n_gripper_touch == 1
         # do_non_rigid = n_gripper_touch == 2
-        print(n_gripper_touch)
+        # print(n_gripper_touch)
 
         pred_motion = torch.zeros(B, n_p, state_dim)
         if self.use_gpu:

@@ -95,6 +95,23 @@ def visualize_loss(loss_lists, path):
     # plt.show()
 
 
+def visualize_rollout_loss(loss_lists, path):
+    plt.figure(figsize=[16, 9])
+    labels = ["model", "sim"]
+    for label, loss_list in zip(labels, loss_lists):
+        iters, loss = map(list, zip(*loss_list))
+        plt.plot(iters, loss, label=label, linewidth=6)
+    plt.xlabel('iteration', fontsize=30)
+    plt.ylabel('loss', fontsize=30)
+    plt.title('Rollout Loss', fontsize=35)
+    plt.legend(fontsize=30)
+    plt.xticks(fontsize=25)
+    plt.yticks(fontsize=25)
+
+    plt.savefig(path)
+    # plt.show()
+
+
 def visualize_points(all_points, n_particles, path):
     # print(all_points.shape)
     points = all_points[:n_particles]
@@ -382,11 +399,18 @@ class Planner(object):
         if self.args.control_algo == 'fix':
             best_init_pose_seq, best_act_seq, best_model_loss = self.trajectory_optimization_with_horizon(self.args.n_grips)
             best_sim_loss = self.visualize_results(best_init_pose_seq, best_act_seq, state_goal_final, self.args.n_grips)
+        
         elif self.args.control_algo == 'search':
+            model_loss_list = []
+            sim_loss_list = []
             for grip_num in range(self.args.n_grips, 0, -1):
                 init_pose_seq, act_seq, loss_seq = self.trajectory_optimization_with_horizon(grip_num)
+
                 loss_sim = self.visualize_results(init_pose_seq, act_seq, state_goal_final, grip_num)
+                model_loss_list.append([grip_num, loss_seq.item()])
+                sim_loss_list.append([grip_num, loss_sim.item()])
                 print(f"=============== With {grip_num} grips -> model_loss: {loss_seq}; sim_loss: {loss_sim} ===============")
+
                 if grip_num == self.args.n_grips:
                     best_init_pose_seq = init_pose_seq
                     best_act_seq = act_seq
@@ -401,17 +425,22 @@ class Planner(object):
                         best_sim_loss = loss_sim
                         best_idx = grip_num
 
-            os.system(f"mv {os.path.join(self.rollout_path, f'anim_{best_idx}.gif')} {os.path.join(self.rollout_path, f'best_anim.gif')}")
+            visualize_rollout_loss([model_loss_list, sim_loss_list], os.path.join(self.rollout_path, f'rollout_loss'))
+            os.system(f"cp {os.path.join(self.rollout_path, f'anim_{best_idx}.gif')} {os.path.join(self.rollout_path, f'best_anim.gif')}")
 
         elif self.args.control_algo == 'predict':
             checkpoint = None
-            
+            model_loss_list = []
+            sim_loss_list = []
             for i in range(self.args.n_grips - self.args.predict_horizon + 1):
                 init_pose_seq, act_seq, loss_seq = self.trajectory_optimization_with_horizon(self.args.predict_horizon, checkpoint=checkpoint)
                 checkpoint = [init_pose_seq[:1-self.args.predict_horizon], act_seq[:1-self.args.predict_horizon]]
 
                 loss_sim = self.visualize_results(init_pose_seq, act_seq, state_goal_final, i)
+                model_loss_list.append([i, loss_seq.item()])
+                sim_loss_list.append([i, loss_sim.item()])
                 print(f"=============== Iteration {i} -> model_loss: {loss_seq}; sim_loss: {loss_sim} ===============")
+                
                 if i == 0:
                     best_init_pose_seq = init_pose_seq
                     best_act_seq = act_seq
@@ -426,7 +455,8 @@ class Planner(object):
                         best_sim_loss = loss_sim
                         best_idx = i
 
-            os.system(f"mv {os.path.join(self.rollout_path, f'anim_{best_idx}.gif')} {os.path.join(self.rollout_path, f'best_anim.gif')}")
+            visualize_rollout_loss([model_loss_list, sim_loss_list], os.path.join(self.rollout_path, f'rollout_loss'))
+            os.system(f"cp {os.path.join(self.rollout_path, f'anim_{best_idx}.gif')} {os.path.join(self.rollout_path, f'best_anim.gif')}")
 
         return best_init_pose_seq.cpu(), best_act_seq.cpu(), best_model_loss.cpu(), best_sim_loss.cpu()
 
@@ -471,7 +501,7 @@ class Planner(object):
             visualize_points(state_cur_sim[-1], self.n_particle, os.path.join(self.rollout_path, f'sim_particles_{self.grip_cur}'))
             # visualize_points(state_cur_gt[-1], self.n_particle, os.path.join(self.rollout_path, f'gt_particles_{i}'))
 
-            if i == 0:
+            if checkpoint == None and i == 0:
                 self.initial_state = state_cur_sim_particles
 
             if i == 0 or self.args.correction:
