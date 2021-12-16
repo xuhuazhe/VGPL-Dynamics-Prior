@@ -188,7 +188,7 @@ def gen_args():
     elif args.env == 'Gripper':
         args.env_idx = 1001
 
-        args.time_step = 89
+        args.time_step = 119
 
         # object states:
         # [x, y, z]

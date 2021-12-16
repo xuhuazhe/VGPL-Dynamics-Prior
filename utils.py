@@ -93,7 +93,7 @@ def matched_motion(p_cur, p_prev, n_particles):
 
 def my_collate(batch):
     len_batch = len(batch[0])
-    len_rel = 2
+    len_rel = 3
 
     ret = []
     for i in range(len_batch - len_rel - 1):
