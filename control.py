@@ -397,7 +397,7 @@ class Planner(object):
         visualize_points(state_goal_final[-1], self.n_particle, os.path.join(self.rollout_path, f'goal_particles'))
 
         if self.args.control_algo == 'fix':
-            best_init_pose_seq, best_act_seq, best_model_loss = self.trajectory_optimization_with_horizon(self.args.n_grips)
+            best_init_pose_seq, best_act_seq, best_model_loss = self.trajectory_optimization_with_horizon(self.args.n_grips, self.args.correction)
             best_sim_loss = self.visualize_results(best_init_pose_seq, best_act_seq, state_goal_final, self.args.n_grips)
         
         elif self.args.control_algo == 'search':
@@ -405,7 +405,7 @@ class Planner(object):
             sim_loss_list = []
             for grip_num in range(self.args.n_grips, 0, -1):
                 init_pose_seq, act_seq, loss_seq = self.trajectory_optimization_with_horizon(
-                    grip_num, correction=self.args.correction)
+                    grip_num, self.args.correction)
 
                 loss_sim = self.visualize_results(init_pose_seq, act_seq, state_goal_final, grip_num)
                 model_loss_list.append([grip_num, loss_seq.item()])
@@ -436,7 +436,7 @@ class Planner(object):
             n_iters = self.args.n_grips - self.args.predict_horizon + 1
             for i in range(n_iters):
                 init_pose_seq, act_seq, loss_seq = self.trajectory_optimization_with_horizon(
-                    self.args.predict_horizon, checkpoint=checkpoint, correction=i==n_iters-1)
+                    self.args.predict_horizon, i==n_iters-1, checkpoint=checkpoint)
                 checkpoint = [init_pose_seq[:1-self.args.predict_horizon], act_seq[:1-self.args.predict_horizon]]
 
                 loss_sim = self.visualize_results(init_pose_seq, act_seq, state_goal_final, i)
@@ -464,7 +464,7 @@ class Planner(object):
         return best_init_pose_seq.cpu(), best_act_seq.cpu(), best_model_loss.cpu(), best_sim_loss.cpu()
 
 
-    def trajectory_optimization_with_horizon(self, grip_num, checkpoint=None, correction=True):
+    def trajectory_optimization_with_horizon(self, grip_num, correction, checkpoint=None):
         if checkpoint:
             init_pose_seq, act_seq = checkpoint
         else:
@@ -549,7 +549,7 @@ class Planner(object):
                 raise NotImplementedError
 
             # pdb.set_trace()
-            if not self.args.subgoal:
+            if not self.args.subgoal and correction:
                 init_pose_seq_opt = init_pose_seq_opt[0].unsqueeze(0)
                 act_seq_opt = act_seq_opt[0].unsqueeze(0)
 
