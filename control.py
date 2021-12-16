@@ -404,7 +404,8 @@ class Planner(object):
             model_loss_list = []
             sim_loss_list = []
             for grip_num in range(self.args.n_grips, 0, -1):
-                init_pose_seq, act_seq, loss_seq = self.trajectory_optimization_with_horizon(grip_num)
+                init_pose_seq, act_seq, loss_seq = self.trajectory_optimization_with_horizon(
+                    grip_num, correction=self.args.correction)
 
                 loss_sim = self.visualize_results(init_pose_seq, act_seq, state_goal_final, grip_num)
                 model_loss_list.append([grip_num, loss_seq.item()])
@@ -432,8 +433,10 @@ class Planner(object):
             checkpoint = None
             model_loss_list = []
             sim_loss_list = []
-            for i in range(self.args.n_grips - self.args.predict_horizon + 1):
-                init_pose_seq, act_seq, loss_seq = self.trajectory_optimization_with_horizon(self.args.predict_horizon, checkpoint=checkpoint)
+            n_iters = self.args.n_grips - self.args.predict_horizon + 1
+            for i in range(n_iters):
+                init_pose_seq, act_seq, loss_seq = self.trajectory_optimization_with_horizon(
+                    self.args.predict_horizon, checkpoint=checkpoint, correction=i==n_iters-1)
                 checkpoint = [init_pose_seq[:1-self.args.predict_horizon], act_seq[:1-self.args.predict_horizon]]
 
                 loss_sim = self.visualize_results(init_pose_seq, act_seq, state_goal_final, i)
@@ -461,7 +464,7 @@ class Planner(object):
         return best_init_pose_seq.cpu(), best_act_seq.cpu(), best_model_loss.cpu(), best_sim_loss.cpu()
 
 
-    def trajectory_optimization_with_horizon(self, grip_num, checkpoint=None):
+    def trajectory_optimization_with_horizon(self, grip_num, checkpoint=None, correction=True):
         if checkpoint:
             init_pose_seq, act_seq = checkpoint
         else:
@@ -554,8 +557,7 @@ class Planner(object):
             act_seq = torch.cat((act_seq, act_seq_opt.clone()))
             loss_seq = loss_opt.clone()
 
-            if not self.args.subgoal and not self.args.correction:
-                break
+            if not correction: break
 
         return init_pose_seq, act_seq, loss_seq
 
