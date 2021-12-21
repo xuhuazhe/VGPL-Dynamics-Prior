@@ -10,7 +10,7 @@
 kernprof -l control.py \
 	--env Gripper \
 	--data_type ngrip_fixed_v2 \
-	--stage dy \
+	--stage control \
 	--outf_control dump/dump_ngrip_fixed_v2/files_dy_16-Dec-2021-16:13:24.452736_nHis4_aug0.05_gt0_seqlen6_emd0.3_chamfer0.7_uh0.1_clip0.0 \
 	--gripperf ../PlasticineLab/plb/envs/gripper_fixed.yml \
 	--eval_epoch 93 \

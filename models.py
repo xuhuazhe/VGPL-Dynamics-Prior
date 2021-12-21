@@ -345,8 +345,16 @@ class DynamicsPredictor(nn.Module):
         n_gripper_touch = torch.zeros(B)
         if self.use_gpu:
             n_gripper_touch = n_gripper_touch.cuda()
-        n_gripper_touch[torch.count_nonzero(Rs_cur[:, :, 310:321], dim=(1, 2)) > 0] += 1
-        n_gripper_touch[torch.count_nonzero(Rs_cur[:, :, 321:], dim=(1, 2)) > 0] += 1
+
+        if self.args.stage == 'dy':
+            neighbors = Rs_cur
+        elif self.args.stage == 'control':
+            neighbors = Rn_cur
+        else:
+            raise NotImplementedError
+
+        n_gripper_touch[torch.count_nonzero(neighbors[:, :, 310:321], dim=(1, 2)) > 0] += 1
+        n_gripper_touch[torch.count_nonzero(neighbors[:, :, 321:], dim=(1, 2)) > 0] += 1
         
         do_stationary = n_gripper_touch == 0
         do_rigid = n_gripper_touch == 1
@@ -358,12 +366,15 @@ class DynamicsPredictor(nn.Module):
             pred_motion = pred_motion.cuda()
         
         stationary_motion = (pred_motion - mean_d) / std_d
-
+        
         # pdb.set_trace()
-        pred_motion = non_rigid_motion
-        pred_motion[do_stationary] = stationary_motion[do_stationary]
-        # pred_motion[do_non_rigid] = non_rigid_motion[do_non_rigid]
-        # pred_motion[do_rigid] = torch.sum(p_instance.transpose(1, 2)[:, :, :, None] * rigid_motion, 1)[do_rigid]
+        if 'fixed' in self.args.data_type:
+            pred_motion = non_rigid_motion
+            pred_motion[do_stationary] = stationary_motion[do_stationary]
+        else:
+            pred_motion[do_stationary] = stationary_motion[do_stationary]
+            pred_motion[do_non_rigid] = non_rigid_motion[do_non_rigid]
+            pred_motion[do_rigid] = torch.sum(p_instance.transpose(1, 2)[:, :, :, None] * rigid_motion, 1)[do_rigid]
 
         pred_pos = state[:, -1, :n_p] + torch.clamp(pred_motion * std_d + mean_d, max=0.025, min=-0.025)
         # pred_pos = state[:, -1, :n_p] + torch.tanh(pred_motion * std_d + mean_d) * 0.025
