@@ -345,12 +345,12 @@ class DynamicsPredictor(nn.Module):
         n_gripper_touch = torch.zeros(B)
         if self.use_gpu:
             n_gripper_touch = n_gripper_touch.cuda()
-        n_gripper_touch[torch.count_nonzero(Rn_cur[:, :, 310:321], dim=(1, 2)) > 0] += 1
-        n_gripper_touch[torch.count_nonzero(Rn_cur[:, :, 321:], dim=(1, 2)) > 0] += 1
+        n_gripper_touch[torch.count_nonzero(Rs_cur[:, :, 310:321], dim=(1, 2)) > 0] += 1
+        n_gripper_touch[torch.count_nonzero(Rs_cur[:, :, 321:], dim=(1, 2)) > 0] += 1
         
         do_stationary = n_gripper_touch == 0
-        # do_rigid = n_gripper_touch == 1
-        # do_non_rigid = n_gripper_touch == 2
+        do_rigid = n_gripper_touch == 1
+        do_non_rigid = n_gripper_touch == 2
         # print(n_gripper_touch)
 
         pred_motion = torch.zeros(B, n_p, state_dim)

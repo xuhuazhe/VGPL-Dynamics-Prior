@@ -1,10 +1,11 @@
 #!/usr/bin/env bash
 #SBATCH --job-name=VGPL-Gripper
 #SBATCH --partition=viscam
+#SBATCH --nodelist=viscam3
 #SBATCH --gres=gpu:1
-#SBATCH --mem=20G
+#SBATCH --mem=32G
 #SBATCH --time=3-00:00:00
-#SBATCH --cpus-per-task=4
+#SBATCH --cpus-per-task=8
 #SBATCH --output=/sailhome/hshi74/output/deformable/%A.out
 
 
@@ -16,7 +17,7 @@
 # Task 1: N Grip
 kernprof -l train.py \
 	--env Gripper \
-	--data_type ngrip_fixed \
+	--data_type ngrip_3d_fixed \
 	--stage dy \
 	--gen_data 0 \
 	--gen_stat 0 \

@@ -2,19 +2,19 @@
 #SBATCH --job-name=VGPL-Gripper
 #SBATCH --partition=svl
 #SBATCH --gres=gpu:1
-#SBATCH --mem=8G
+#SBATCH --mem=16G
 #SBATCH --time=3-00:00:00
-#SBATCH --cpus-per-task=2
+#SBATCH --cpus-per-task=4
 #SBATCH --output=/sailhome/hshi74/output/deformable/%A.out
 
 kernprof -l control.py \
 	--env Gripper \
-	--data_type ngrip_fixed \
+	--data_type ngrip_fixed_v2 \
 	--stage dy \
-	--outf_control dump/dump_ngrip_fixed/files_dy_09-Dec-2021-22:31:50.216984_nHis4_aug0.05_gt0_seqlen6_emd0.3_chamfer0.7_uh0.1_clip0.0 \
+	--outf_control dump/dump_ngrip_fixed_v2/files_dy_16-Dec-2021-16:13:24.452736_nHis4_aug0.05_gt0_seqlen6_emd0.3_chamfer0.7_uh0.1_clip0.0 \
 	--gripperf ../PlasticineLab/plb/envs/gripper_fixed.yml \
-	--eval_epoch 95 \
-	--eval_iter 225 \
+	--eval_epoch 93 \
+	--eval_iter 681 \
 	--eval_set train \
 	--verbose_data 0 \
 	--n_his 4 \
