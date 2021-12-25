@@ -9,12 +9,12 @@
 
 kernprof -l control.py \
 	--env Gripper \
-	--data_type ngrip_fixed_v2 \
+	--data_type ngrip_fixed_v3 \
 	--stage control \
-	--outf_control dump/dump_ngrip_fixed_v2/files_dy_16-Dec-2021-16:13:24.452736_nHis4_aug0.05_gt0_seqlen6_emd0.3_chamfer0.7_uh0.1_clip0.0 \
+	--outf_control dump/dump_ngrip_fixed_v3/files_dy_21-Dec-2021-10:58:53.121924_nHis4_aug0.05_gt0_seqlen6_emd0.3_chamfer0.7_uh0.1_clip0.0 \
 	--gripperf ../PlasticineLab/plb/envs/gripper_fixed.yml \
-	--eval_epoch 93 \
-	--eval_iter 681 \
+	--eval_epoch 99 \
+	--eval_iter 1409 \
 	--eval_set train \
 	--verbose_data 0 \
 	--n_his 4 \
@@ -24,7 +24,7 @@ kernprof -l control.py \
 	--gt_action 0 \
 	--gt_state_goal 0 \
 	--subgoal 0 \
-	--control_sample_size 200 \
+	--control_sample_size 500 \
 	--control_batch_size 4 \
 	--predict_horizon 2 \
 	--CEM_opt_iter 3 \

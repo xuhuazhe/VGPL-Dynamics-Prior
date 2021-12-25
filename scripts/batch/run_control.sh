@@ -4,10 +4,10 @@
 
 # declare parameters
 declare -a arr=("predict") # control_algo: fix, search, *predict
-declare -a arr2=("5") # n_grips: 2,*3,4,5,6
+declare -a arr2=("5") # n_grips: 2,3,4,*5,6
 declare -a arr3=("GD") # opt_algo: CEM, *GD, CEM_GD
 declare -a arr4=("1") # correction: 0, *1
-declare -a arr5=("emd_chamfer_uh_clip") # reward_type: *emd, chamfer, emd_chamfer_uh_clip
+declare -a arr5=("emd_chamfer_uh_clip") # reward_type: emd, chamfer, *emd_chamfer_uh_clip
 # "fish" "clover" "heart" "flower" "moon" "controller" "hat" "nut" "butterfly"
 declare -a arr6=("fish" "clover" "heart" "flower" "moon" "controller" "hat" "nut" "butterfly") 
 declare -a arr7=("0") # debug: 0, 1
