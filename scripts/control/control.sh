@@ -9,9 +9,9 @@
 
 kernprof -l control.py \
 	--env Gripper \
-	--data_type ngrip_fixed_v3 \
+	--data_type ngrip_fixed_small \
 	--stage control \
-	--outf_control dump/dump_ngrip_fixed_v3/files_dy_21-Dec-2021-10:58:53.121924_nHis4_aug0.05_gt0_seqlen6_emd0.3_chamfer0.7_uh0.1_clip0.0 \
+	--outf_control dump/dump_ngrip_fixed_small/files_dy_22-Dec-2021-10:47:36.944946_nHis4_aug0.05_gt0_seqlen6_emd0.3_chamfer0.7_uh0.1_clip0.0 \
 	--gripperf ../PlasticineLab/plb/envs/gripper_fixed.yml \
 	--eval_epoch 99 \
 	--eval_iter 1409 \

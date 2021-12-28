@@ -226,14 +226,14 @@ def get_pose(new_mid_point, rot_noise):
     # import pdb; pdb.set_trace()
     new_prim1 = []
     for j in range(task_params["n_shapes_per_gripper"]):
-        prim1_pos = torch.stack([x1, torch.tensor(new_mid_point[1] + 0.018 * (j-5)), y1])
+        prim1_pos = torch.stack([x1, torch.tensor(new_mid_point[1].item() + 0.018 * (j-5)), y1])
         prim1_tmp = torch.cat((prim1_pos, unit_quat))
         new_prim1.append(prim1_tmp)
     new_prim1 = torch.stack(new_prim1)
 
     new_prim2 = []
     for j in range(task_params["n_shapes_per_gripper"]):
-        prim2_pos = torch.stack([x2, torch.tensor(new_mid_point[1] + 0.018 * (j-5)), y2])
+        prim2_pos = torch.stack([x2, torch.tensor(new_mid_point[1].item() + 0.018 * (j-5)), y2])
         prim2_tmp = torch.cat((prim2_pos, unit_quat))
         new_prim2.append(prim2_tmp)
     new_prim2 = torch.stack(new_prim2)
