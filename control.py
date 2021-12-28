@@ -1152,6 +1152,10 @@ def main():
 
         update_camera(env)
 
+        # update the tool size
+        env.primitives.primitives[0].r = task_params['tool_size']
+        env.primitives.primitives[1].r = task_params['tool_size']
+
 
     # load dynamics model
     model = Model(args, use_gpu)
