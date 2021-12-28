@@ -26,21 +26,20 @@ use_gpu = True
 device = torch.device("cuda" if torch.cuda.is_available() and use_gpu else "cpu")
 
 task_params = {
-    "mid_point": np.array([0.5, 0.4, 0.5, 0, 0, 0]),
-    "default_h": 0.14,
-    "sample_radius": 0.3,
-    "len_per_grip": 20,
+    "mid_point": np.array([0.5, 0.14, 0.5, 0, 0, 0]),
+    "sample_radius": 0.4,
+    "len_per_grip": 30,
     "len_per_grip_back": 10,
     "floor_pos": np.array([0.5, 0, 0.5]),
     "n_shapes": 3, 
     "n_shapes_floor": 9,
     "n_shapes_per_gripper": 11,
     "gripper_mid_pt": int((11 - 1) / 2),
-    "gripper_rate_limits": ((0.3 * 2 - 0.23) / (2 * 20), (0.3 * 2 - 0.15) / (2 * 20)),
-    "p_noise_scale": 0.03,
-    "p_noise_bound": 0.06,
+    "gripper_gap_limits": np.array([0.14, 0.06]), # ((0.4 * 2 - (0.23)) / (2 * 30), (0.4 * 2 - 0.15) / (2 * 30)),
+    "p_noise_scale": 0.01,
+    "p_noise_bound": 0.03,
     "loss_weights": [0.3, 0.7, 0.1, 0.0],
-    "d_loss_threshold": 0.001,
+    "tool_size": 0.045
 }
 
 emd_loss = EarthMoverLoss()
@@ -227,14 +226,14 @@ def get_pose(new_mid_point, rot_noise):
     # import pdb; pdb.set_trace()
     new_prim1 = []
     for j in range(task_params["n_shapes_per_gripper"]):
-        prim1_pos = torch.stack([x1, torch.tensor(task_params["default_h"] + 0.018 * (j-5)), y1])
+        prim1_pos = torch.stack([x1, torch.tensor(new_mid_point[1] + 0.018 * (j-5)), y1])
         prim1_tmp = torch.cat((prim1_pos, unit_quat))
         new_prim1.append(prim1_tmp)
     new_prim1 = torch.stack(new_prim1)
 
     new_prim2 = []
     for j in range(task_params["n_shapes_per_gripper"]):
-        prim2_pos = torch.stack([x2, torch.tensor(task_params["default_h"] + 0.018 * (j-5)), y2])
+        prim2_pos = torch.stack([x2, torch.tensor(new_mid_point[1] + 0.018 * (j-5)), y2])
         prim2_tmp = torch.cat((prim2_pos, unit_quat))
         new_prim2.append(prim2_tmp)
     new_prim2 = torch.stack(new_prim2)
@@ -333,7 +332,9 @@ def sample_particles(env, cam_params, k_fps_particles, n_particles=2000):
     img = env.render_multi(mode='rgb_array', spp=3)
     rgb, depth = img[0], img[1]
 
-    sampled_points = sample_data.gen_data_one_frame(rgb, depth, cam_params, prim_pos, prim_rot, n_particles, k_fps_particles)
+    tool_info = {'tool_size': task_params["tool_size"]}
+
+    sampled_points = sample_data.gen_data_one_frame(rgb, depth, cam_params, prim_pos, prim_rot, n_particles, k_fps_particles, tool_info)
 
     positions = sample_data.update_position(task_params["n_shapes"], prim_pos, pts=sampled_points, 
                                             floor=task_params["floor_pos"], k_fps_particles=k_fps_particles)
@@ -1066,6 +1067,18 @@ def main():
 
     args = gen_args()
     set_seed(args.random_seed)
+
+    # Update task params
+    if not 'fixed' in args.data_type:
+        task_params["p_noise_scale"] = 0.03
+
+    if 'small' in args.data_type:
+        task_params['tool_size'] = 0.025
+
+    task_params["gripper_rate_limits"] = [
+        (task_params['sample_radius'] * 2 - (task_params['gripper_gap_limits'][0] + 2 * task_params['tool_size'])) / (2 * task_params['len_per_grip']),
+        (task_params['sample_radius'] * 2 - (task_params['gripper_gap_limits'][1] + 2 * task_params['tool_size'])) / (2 * task_params['len_per_grip'])
+    ]
 
     if len(args.outf_control) > 0:
         args.outf = args.outf_control
