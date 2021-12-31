@@ -6,7 +6,7 @@ import torch.nn as nn
 import torch.nn.functional as F
 from torch.autograd import Variable
 
-from data_utils import p2g, compute_sdf, p2v
+from data_utils import p2g, compute_sdf, p2v, alpha_shape_3D
 import scipy
 from scipy import optimize
 
@@ -563,6 +563,25 @@ class L1ShapeLoss(torch.nn.Module):
         l1 = torch.abs(grid1 - grid2).sum()
         # print(f"L1: {l1.shape}")
         return c1 * l1
+
+
+class AlphaShapeLoss(torch.nn.Module):
+    def __init__(self):
+        super(AlphaShapeLoss, self).__init__()
+
+    def __call__(self, x, y):
+        alpha = 10
+        v1, e1, tri1 = alpha_shape_3D(x, alpha)
+        v2, e2, tri2 = alpha_shape_3D(y, alpha)
+
+        # chamfer
+        v1 = v1[:, :, None, :].repeat(1, 1, v2.size(1), 1) # x: [B, N, M, D]
+        v2 = v2[:, None, :, :].repeat(1, v1.size(1), 1, 1) # y: [B, N, M, D]
+        dis = torch.norm(torch.add(v1, -v2), 2, dim=3)    # dis: [B, N, M]
+        dis_xy = torch.mean(torch.min(dis, dim=2)[0])   # dis_xy: mean over N
+        dis_yx = torch.mean(torch.min(dis, dim=1)[0])   # dis_yx: mean over M
+
+        return dis_xy + dis_yx
 
 
 if __name__ == "__main__":
