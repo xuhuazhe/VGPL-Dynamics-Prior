@@ -1,4 +1,5 @@
 import numpy as np
+import open3d as o3d
 import pdb
 
 import torch
@@ -569,19 +570,38 @@ class AlphaShapeLoss(torch.nn.Module):
     def __init__(self):
         super(AlphaShapeLoss, self).__init__()
 
-    def __call__(self, x, y):
-        alpha = 10
-        v1, e1, tri1 = alpha_shape_3D(x, alpha)
-        v2, e2, tri2 = alpha_shape_3D(y, alpha)
+    def __call__(self, x_batch, y_batch, alpha):
+        emd_list = []
+        for i in range(x_batch.shape[0]):
+            x = x_batch[i]
+            y = y_batch[i]
+            ind_x = alpha_shape_3D(x.detach().cpu().numpy(), alpha)
+            ind_y = alpha_shape_3D(y.detach().cpu().numpy(), alpha)
+            v1 = x[ind_x]
+            v2 = y[ind_y]
+            
+            # print(ind_x.shape)
+            # pcd1 = o3d.geometry.PointCloud()
+            # pcd1.points = o3d.utility.Vector3dVector(x.detach().cpu().numpy())
+            # colors1 = np.tile([0.0, 1.0, 0.0], (x.shape[0], 1))
+            # colors1[ind_x] = np.array([0.0, 0.0, 0.0])
+            # pcd1.colors = o3d.utility.Vector3dVector(colors1)
+            # o3d.visualization.draw_geometries([pcd1])
 
-        # chamfer
-        v1 = v1[:, :, None, :].repeat(1, 1, v2.size(1), 1) # x: [B, N, M, D]
-        v2 = v2[:, None, :, :].repeat(1, v1.size(1), 1, 1) # y: [B, N, M, D]
-        dis = torch.norm(torch.add(v1, -v2), 2, dim=3)    # dis: [B, N, M]
-        dis_xy = torch.mean(torch.min(dis, dim=2)[0])   # dis_xy: mean over N
-        dis_yx = torch.mean(torch.min(dis, dim=1)[0])   # dis_yx: mean over M
+            # emd
+            v1_ = v1[:, None, :].repeat(1, v2.size(0), 1)  # x: [N, M, D]
+            v2_ = v2[None, :, :].repeat(v1.size(0), 1, 1)  # y: [N, M, D]
+            dis = torch.norm(torch.add(v1_, -v2_), 2, dim=2)  # dis: [N, M]
 
-        return dis_xy + dis_yx
+            try:
+                ind1, ind2 = scipy.optimize.linear_sum_assignment(dis.detach().cpu().numpy(), maximize=False)
+            except:
+                print("Error in linear sum assignment!")
+            
+            emd = torch.mean(torch.norm(torch.add(v1[ind1], -v2[ind2]), 2, dim=1))
+            emd_list.append(emd)
+
+        return torch.mean(torch.stack(emd_list))
 
 
 if __name__ == "__main__":
@@ -589,6 +609,3 @@ if __name__ == "__main__":
     y = torch.tensor(np.array([[[4.1, 5.1, 6.1], [1.1, 2.1, 3.1]]]), requires_grad=True)
     emdLoss = EarthMoverLoss()
     emd = emdLoss(x, y)
-
-
-

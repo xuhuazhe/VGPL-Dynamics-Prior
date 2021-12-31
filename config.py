@@ -73,12 +73,13 @@ parser.add_argument('--data_type', type=str, default='none')
 parser.add_argument('--gt_particles', type=int, default=0)
 parser.add_argument('--shape_aug', type=int, default=0)
 
-parser.add_argument('--losstype', type=str, default='l1')
+parser.add_argument('--loss_type', type=str, default='l1')
 parser.add_argument('--uh_weight', type=float, default=0.0)
 parser.add_argument('--clip_weight', type=float, default=0.0)
 parser.add_argument('--emd_weight', type=float, default=0.0)
 parser.add_argument('--chamfer_weight', type=float, default=0.0)
 parser.add_argument('--p_rigid', type=float, default=1.)
+parser.add_argument('--alpha', type=float, default=0.05)
 
 # use a flexible number of frames for each training iteration
 parser.add_argument('--n_his', type=int, default=4)
@@ -307,8 +308,8 @@ def gen_args():
     args.outf += f'_gt{args.gt_particles}'
     args.outf += f'_seqlen{args.sequence_length}'
     
-    # args.outf += f'_{args.losstype}'
-    if args.losstype == 'l1shape':
+    # args.outf += f'_{args.loss_type}'
+    if args.loss_type == 'l1shape':
         args.outf += f'_l1shape'
     else:
         args.outf += f'_emd{args.emd_weight}'

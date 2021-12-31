@@ -48,7 +48,7 @@ kernprof -l train.py \
 	--n_epoch 100 \
 	--n_rollout 50 \
 	--ckp_per_iter 10000 \
-	--losstype $1 \
+	--loss_type $1 \
 	--sequence_length $2 \
 	--emd_weight $3 \
 	--chamfer_weight $4 \
@@ -86,7 +86,7 @@ kernprof -l train.py \
 # 	--n_epoch 100 \
 # 	--n_rollout 90 \
 # 	--ckp_per_iter 10000 \
-# 	--losstype $1 \
+# 	--loss_type $1 \
 # 	--sequence_length $2 \
 # 	--emd_weight $3 \
 # 	--chamfer_weight $4 \

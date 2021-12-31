@@ -17,7 +17,7 @@ from torch.utils.data import DataLoader
 from config import gen_args
 from data_utils import PhysicsFleXDataset
 from data_utils import prepare_input, get_scene_info, get_env_group
-from models import Model, ChamferLoss, HausdorfLoss, EarthMoverLoss, UpdatedHausdorffLoss, ClipLoss, L1ShapeLoss
+from models import Model, ChamferLoss, HausdorfLoss, EarthMoverLoss, UpdatedHausdorffLoss, ClipLoss, L1ShapeLoss, AlphaShapeLoss
 from utils import make_graph, check_gradient, set_seed, AverageMeter, get_lr, Tee
 from utils import count_parameters, my_collate, matched_motion
 
@@ -111,6 +111,7 @@ def main():
     uh_loss = UpdatedHausdorffLoss()
     clip_loss = ClipLoss()
     shape_loss = L1ShapeLoss()
+    alpha_shape_loss = AlphaShapeLoss()
 
     if use_gpu:
         model = model.cuda()
@@ -241,19 +242,19 @@ def main():
                             mean_d, std_d = model.stat[2:]
                             gt_motion_norm = (gt_motion - mean_d) / std_d
                             pred_motion_norm = torch.cat([pred_motion_norm, gt_motion_norm[:, n_particle:]], 1)
-                            if args.losstype == 'chamfer_uh_clip':
+                            if args.loss_type == 'chamfer_uh_clip':
                                 loss += particle_dist_loss(pred_pos_p, gt_pos_p)
                                 if args.uh_weight > 0:
                                     loss += args.uh_weight * uh_loss(pred_pos_p, gt_pos_p)
                                 if args.clip_weight > 0:
                                     loss += args.clip_weight * clip_loss(pred_pos_p, pred_pos_p)
-                            elif args.losstype == 'emd_uh_clip':
+                            elif args.loss_type == 'emd_uh_clip':
                                 loss += emd_loss(pred_pos_p, gt_pos_p)
                                 if args.uh_weight > 0:
                                     loss += args.uh_weight * uh_loss(pred_pos_p, gt_pos_p)
                                 if args.clip_weight > 0:
                                     loss += args.clip_weight * clip_loss(pred_pos_p, pred_pos_p)
-                            elif args.losstype == 'emd_chamfer_uh_clip':
+                            elif args.loss_type == 'emd_chamfer_uh_clip':
                                 if args.emd_weight > 0:
                                     emd_l = args.emd_weight * emd_loss(pred_pos_p, gt_pos_p)
                                     loss += emd_l
@@ -267,8 +268,10 @@ def main():
                                     clip_l = args.clip_weight * clip_loss(pred_pos_p, pred_pos_p)
                                     loss += clip_l
                                 # print(f"EMD: {emd_l.item()}; Chamfer: {chamfer_l.item()}; UH: {uh_l.item()}; Clip: {clip_l.item()}")
-                            elif args.losstype == 'l1shape':
+                            elif args.loss_type == 'l1shape':
                                 loss += shape_loss(pred_pos_p, gt_pos_p)
+                            elif args.loss_type == 'alpha_shape':
+                                loss += alpha_shape_loss(pred_pos_p, gt_pos_p, args.alpha)
                             else:
                                 raise NotImplementedError
 
