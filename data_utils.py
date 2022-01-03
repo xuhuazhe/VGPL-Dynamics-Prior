@@ -1109,3 +1109,15 @@ def alpha_shape_3D(pos, alpha):
     Vertices = np.unique(Edges)
 
     return Vertices
+
+
+def farthest_point_sampling(points, K_ratio=0.5):
+    K = int(K_ratio * points.shape[0])
+    fp_idx = np.zeros(K, dtype=np.int)
+    fp_idx[0] = np.random.randint(points.shape[0])
+    distances = ((points[fp_idx[0]] - points)**2).sum(axis=1)
+    for i in range(1, K):
+        fp_idx[i] = np.argmax(distances)
+        d = ((points[fp_idx[i]] - points)**2).sum(axis=1)
+        distances = np.minimum(distances, d)
+    return fp_idx

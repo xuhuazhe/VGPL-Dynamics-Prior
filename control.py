@@ -597,8 +597,8 @@ class Planner(object):
             init_pose_seq = []
             act_seq = []
             for i in range(n_grips):
-                p_noise_x = task_params["p_noise_scale"] * (np.random.randn() * 2 - 1)
-                p_noise_z = task_params["p_noise_scale"] * (np.random.randn() * 2 - 1)
+                p_noise_x = task_params["p_noise_scale"] * (np.random.rand() * 2 - 1)
+                p_noise_z = task_params["p_noise_scale"] * (np.random.rand() * 2 - 1)
                 p_noise = np.clip(np.array([p_noise_x, 0, p_noise_z]), a_min=-0.1, a_max=0.1)
                 new_mid_point = task_params["mid_point"][:3] + p_noise
                 rot_noise = np.random.uniform(0, np.pi)
