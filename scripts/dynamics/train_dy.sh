@@ -17,7 +17,6 @@
 # Task 1: N Grip
 kernprof -l train.py \
 	--env Gripper \
-	--data_type ngrip_3d_fixed_v2 \
 	--stage dy \
 	--gen_data 0 \
 	--gen_stat 0 \
@@ -43,12 +42,13 @@ kernprof -l train.py \
 	--n_epoch 100 \
 	--n_rollout 90 \
 	--ckp_per_iter 10000 \
-	--losstype $1 \
-	--sequence_length $2 \
-	--emd_weight $3 \
-	--chamfer_weight $4 \
-	--uh_weight $5 \
-	--clip_weight $6 \
-	--augment_ratio $7 \
-	--p_rigid $8
-
+	--sequence_length 6 \
+	--emd_weight 0.3 \
+	--chamfer_weight 0.7 \
+	--uh_weight 0.1 \
+	--clip_weight 0.0 \
+	--augment_ratio 0.05 \
+	--p_rigid 1.0 \
+	--data_type $1 \
+	--loss_type $2 \
+	--alpha $3

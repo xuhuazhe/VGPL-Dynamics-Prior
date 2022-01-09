@@ -1,4 +1,5 @@
 import numpy as np
+import open3d as o3d
 import pdb
 
 import torch
@@ -6,7 +7,7 @@ import torch.nn as nn
 import torch.nn.functional as F
 from torch.autograd import Variable
 
-from data_utils import p2g, compute_sdf, p2v
+from data_utils import p2g, compute_sdf, p2v, alpha_shape_3D
 import scipy
 from scipy import optimize
 
@@ -565,11 +566,46 @@ class L1ShapeLoss(torch.nn.Module):
         return c1 * l1
 
 
+class AlphaShapeLoss(torch.nn.Module):
+    def __init__(self):
+        super(AlphaShapeLoss, self).__init__()
+
+    def __call__(self, x_batch, y_batch, alpha):
+        emd_list = []
+        for i in range(x_batch.shape[0]):
+            x = x_batch[i]
+            y = y_batch[i]
+            ind_x = alpha_shape_3D(x.detach().cpu().numpy(), alpha)
+            ind_y = alpha_shape_3D(y.detach().cpu().numpy(), alpha)
+            v1 = x[ind_x]
+            v2 = y[ind_y]
+            
+            # print(ind_x.shape)
+            # pcd1 = o3d.geometry.PointCloud()
+            # pcd1.points = o3d.utility.Vector3dVector(x.detach().cpu().numpy())
+            # colors1 = np.tile([0.0, 1.0, 0.0], (x.shape[0], 1))
+            # colors1[ind_x] = np.array([0.0, 0.0, 0.0])
+            # pcd1.colors = o3d.utility.Vector3dVector(colors1)
+            # o3d.visualization.draw_geometries([pcd1])
+
+            # emd
+            v1_ = v1[:, None, :].repeat(1, v2.size(0), 1)  # x: [N, M, D]
+            v2_ = v2[None, :, :].repeat(v1.size(0), 1, 1)  # y: [N, M, D]
+            dis = torch.norm(torch.add(v1_, -v2_), 2, dim=2)  # dis: [N, M]
+
+            try:
+                ind1, ind2 = scipy.optimize.linear_sum_assignment(dis.detach().cpu().numpy(), maximize=False)
+            except:
+                print("Error in linear sum assignment!")
+            
+            emd = torch.mean(torch.norm(torch.add(v1[ind1], -v2[ind2]), 2, dim=1))
+            emd_list.append(emd)
+
+        return torch.mean(torch.stack(emd_list))
+
+
 if __name__ == "__main__":
     x = torch.tensor(np.array([[[1.,2.,3.],[4.,5.,6.]]]), requires_grad=True)
     y = torch.tensor(np.array([[[4.1, 5.1, 6.1], [1.1, 2.1, 3.1]]]), requires_grad=True)
     emdLoss = EarthMoverLoss()
     emd = emdLoss(x, y)
-
-
-
