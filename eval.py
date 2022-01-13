@@ -1,5 +1,6 @@
 import argparse
 import copy
+import glob
 import os
 import pdb
 import time
@@ -14,6 +15,7 @@ from torch.autograd import Variable
 from config import gen_args
 from data_utils import load_data, get_scene_info, normalize_scene_param
 from data_utils import get_env_group, prepare_input, denormalize
+from data_utils import real_sim_remap
 from models import Model
 from utils import train_plot_curves, eval_plot_curves, set_seed, Tee, count_parameters
 from models import EarthMoverLoss, ChamferLoss, UpdatedHausdorffLoss
@@ -33,6 +35,14 @@ def visualize_points(ax, all_points, n_particles):
     points = ax.scatter(all_points[:n_particles, 0], all_points[:n_particles, 2], all_points[:n_particles, 1], c='b', s=10)
     shapes = ax.scatter(all_points[n_particles:, 0], all_points[n_particles:, 2], all_points[n_particles:, 1], c='r', s=10)
 
+    ax.invert_yaxis()
+
+    # mid_point = [0.5, 0.5, 0.1]
+    # r = 0.25
+    # ax.set_xlim(mid_point[0] - r, mid_point[0] + r)
+    # ax.set_ylim(mid_point[1] - r, mid_point[1] + r)
+    # ax.set_zlim(mid_point[2] - r, mid_point[2] + r)
+
     extents = np.array([getattr(ax, 'get_{}lim'.format(dim))() for dim in 'xyz'])
     sz = extents[:, 1] - extents[:, 0]
     centers = np.mean(extents, axis=1)
@@ -41,7 +51,6 @@ def visualize_points(ax, all_points, n_particles):
     for ctr, dim in zip(centers, 'xyz'):
         getattr(ax, 'set_{}lim'.format(dim))(ctr - r, ctr + r)
 
-    ax.invert_yaxis()
 
     return points, shapes
 
@@ -91,6 +100,55 @@ def plt_render(particles_set, n_particle, render_path):
 
     # plt.show()
     anim.save(render_path, writer=animation.PillowWriter(fps=20))
+
+
+def plt_render_robot(particles_set, n_particle, render_path):
+    # particles_set[0] = np.concatenate((particles_set[0][:, :n_particle], particles_set[1][:, n_particle:]), axis=1)
+    n_frames = particles_set[0].shape[0]
+    rows = len(particles_set)
+    cols = 3
+
+    fig, big_axes = plt.subplots(rows, 1, figsize=(9, rows * 3))
+    row_titles = ['Sample', 'Prediction']
+    row_titles = row_titles[:rows]
+    views = [(90, 90), (0, 90), (45, 135)]
+    plot_info_all = {}
+    for i in range(rows):
+        if rows == 1: 
+            big_axes.set_title(row_titles[i], fontweight='semibold')
+            big_axes.axis('off')
+        else:
+            big_axes[i].set_title(row_titles[i], fontweight='semibold')
+            big_axes[i].axis('off')
+
+        plot_info = []
+        for j in range(cols):
+            ax = fig.add_subplot(rows, cols, i * cols + j + 1, projection='3d')
+            ax.view_init(*views[j])
+            points, shapes = visualize_points(ax, particles_set[i][0], n_particle)
+            plot_info.append((points, shapes))
+
+        plot_info_all[row_titles[i]] = plot_info
+
+    plt.tight_layout()
+    # plt.show()
+
+    def update(step):
+        outputs = []
+        for i in range(rows):
+            states = particles_set[i]
+            for j in range(cols):
+                points, shapes = plot_info_all[row_titles[i]][j]
+                points._offsets3d = (states[step, :n_particle, 0], states[step, :n_particle, 2], states[step, :n_particle, 1])
+                shapes._offsets3d = (states[step, n_particle:, 0], states[step, n_particle:, 2], states[step, n_particle:, 1])
+                outputs.append(points)
+                outputs.append(shapes)
+        return outputs
+
+    anim = animation.FuncAnimation(fig, update, frames=np.arange(0, n_frames), blit=False)
+    
+    # plt.show()
+    anim.save(render_path, writer=animation.PillowWriter(fps=10))
 
 
 def evaluate(args, eval_epoch, eval_iter):
@@ -148,6 +206,9 @@ def evaluate(args, eval_epoch, eval_iter):
         data_list = []
         p_gt = []
         p_sample = []
+        frame_list = sorted(glob.glob(os.path.join(args.dataf, 'train', str(idx_episode).zfill(3), 'shape_*.h5')))
+        gt_frame_list = sorted(glob.glob(os.path.join(args.dataf, 'train', str(idx_episode).zfill(3), 'shape_gt_*.h5')))
+        args.time_step = (len(frame_list) - len(gt_frame_list))
         for step in range(args.time_step):
             gt_frame_name = 'gt_' + str(step) + '.h5'
             frame_name = str(step) + '.h5'
@@ -158,7 +219,12 @@ def evaluate(args, eval_epoch, eval_iter):
             gt_data_path = os.path.join(args.dataf, 'train', str(idx_episode).zfill(3), gt_frame_name)
             data_path = os.path.join(args.dataf, 'train', str(idx_episode).zfill(3), frame_name)
 
-            gt_data = load_data(data_names, gt_data_path)
+            try:
+                gt_data = load_data(data_names, gt_data_path)
+                load_gt = True
+            except FileNotFoundError:
+                load_gt = False
+            
             data = load_data(data_names, data_path)
 
             if n_particle == 0 and n_shape == 0:
@@ -169,14 +235,23 @@ def evaluate(args, eval_epoch, eval_iter):
                 print("n_particle", n_particle)
                 print("n_shape", n_shape)
 
-            gt_data_list.append(gt_data)
+            if load_gt: 
+                gt_data_list.append(gt_data)
             data_list.append(data)
 
-            p_gt.append(gt_data[0])
-            p_sample.append(data[0])
+            if load_gt: 
+                p_gt.append(gt_data[0])
+
+            if 'robot' in args.data_type:
+                new_state = real_sim_remap(args, data, n_particle)
+            else:
+                new_state = data[0]
+
+            p_sample.append(new_state)
 
         # p_sample: time_step x N x state_dim
-        p_gt = torch.FloatTensor(np.stack(p_gt))
+        if load_gt: 
+            p_gt = torch.FloatTensor(np.stack(p_gt))
         p_sample = torch.FloatTensor(np.stack(p_sample))
         p_pred = torch.zeros(args.time_step, n_particle + n_shape, args.state_dim)
         # initialize particle grouping
@@ -276,13 +351,17 @@ def evaluate(args, eval_epoch, eval_iter):
             p_pred = np.concatenate((p_sample.numpy()[:st_idx], p_pred.numpy()[st_idx:ed_idx]))
 
         p_sample = p_sample.numpy()[:ed_idx]
-        p_gt = p_gt.numpy()[:ed_idx]
+        if load_gt: 
+            p_gt = p_gt.numpy()[:ed_idx]
 
         # vid_path = os.path.join(args.dataf, 'vid', str(idx_episode).zfill(3))
         render_path = os.path.join(args.evalf, 'render', f'vid_{idx_episode}_plt.gif')
 
         if args.vis == 'plt':
-            plt_render([p_gt, p_sample, p_pred], n_particle, render_path)
+            if 'robot' in args.data_type:
+                plt_render_robot([p_sample, p_pred], n_particle, render_path)
+            else:
+                plt_render([p_gt, p_sample, p_pred], n_particle, render_path)
         else:
             raise NotImplementedError
 

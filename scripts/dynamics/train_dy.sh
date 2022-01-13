@@ -40,7 +40,7 @@ kernprof -l train.py \
 	--gt_particles 0 \
     --shape_aug 1 \
 	--n_epoch 100 \
-	--n_rollout 90 \
+	--n_rollout 50 \
 	--ckp_per_iter 10000 \
 	--sequence_length 6 \
 	--emd_weight 0.3 \
