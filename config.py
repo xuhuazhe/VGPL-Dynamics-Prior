@@ -39,7 +39,7 @@ parser.add_argument('--outf_eval', default='')
 parser.add_argument('--outf_control', default='')
 parser.add_argument('--evalf', default='eval')
 parser.add_argument('--dataf', default='data')
-parser.add_argument('--gripperf', default='')
+parser.add_argument('--gripperf', default='../PlasticineLab/plb/envs/gripper_fixed.yml')
 
 # for ablation study
 parser.add_argument('--neighbor_radius', type=float, default=-1)
@@ -144,6 +144,20 @@ parser.add_argument('--CEM_opt_iter', type=int, default=1)
 parser.add_argument('--CEM_init_pose_sample_size', type=int, default=40)
 parser.add_argument('--CEM_gripper_rate_sample_size', type=int, default=8)
 parser.add_argument('--GD_batch_size', type=int, default=1)
+
+### only useful for rl
+parser.add_argument("--algo", type=str, default='sac')
+parser.add_argument("--env_name", type=str, default="gripper_fixed-v1")
+parser.add_argument("--path", type=str, default='./tmp')
+parser.add_argument("--seed", type=int, default=0)
+parser.add_argument("--num_steps", type=int, default=None)
+
+# differentiable physics parameters
+parser.add_argument("--rllr", type=float, default=0.1)
+parser.add_argument("--optim", type=str, default='Adam', choices=['Adam', 'Momentum'])
+
+# parser.add_argument("--gripperf", type=str, default="../PlasticineLab/plb/envs/gripper_fixed.yml")
+
 
 
 def gen_args():
@@ -333,5 +347,8 @@ def gen_args():
             args.evalf += '_Epoch_best'
 
         args.evalf += '_%s' % args.eval_set
+
+
+
 
     return args
