@@ -14,11 +14,12 @@ import torch
 
 from config import gen_args
 from data_utils import load_data, get_scene_info, get_env_group, prepare_input
+from data_utils import real_sim_remap
 from matplotlib import cm
 from models import Model, EarthMoverLoss, ChamferLoss, UpdatedHausdorffLoss, ClipLoss, L1ShapeLoss
 # from plb.engine.taichi_env import TaichiEnv
 # from plb.config import load
-# from plb.algorithms import sample_data
+from plb.algorithms import sample_data
 from tqdm import tqdm, trange
 from sys import platform
 from utils import create_instance_colors, set_seed,  Tee, count_parameters
@@ -165,8 +166,8 @@ def plt_render(particles_set, target_shape, n_particle, render_path):
     views = [(90, 90), (0, 90), (45, 135)]
     plot_info_all = {}
     for i in range(rows):
-        big_axes[i].set_title(row_titles[i], fontweight='semibold')
-        big_axes[i].axis('off')
+        big_axes.set_title(row_titles[i], fontweight='semibold')
+        big_axes.axis('off')
 
         plot_info = []
         for j in range(cols):
@@ -374,6 +375,7 @@ class Planner(object):
         self.n_shape = n_shape
         self.model = model
         self.all_p = torch.FloatTensor(all_p)
+        self.initial_state = self.all_p[:self.args.n_his, :self.n_particle].clone()
         self.floor_state = self.all_p[:args.n_his, self.n_particle: self.n_particle + task_params["n_shapes_floor"]].clone()
         self.goal_shapes = goal_shapes
         self.task_params = task_params
@@ -490,12 +492,12 @@ class Planner(object):
 
             # pdb.set_trace()
             # state_cur = state_cur_gt
-            if init_pose_seq.numel() == 0:
-                init_pose_seq_cur = init_pose_seqs_pool[0]
-                act_seq_cur = act_seqs_pool[0, 0, 0].unsqueeze(0).unsqueeze(0)
-            else:
-                init_pose_seq_cur = init_pose_seq
-                act_seq_cur = act_seq
+            # if init_pose_seq.numel() == 0:
+            #     init_pose_seq_cur = init_pose_seqs_pool[0]
+            #     act_seq_cur = act_seqs_pool[0, 0, 0].unsqueeze(0).unsqueeze(0)
+            # else:
+            #     init_pose_seq_cur = init_pose_seq
+            #     act_seq_cur = act_seq
 
             # state_cur_sim = self.sim_rollout(init_pose_seq_cur.unsqueeze(0), act_seq_cur.unsqueeze(0))[0].squeeze()
             # state_cur_sim_particles = state_cur_sim[:, :self.n_particle].clone()
@@ -503,11 +505,8 @@ class Planner(object):
             # visualize_points(state_cur_sim[-1], self.n_particle, os.path.join(self.rollout_path, f'sim_particles_{self.grip_cur}'))
             # visualize_points(state_cur_gt[-1], self.n_particle, os.path.join(self.rollout_path, f'gt_particles_{i}'))
 
-            # if checkpoint == None and i == 0:
-            #     self.initial_state = state_cur_sim_particles
-
             if i == 0:
-                state_cur = self.all_p[:self.args.n_his, :self.n_particle].clone()
+                state_cur = self.initial_state
             else:
                 state_cur = state_seq_opt[-self.args.n_his:].clone()
 
@@ -711,7 +710,6 @@ class Planner(object):
         # pdb.set_trace()
         states_pred_list = []
         for i in range(act_seqs.shape[1]):
-            # pdb.set_trace()
             shape1 = init_pose_seqs[:, i, :, :3]
             shape2 = init_pose_seqs[:, i, :, 7:10]
             state_cur = torch.cat([state_cur[:, :, :self.n_particle, :], floor_state, shape1.unsqueeze(1).expand([-1, self.args.n_his, -1, -1]), 
@@ -959,8 +957,6 @@ class Planner(object):
         reward_list = None
         model_state_seq_list = None
 
-        pdb.set_trace()
-
         for b in range(n_batch):
             print(f"Batch {b}/{n_batch}:")
 
@@ -1117,7 +1113,7 @@ def main():
 
     # load data (state, actions)
     unit_quat_pad = np.tile([1, 0, 0, 0], (task_params["n_shapes_per_gripper"], 1))
-    task_name = 'gripper'
+    task_name = 'ngrip_fixed_robot'
     data_names = ['positions', 'shape_quats', 'scene_params']
     rollout_dir = f"./data/data_{args.data_type}/train/"
     steps_per_grip = task_params["len_per_grip"] + task_params["len_per_grip_back"]
@@ -1129,26 +1125,26 @@ def main():
     gt_frame_list = sorted(glob.glob(os.path.join(args.dataf, 'train', str(vid_idx).zfill(3), 'shape_gt_*.h5')))
     args.time_step = (len(frame_list) - len(gt_frame_list))
     for t in range(args.time_step):
-        if task_name == "gripper":
-            frame_name = str(t) + '.h5'
-            if args.gt_state_goal:
-                frame_name = 'gt_' + frame_name
-            if args.shape_aug:
-                frame_name = 'shape_' + frame_name
-            frame_path = os.path.join(rollout_dir, str(vid_idx).zfill(3), frame_name) 
-        else:
-            raise NotImplementedError
+        frame_name = str(t) + '.h5'
+        if args.gt_state_goal:
+            frame_name = 'gt_' + frame_name
+        if args.shape_aug:
+            frame_name = 'shape_' + frame_name
+        frame_path = os.path.join(rollout_dir, str(vid_idx).zfill(3), frame_name) 
         this_data = load_data(data_names, frame_path)
 
         n_particle, n_shape, scene_params = get_scene_info(this_data)
         scene_params = torch.FloatTensor(scene_params).unsqueeze(0)
         # g1_idx = n_particle + task_params["n_shapes_floor"]
         # g2_idx = g1_idx + task_params["n_shapes_per_gripper"]
-
-        states = this_data[0]
+        
+        if 'robot' in args.data_type:
+            new_state = real_sim_remap(args, this_data, n_particle)
+        else:
+            new_state = this_data[0]
         
         # if t >= 1:
-        all_p.append(states)
+        all_p.append(new_state)
         # all_s.append(this_data[1])
 
         #     action = np.concatenate([(states[g1_idx] - prev_states[g1_idx]) / 0.02, np.zeros(3),
@@ -1214,11 +1210,11 @@ def main():
                     rollout_path=control_out_dir)
 
     with torch.no_grad():
-        init_pose_seq, act_seq, loss_seq, loss_sim_seq = planner.trajectory_optimization()
+        init_pose_seq, act_seq, loss_seq = planner.trajectory_optimization()
 
     print(init_pose_seq.shape, act_seq.shape)
     print(f"Best init pose: {init_pose_seq[:, task_params['gripper_mid_pt'], :7]}")
-    print(f"Best model loss: {loss_seq}; Best sim loss: {loss_sim_seq}")
+    print(f"Best model loss: {loss_seq}")
 
     with open(f"{control_out_dir}/init_pose_seq_opt.npy", 'wb') as f:
         np.save(f, init_pose_seq)
