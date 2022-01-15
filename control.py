@@ -712,6 +712,7 @@ class Planner(object):
 
         # pdb.set_trace()
         states_pred_list = []
+        # act_seq n_sample, n_grip, grip_len, action_dim
         for i in range(act_seqs.shape[1]):
             # pdb.set_trace()
             shape1 = init_pose_seqs[:, i, :, :3]
