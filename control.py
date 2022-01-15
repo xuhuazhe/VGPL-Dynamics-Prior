@@ -1,4 +1,5 @@
 import copy
+import glob
 import math
 import matplotlib.pyplot as plt
 import matplotlib.animation as animation
@@ -1189,6 +1190,9 @@ def main():
     all_p = []
     all_s = []
     actions = []
+    frame_list = sorted(glob.glob(os.path.join(args.dataf, 'train', str(vid_idx).zfill(3), 'shape_*.h5')))
+    gt_frame_list = sorted(glob.glob(os.path.join(args.dataf, 'train', str(vid_idx).zfill(3), 'shape_gt_*.h5')))
+    args.time_step = (len(frame_list) - len(gt_frame_list))
     for t in range(args.time_step):
         if task_name == "gripper":
             frame_name = str(t) + '.h5'
