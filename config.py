@@ -213,6 +213,9 @@ def gen_args():
         # [particle, floor, prim]
         args.attr_dim = 3
 
+        # if 'robot' in args.data_type:
+        #     args.neighbor_radius = 0.012
+        # else:
         args.neighbor_radius = 0.05
         args.neighbor_k = 20
 
@@ -227,6 +230,10 @@ def gen_args():
         args.outf =  f'dump/dump_{args.data_type}/{args.outf}_{args.stage}{suffix}_{datetime.now().strftime("%d-%b-%Y-%H:%M:%S.%f")}'
         args.evalf = f'dump/dump_{args.data_type}/{args.evalf}_{args.stage}{suffix}'
 
+        # if 'robot' in args.data_type:
+        #     args.mean_p = np.array([0.50932539, 0.11348496, 0.49837578])
+        #     args.std_p = np.array([0.06474939, 0.04888084, 0.05906044])
+        # else:
         args.mean_p = np.array([0.50932539, 0.11348496, 0.49837578])
         args.std_p = np.array([0.06474939, 0.04888084, 0.05906044])
         

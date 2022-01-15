@@ -3,6 +3,7 @@ import os
 import cv2
 import time
 
+import glob
 import h5py
 import matplotlib.pyplot as plt
 from mpl_toolkits.mplot3d import axes3d, Axes3D
@@ -748,6 +749,36 @@ def prepare_input(positions, n_particle, n_shape, args, var=False, stdreg=0):
     return attr, particle, Rr, Rs, Rn, cluster_onehot
 
 
+def real_sim_remap(args, data, n_particle):
+    points = data[0]
+    # print(np.mean(points[:n_particle], axis=0), np.std(points[:n_particle], axis=0))
+    points = (points - np.mean(points[:n_particle], axis=0)) / np.std(points[:n_particle], axis=0)
+    points = np.array([points.T[0], points.T[2], points.T[1]]).T * args.std_p + args.mean_p
+
+    n_shapes_floor = 9
+    n_shapes_per_gripper = 11
+    prim1 = points[n_particle + n_shapes_floor + 2] # + n_shapes_per_gripper // 2
+    prim2 = points[n_particle + n_shapes_floor + n_shapes_per_gripper + 2]
+    new_floor = np.array([[0.25, 0., 0.25], [0.25, 0., 0.5], [0.25, 0., 0.75],
+                        [0.5, 0., 0.25], [0.5, 0., 0.5], [0.5, 0., 0.75],
+                        [0.75, 0., 0.25], [0.75, 0., 0.5], [0.75, 0., 0.75]])
+    new_prim1 = []
+    for j in range(11):
+        prim1_tmp = np.array([prim1[0], prim1[1] + 0.018 * (j - 5), prim1[2]])
+        new_prim1.append(prim1_tmp)
+    new_prim1 = np.stack(new_prim1)
+
+    new_prim2 = []
+    for j in range(11):
+        prim2_tmp = np.array([prim2[0], prim2[1] + 0.018 * (j - 5), prim2[2]])
+        new_prim2.append(prim2_tmp)
+
+    new_prim2 = np.stack(new_prim2)
+    new_state = np.concatenate([points[:n_particle], new_floor, new_prim1, new_prim2])
+
+    return new_state
+
+
 class PhysicsFleXDataset(Dataset):
 
     def __init__(self, args, phase):
@@ -756,6 +787,15 @@ class PhysicsFleXDataset(Dataset):
         self.data_dir = os.path.join(self.args.dataf, phase)
         self.vision_dir = self.data_dir + '_vision'
         self.stat_path = os.path.join(self.args.dataf, 'stat.h5')
+
+        self.n_frame_list = []
+        vid_list = sorted(glob.glob(os.path.join(self.data_dir, '*')))
+        # print(vid_list)
+        for vid_idx in range(len(vid_list)):
+            frame_list = sorted(glob.glob(os.path.join(vid_list[vid_idx], 'shape_*.h5')))
+            gt_frame_list = sorted(glob.glob(os.path.join(vid_list[vid_idx], 'shape_gt_*.h5')))
+            self.n_frame_list.append(len(frame_list) - len(gt_frame_list))
+        print(f"# frames list: {self.n_frame_list}")
 
         if args.gen_data:
             os.system('mkdir -p ' + self.data_dir)
@@ -840,9 +880,19 @@ class PhysicsFleXDataset(Dataset):
         """
         args = self.args
 
-        offset = args.time_step - args.sequence_length + 1
-        idx_rollout = idx // offset
-        st_idx = idx % offset
+        idx_curr = idx
+        for i in range(len(self.n_frame_list)):
+            offset = self.n_frame_list[i] - args.sequence_length + 1
+            if idx_curr < offset:
+                idx_rollout = i
+                break
+            else:
+                idx_curr -= offset
+        
+        # offset = args.time_step - args.sequence_length + 1
+        # idx_rollout = idx // offset
+        # st_idx = idx % offset
+        st_idx = idx_curr
         ed_idx = st_idx + args.sequence_length
 
         if args.stage in ['dy']:
@@ -876,7 +926,12 @@ class PhysicsFleXDataset(Dataset):
                 # attr: (n_p + n_s) x attr_dim
                 # particle (unnormalized): (n_p + n_s) x state_dim
                 # Rr, Rs: n_rel x (n_p + n_s)
-                attr, particle, Rr, Rs, Rn, cluster_onehot = prepare_input(data[0], n_particle, n_shape, self.args, stdreg=self.args.stdreg)
+                if 'robot' in args.data_type:
+                    new_state = real_sim_remap(args, data, n_particle)
+                else:
+                    new_state = data[0]
+
+                attr, particle, Rr, Rs, Rn, cluster_onehot = prepare_input(new_state, n_particle, n_shape, self.args, stdreg=self.args.stdreg)
                 max_n_rel = max(max_n_rel, Rr.size(0))
 
                 attrs.append(attr)
