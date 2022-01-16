@@ -444,7 +444,7 @@ class Planner(object):
                 self.visualize_results(init_pose_seq, act_seq, state_goal_final, i)
                 model_loss_list.append([i, loss_seq.item()])
                 # sim_loss_list.append([i, loss_sim.item()])
-                print(f"=============== Iteration {i} -> model_loss: {loss_seq}; sim_loss: {loss_sim} ===============")
+                print(f"=============== Iteration {i} -> model_loss: {loss_seq} ===============")
                 
                 if i == 0:
                     best_init_pose_seq = init_pose_seq
