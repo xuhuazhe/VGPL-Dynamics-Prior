@@ -38,8 +38,8 @@ task_params = {
     "n_shapes_per_gripper": 11,
     "gripper_mid_pt": int((11 - 1) / 2),
     "gripper_gap_limits": np.array([0.14, 0.06]), # ((0.4 * 2 - (0.23)) / (2 * 30), (0.4 * 2 - 0.15) / (2 * 30)),
-    "p_noise_scale": 0.01,
-    "p_noise_bound": 0.03,
+    "p_noise_scale": 0.03,
+    "p_noise_bound": 0.1,
     "loss_weights": [0.3, 0.7, 0.1, 0.0],
     "tool_size": 0.045
 }
