@@ -1040,11 +1040,13 @@ class Planner(object):
         # pdb.set_trace()
         idx = torch.argsort(reward_list)
         loss_opt = torch.neg(reward_list[idx[-1]]).view(1)
+        mid_point_clipped_opt = []
         init_pose_seq_opt = []
         for i in range(mid_points[idx[-1]].shape[0]):
             mid_point_clipped_x = torch.clamp(mid_points[idx[-1], i, 0], min=mid_point_x_bounds[0], max=mid_point_x_bounds[1])
             mid_point_clipped_z = torch.clamp(mid_points[idx[-1], i, 2], min=mid_point_z_bounds[0], max=mid_point_z_bounds[1])
             mid_point_clipped = [mid_point_clipped_x, mid_points[idx[-1], i, 1], mid_point_clipped_z]
+            mid_point_clipped_opt.append(mid_point_clipped)
             init_pose = get_pose(mid_point_clipped, angles[idx[-1], i])
             init_pose_seq_opt.append(init_pose)
 
@@ -1053,7 +1055,7 @@ class Planner(object):
         gripper_rate_opt = torch.clamp(gripper_rates[idx[-1]], min=0, max=task_params["gripper_rate_limits"][1])
         act_seq_opt = get_action_seq_from_pose(init_pose_seq_opt, gripper_rate_opt)
 
-        print(f"Optimal set of params:\nmid_point: {torch.tensor(mid_point_clipped)}\nangle: {angles[idx[-1]]}\ngripper_rate: {gripper_rate_opt}")
+        print(f"Optimal set of params:\nmid_point: {torch.tensor(mid_point_clipped_opt)}\nangle: {angles[idx[-1]]}\ngripper_rate: {gripper_rate_opt}")
         print(f"Optimal init pose seq: {init_pose_seq_opt[:, task_params['gripper_mid_pt'], :7]}")
 
         return init_pose_seq_opt, act_seq_opt, loss_opt, model_state_seq_list[idx[-1]]
