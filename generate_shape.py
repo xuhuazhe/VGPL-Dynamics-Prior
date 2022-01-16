@@ -30,7 +30,7 @@ def visualize_points(all_points, n_particles, path):
 
     fig = plt.figure()
     ax = fig.add_subplot(111, projection='3d')
-    ax.view_init(45, 135)
+    ax.view_init(90, 90)
     ax.scatter(points[:, 0], points[:, 2], points[:, 1], c='b', s=20)
     ax.scatter(shapes[:, 0], shapes[:, 2], shapes[:, 1], c='r', s=20)
     
@@ -57,13 +57,14 @@ if __name__ == "__main__":
     update = True
     debug = False
     prefix = 'shapes/simple'
+    suffix = ''
     if prefix == 'shapes/simple':
         image_names = ['fish', 'clover', 'heart', 'flower', 'moon', 'controller', 'hat', 'nut', 'butterfly']
     elif prefix == 'shapes/alphabet':
         image_names = list(ascii_uppercase)
     else:
         raise NotImplementedError
-    shape_size = (0.75 * 0.25, 0.15, 0.75 * 0.25)
+    shape_size = (0.25, 0.15, 0.25)
     shape_pos = (0.5, 0.125, 0.5)
     # dataset_image_path = f'shapes/alphabet_dataset.png'
     # dataset_image = cv2.imread(dataset_image_path)
@@ -71,7 +72,7 @@ if __name__ == "__main__":
         # print(n)
         if debug and i > 0: break
 
-        point_cloud_path = f'{prefix}/{n}/{n}.ply'
+        point_cloud_path = f'{prefix}/{n}/{n}{suffix}.ply'
         if not os.path.exists(point_cloud_path) or update:
             # pdb.set_trace()
             image_path = f'{prefix}/{n}/{n}.png'
@@ -96,7 +97,7 @@ if __name__ == "__main__":
                                         .extrude(shape_size[1]).orient(Y).translate(shape_pos)
             f.save(point_cloud_path, step=0.01)
 
-        h5_path = f'{prefix}/{n}/{n}.h5'
+        h5_path = f'{prefix}/{n}/{n}{suffix}.h5'
 
         if not os.path.exists(h5_path) or update:
             pcd = o3d.io.read_point_cloud(point_cloud_path)
@@ -140,4 +141,4 @@ if __name__ == "__main__":
         # import pdb; pdb.set_trace()
         goal_data = load_data(data_names, h5_path)
         goal_shape = torch.FloatTensor(goal_data[0]).unsqueeze(0)[:, :n_particle, :]
-        visualize_points(goal_data[0], n_particle, f'{prefix}/{n}/{n}_sampled')
+        visualize_points(goal_data[0], n_particle, f'{prefix}/{n}/{n}{suffix}_sampled')
