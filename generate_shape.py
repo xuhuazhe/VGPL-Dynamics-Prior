@@ -56,10 +56,10 @@ if __name__ == "__main__":
 
     update = True
     debug = False
-    prefix = 'shapes/alphabet'
-    suffix = '_robot'
+    prefix = 'shapes/simple'
+    suffix = ''
     if prefix == 'shapes/simple':
-        image_names = ['fish', 'clover', 'heart', 'flower', 'moon', 'controller', 'hat', 'nut', 'butterfly']
+        image_names = ['fish', 'clover', 'heart', 'flower', 'mushroom', 'octagon', 'hat', 'wang', 'butterfly']
     elif prefix == 'shapes/alphabet':
         image_names = list(ascii_uppercase)
     else:
@@ -93,7 +93,7 @@ if __name__ == "__main__":
             size_ratio = np.sqrt(pixels / image_area)
 
             w, h = measure_image(scaled_image_path)
-            f = image(scaled_image_path).scale((shape_size[0] / w, shape_size[2] / h))\
+            f = image(scaled_image_path).scale((shape_size[0] / size_ratio / w, shape_size[2] / size_ratio / h))\
                                         .extrude(shape_size[1]).orient(Y).translate(shape_pos)
             f.save(point_cloud_path, step=0.01)
 
