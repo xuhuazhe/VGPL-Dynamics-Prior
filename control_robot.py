@@ -409,6 +409,12 @@ class Planner(object):
                 init_pose_seq, act_seq, loss_seq = self.trajectory_optimization_with_horizon(
                     grip_num, self.args.correction)
 
+                with open(f"{self.rollout_path}/init_pose_seq_{grip_num}.npy", 'wb') as f:
+                    np.save(f, init_pose_seq)
+
+                with open(f"{self.rollout_path}/act_seq_{grip_num}.npy", 'wb') as f:
+                    np.save(f, act_seq)
+
                 self.visualize_results(init_pose_seq, act_seq, state_goal_final, grip_num)
                 model_loss_list.append([grip_num, loss_seq.item()])
                 # sim_loss_list.append([grip_num, loss_sim.item()])
@@ -430,6 +436,8 @@ class Planner(object):
 
             visualize_rollout_loss([model_loss_list], os.path.join(self.rollout_path, f'rollout_loss'))
             os.system(f"cp {os.path.join(self.rollout_path, f'anim_{best_idx}.gif')} {os.path.join(self.rollout_path, f'best_anim.gif')}")
+            os.system(f"cp {os.path.join(self.rollout_path, f'init_pose_seq_{best_idx}.npy')} {os.path.join(self.rollout_path, f'init_pose_seq_opt.npy')}")
+            os.system(f"cp {os.path.join(self.rollout_path, f'act_seq_{best_idx}.npy')} {os.path.join(self.rollout_path, f'act_seq_opt.npy')}")
 
         elif self.args.control_algo == 'predict':
             checkpoint = None
@@ -1215,11 +1223,11 @@ def main():
     print(f"Best init pose: {init_pose_seq[:, task_params['gripper_mid_pt'], :7]}")
     print(f"Best model loss: {loss_seq}")
 
-    with open(f"{control_out_dir}/init_pose_seq_opt.npy", 'wb') as f:
-        np.save(f, init_pose_seq)
+    # with open(f"{control_out_dir}/init_pose_seq_opt.npy", 'wb') as f:
+    #     np.save(f, init_pose_seq)
 
-    with open(f"{control_out_dir}/act_seq_opt.npy", 'wb') as f:
-        np.save(f, act_seq)
+    # with open(f"{control_out_dir}/act_seq_opt.npy", 'wb') as f:
+    #     np.save(f, act_seq)
 
 
 if __name__ == '__main__':

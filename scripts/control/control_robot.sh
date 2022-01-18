@@ -9,9 +9,9 @@
 
 kernprof -l control_robot.py \
 	--env Gripper \
-	--data_type ngrip_fixed_robot_v2 \
+	--data_type ngrip_fixed_robot_v3 \
 	--stage control \
-	--outf_control dump/dump_ngrip_fixed_robot_v2/files_dy_13-Jan-2022-21:37:33.695523_nHis4_aug0.05_gt0_seqlen6_emd0.3_chamfer0.7_uh0.1_clip0.0 \
+	--outf_control dump/dump_ngrip_fixed_robot_v3/files_dy_16-Jan-2022-18:20:29.940684_nHis4_aug0.05_gt0_seqlen6_emd0.3_chamfer0.7_uh0.1_clip0.0 \
 	--gripperf ../PlasticineLab/plb/envs/gripper_fixed.yml \
 	--eval_epoch 93 \
 	--eval_iter 681 \
