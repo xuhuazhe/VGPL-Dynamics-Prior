@@ -56,15 +56,16 @@ if __name__ == "__main__":
 
     update = True
     debug = False
-    prefix = 'shapes/alphabet'
+    prefix = 'shapes/simple'
     suffix = '_robot'
     if prefix == 'shapes/simple':
-        image_names = ['fish', 'clover', 'heart', 'flower', 'moon', 'controller', 'hat', 'nut', 'butterfly']
+        # 'fish', 'clover', 'heart', 'flower', 'mushroom', 'octagon', 'hat', 'wang', 'butterfly'
+        image_names = ['wang']
     elif prefix == 'shapes/alphabet':
         image_names = list(ascii_uppercase)
     else:
         raise NotImplementedError
-    shape_size = (1.2 * 0.25, 0.15, 1.2 * 0.25)
+    shape_size = (1.1 * 0.25, 0.15, 0.9 * 0.25)
     shape_pos = (0.5, 0.125, 0.5)
     # dataset_image_path = f'shapes/alphabet_dataset.png'
     # dataset_image = cv2.imread(dataset_image_path)

@@ -17,6 +17,7 @@ import torch
 from config import gen_args
 from data_utils import load_data, get_scene_info, get_env_group, prepare_input
 from data_utils import real_sim_remap
+from datetime import datetime
 from matplotlib import cm
 from models import Model, EarthMoverLoss, ChamferLoss, UpdatedHausdorffLoss, ClipLoss, L1ShapeLoss
 # from plb.engine.taichi_env import TaichiEnv
@@ -335,15 +336,22 @@ def get_gripper_rate_from_action_seq(act_seq):
 
 def sample_particles(ros_correction_path, n_points=300, visualize=False):
     bag = rosbag.Bag(ros_correction_path)
+
     pcd_msgs = []
+    prim_pos = []
+    prim_rot = []
     for topic, msg, t in bag.read_messages(
-        topics=['/cam1/depth/color/points', '/cam2/depth/color/points', '/cam3/depth/color/points', '/cam4/depth/color/points']
+        topics=['/cam1/depth/color/points', '/cam2/depth/color/points', '/cam3/depth/color/points', '/cam4/depth/color/points', 
+        '/gripper_1_pose', '/gripper_2_pose']
     ):
-        pcd_msgs.append(msg)
+        if 'cam' in topic:
+            pcd_msgs.append(msg)
+        else:
+            prim_pos.append(np.array([msg.position.x, msg.position.y, msg.position.z]))
+            prim_rot.append(np.array([msg.orientation.w, msg.orientation.x, msg.orientation.y, msg.orientation.z]))
 
     bag.close()
-
-    # print(prim_pos, prim_ori)
+    # print(prim_pos, prim_rot)
 
     pcd = preprocessing.merge_point_cloud(pcd_msgs, visualize=visualize)
     rest, cube = preprocessing.process_raw_pcd(pcd, visualize=visualize)
@@ -353,7 +361,8 @@ def sample_particles(ros_correction_path, n_points=300, visualize=False):
     sample_size = round(5 * n_points)
     sampled_points = np.random.rand(sample_size, 3) * (upper - lower) + lower
 
-    selected_mesh = preprocessing.reconstruct_mesh_from_pcd(cube, algo="poisson", depth=4, visualize=visualize)
+    selected_mesh = preprocessing.reconstruct_mesh_from_pcd(rest, algo="poisson", depth=4, visualize=visualize)
+    # selected_mesh = preprocessing.reconstruct_mesh_from_pcd(cube, algo="alpha_shape", alpha=0.01, visualize=visualize)
     f = SDF(selected_mesh.vertices, selected_mesh.triangles)
     # selected_mesh = preprocessing.reconstruct_mesh_from_pcd(cube, algo="filter", visualize=visualize)
     # f = SDF(selected_mesh.points, selected_mesh.faces.reshape(selected_mesh.n_faces, -1)[:, 1:])
@@ -368,6 +377,12 @@ def sample_particles(ros_correction_path, n_points=300, visualize=False):
         sampled_pcd.paint_uniform_color([0,0,0])
         preprocessing.o3d_visualize([sampled_pcd])
 
+    for tool_pos, tool_rot in zip(prim_pos, prim_rot):
+        # if not in the tool, then it's valid
+        inside_idx = preprocessing.is_inside(sampled_points, tool_pos, tool_rot)
+        sampled_points = sampled_points[inside_idx > 0]  
+
+    sampled_pcd.points = o3d.utility.Vector3dVector(sampled_points)
     sampled_pcd = sampled_pcd.voxel_down_sample(voxel_size=0.002)
 
     if visualize:
@@ -1030,8 +1045,8 @@ def main():
         print("Please specify a valid goal shape name!")
         raise ValueError
 
-    control_out_dir = os.path.join(args.outf, 'control', shape_goal_dir, test_name)
-    os.system('rm -r ' + control_out_dir)
+    control_out_dir = os.path.join(args.outf, 'control', shape_goal_dir, test_name, datetime.now().strftime("%d-%b-%Y-%H:%M:%S.%f"))
+    # os.system('rm -r ' + control_out_dir)
     os.system('mkdir -p ' + control_out_dir)
 
     tee = Tee(os.path.join(control_out_dir, 'control.log'), 'w')
@@ -1113,8 +1128,8 @@ def main():
 
     with torch.no_grad():
         iter = 0
-        ros_correction_path = "/scr/hxu/catkin_ws/src/panda_plasticine_pipeline/panda_plasticine_pipeline/dataset/ngrip_fixed_robot_1-16"\
-            + "/16-Jan-2022-20:12:40.563087/plasticine.bag"
+        ros_correction_path = "/scr/hxu/catkin_ws/src/panda_plasticine_pipeline/panda_plasticine_pipeline/dataset/"\
+            + f"ngrip_fixed_robot_1-16/17-Jan-2022-16:56:47.522905/plasticine_{iter}.bag"
         init_pose_seq, act_seq, loss_seq = planner.trajectory_optimization(iter, ros_correction_path)
 
     print(init_pose_seq.shape, act_seq.shape)
@@ -1125,10 +1140,10 @@ def main():
     init_pose_seq_pub.publish(init_pose_seq.numpy().flatten())
     act_seq_pub.publish(act_seq.numpy().flatten())
 
-    with open(f"{control_out_dir}/init_pose_seq_opt.npy", 'wb') as f:
+    with open(f"{control_out_dir}/init_pose_seq_opt_{iter}.npy", 'wb') as f:
         np.save(f, init_pose_seq)
 
-    with open(f"{control_out_dir}/act_seq_opt.npy", 'wb') as f:
+    with open(f"{control_out_dir}/act_seq_opt_{iter}.npy", 'wb') as f:
         np.save(f, act_seq)
 
     rospy.spin()
