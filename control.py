@@ -574,7 +574,11 @@ class Planner(object):
         visualize_points(sample_state_seq[-1], self.n_particle, os.path.join(self.rollout_path, f'sim_particles_final_{i}'))
         plt_render([sim_state_seq, model_state_seq], state_goal[0], self.n_particle, os.path.join(self.rollout_path, f'anim_{i}.gif'))
         
-        loss_sim = torch.neg(self.evaluate_traj(sample_state_seq[:, :self.n_particle].unsqueeze(0), state_goal))
+        loss_sim = torch.neg(self.evaluate_traj(sample_state_seq[:, :self.n_particle].unsqueeze(0), state_goal, self.args.reward_type))
+
+        emd_loss = torch.neg(self.evaluate_traj(sample_state_seq[:, :self.n_particle].unsqueeze(0), state_goal, 'emd'))
+        chamfer_loss = torch.neg(self.evaluate_traj(sample_state_seq[:, :self.n_particle].unsqueeze(0), state_goal, 'chamfer'))
+        print(f"EMD: {emd_loss}\nChamfer: {chamfer_loss}")
 
         return loss_sim
 
@@ -641,7 +645,7 @@ class Planner(object):
             else:
                 state_seqs = self.model_rollout(state_cur, init_pose_seqs, act_seqs)
             
-            reward_seqs = self.evaluate_traj(state_seqs, state_goal)
+            reward_seqs = self.evaluate_traj(state_seqs, state_goal, self.args.reward_type)
             # print(f"reward seqs: {reward_seqs}")
             # reward_seqs = reward_seqs.data.cpu().numpy()
 
@@ -784,6 +788,7 @@ class Planner(object):
         self,
         state_seqs,     # [n_sample, n_look_ahead, state_dim]
         state_goal,     # [state_dim]
+        reward_type
     ):
         # print(state_seqs.shape, state_goal.shape)
         reward_seqs = []
@@ -794,11 +799,11 @@ class Planner(object):
                 raise ValueError
 
             # smaller loss, larger reward
-            if self.args.reward_type == "emd":
+            if reward_type == "emd":
                 loss = emd_loss(state_final, state_goal)
-            elif self.args.reward_type == "chamfer":
+            elif reward_type == "chamfer":
                 loss = chamfer_loss(state_final, state_goal)
-            elif self.args.reward_type == "emd_chamfer_uh_clip":
+            elif reward_type == "emd_chamfer_uh_clip":
                 emd_weight, chamfer_weight, uh_weight, clip_weight = task_params["loss_weights"]
                 loss = 0
                 if emd_weight > 0:
@@ -1292,7 +1297,7 @@ def main():
                 init_pose_gt_batch = np.repeat(init_pose_gt, args.control_batch_size, axis=0)
                 act_seq_gt_batch = np.repeat(act_seq_gt, args.control_batch_size, axis=0)
                 state_seqs = planner.model_rollout(state_cur, init_pose_gt_batch, act_seq_gt_batch)
-            reward_seqs = planner.evaluate_traj(state_seqs, state_goal)
+            reward_seqs = planner.evaluate_traj(state_seqs, state_goal, args.reward_type)
             print(f"GT reward: {reward_seqs}")
             init_pose_seq = init_pose_gt[0]
             act_seq = act_seq_gt[0]
