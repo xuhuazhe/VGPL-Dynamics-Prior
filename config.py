@@ -213,10 +213,10 @@ def gen_args():
         # [particle, floor, prim]
         args.attr_dim = 3
 
-        # if 'robot' in args.data_type:
-        #     args.neighbor_radius = 0.012
-        # else:
-        args.neighbor_radius = 0.05
+        if 'small' in args.data_type:
+            args.neighbor_radius = 0.035
+        else:
+            args.neighbor_radius = 0.05
         args.neighbor_k = 20
 
         suffix = ''

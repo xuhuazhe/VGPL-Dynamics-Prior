@@ -1,6 +1,6 @@
 ply
 format binary_little_endian 1.0
-comment Created by meshio v4.4.6, 2021-12-14T14:31:51.594672
+comment Created by meshio v5.0.2, 2022-01-16T13:19:46.159549
 element vertex 4040
 property double x
 property double y
