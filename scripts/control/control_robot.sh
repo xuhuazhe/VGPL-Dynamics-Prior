@@ -24,12 +24,12 @@ kernprof -l control_robot.py \
 	--gt_action 0 \
 	--gt_state_goal 0 \
 	--subgoal 0 \
-	--control_sample_size 300 \
+	--control_sample_size 200 \
 	--control_batch_size 4 \
 	--predict_horizon 2 \
 	--CEM_opt_iter 3 \
-	--CEM_init_pose_sample_size 80 \
-	--CEM_gripper_rate_sample_size 4 \
+	--CEM_init_pose_sample_size 40 \
+	--CEM_gripper_rate_sample_size 8 \
 	--GD_batch_size 1 \
 	--control_algo $1 \
 	--n_grips $2 \

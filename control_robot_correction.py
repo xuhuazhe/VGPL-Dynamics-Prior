@@ -32,6 +32,7 @@ from utils import create_instance_colors, set_seed,  Tee, count_parameters
 import rospy
 from rospy.numpy_msg import numpy_msg
 from rospy_tutorials.msg import Floats
+from std_msgs.msg import UInt8
 
 use_gpu = True
 device = torch.device("cuda" if torch.cuda.is_available() and use_gpu else "cpu")
@@ -462,44 +463,46 @@ class Planner(object):
         visualize_points(state_goal_final[-1], self.n_particle, os.path.join(self.rollout_path, f'goal_particles'))
 
         if self.args.control_algo == 'predict':
-            if os.path.exists(ros_correction_path):
-                _, selected_points = sample_particles(ros_correction_path, visualize=True)
+            _, selected_points = sample_particles(ros_correction_path, visualize=True)
 
-                # pdb.set_trace()
-                # mean and std at the first frame
-                selected_points = (selected_points - np.mean(selected_points[:self.n_particle], axis=0)) / np.std(selected_points[:self.n_particle], axis=0)
-                selected_points = np.array([selected_points.T[0], selected_points.T[2], selected_points.T[1]]).T \
-                    * np.array([0.06, self.args.std_p[1], 0.06]) + np.array([0.5, self.args.mean_p[1], 0.5])
-
-                state_cur = expand(self.args.n_his, torch.tensor(selected_points).unsqueeze(0))
-
-                # model_loss_list = []
-                # sim_loss_list = []
-                n_iters = self.args.n_grips - self.args.predict_horizon + 1
-                init_pose_seq, act_seq, loss_seq = self.trajectory_optimization_with_horizon(self.args.predict_horizon, state_cur)
-
-                self.visualize_results(state_cur, init_pose_seq, act_seq, state_goal_final, iter)
-                # model_loss_list.append([i, loss_seq.item()])
-                # sim_loss_list.append([i, loss_sim.item()])
-                print(f"=============== Iteration {iter} -> model_loss: {loss_seq} ===============")
+            # pdb.set_trace()
+            # mean and std at the first frame
+            if iter == 0:
+                self.mean_p = np.mean(selected_points[:self.n_particle], axis=0)
+                self.std_p = np.std(selected_points[:self.n_particle], axis=0)
+                print(f"The first frame: {self.mean_p} +- {self.std_p}")
                 
-                if iter < n_iters:
-                    best_init_pose_seq = init_pose_seq[0].unsqueeze(0)
-                    best_act_seq = act_seq[0].unsqueeze(0)
-                    best_model_loss = loss_seq[0].unsqueeze(0)
-                else:
-                    best_init_pose_seq = init_pose_seq
-                    best_act_seq = act_seq
-                    best_model_loss = loss_seq
+            selected_points = (selected_points - self.mean_p) / self.std_p
+            selected_points = np.array([selected_points.T[0], selected_points.T[2], selected_points.T[1]]).T \
+                * np.array([0.06, self.args.std_p[1], 0.06]) + np.array([0.5, self.args.mean_p[1], 0.5])
+
+            state_cur = expand(self.args.n_his, torch.tensor(selected_points).unsqueeze(0))
+
+            # model_loss_list = []
+            # sim_loss_list = []
+            # n_iters = self.args.n_grips - self.args.predict_horizon + 1
+            init_pose_seq, act_seq, loss_seq = self.trajectory_optimization_with_horizon(self.args.predict_horizon, state_cur)
+
+            self.visualize_results(state_cur, init_pose_seq, act_seq, state_goal_final, iter)
+            # model_loss_list.append([i, loss_seq.item()])
+            # sim_loss_list.append([i, loss_sim.item()])
+            print(f"=============== Iteration {iter} -> model_loss: {loss_seq} ===============")
+            
+            # if iter < n_iters:
+            #     best_init_pose_seq = init_pose_seq[0].unsqueeze(0)
+            #     best_act_seq = act_seq[0].unsqueeze(0)
+            #     best_model_loss = loss_seq[0].unsqueeze(0)
+            # else:
+            #     best_init_pose_seq = init_pose_seq
+            #     best_act_seq = act_seq
+            #     best_model_loss = loss_seq
 
             # visualize_rollout_loss([model_loss_list], os.path.join(self.rollout_path, f'rollout_loss'))
             # os.system(f"cp {os.path.join(self.rollout_path, f'anim_{best_idx}.gif')} {os.path.join(self.rollout_path, f'best_anim.gif')}")
-            else:
-                raise ValueError
         else:
             raise NotImplementedError
 
-        return best_init_pose_seq.cpu(), best_act_seq.cpu(), best_model_loss.cpu()
+        return init_pose_seq.cpu(), act_seq.cpu(), loss_seq.cpu()
 
 
     def trajectory_optimization_with_horizon(self, grip_num, state_cur):
@@ -1013,16 +1016,25 @@ class Planner(object):
         return init_pose_seq_opt, act_seq_opt, loss_opt, model_state_seq_list[idx[-1]]
 
 
+iter = 0
+def iter_callback(msg):
+    global iter
+    iter = msg.data
+
+
 init_pose_gt = []
 act_seq_gt = []
-
 def main():
     global init_pose_gt
     global act_seq_gt
+    global iter
 
     rospy.init_node('control', anonymous=True)
+
     init_pose_seq_pub = rospy.Publisher('/init_pose_seq', numpy_msg(Floats), queue_size=10)
     act_seq_pub = rospy.Publisher('/act_seq', numpy_msg(Floats), queue_size=10)
+
+    rospy.Subscriber("/iter", UInt8, iter_callback)
 
     args = gen_args()
     set_seed(args.random_seed)
@@ -1129,27 +1141,32 @@ def main():
                     all_p=all_p, goal_shapes=goal_shapes, task_params=task_params, use_gpu=use_gpu, 
                     rollout_path=control_out_dir)
 
-    with torch.no_grad():
-        iter = 2
+    rate = rospy.Rate(1)
+    while not rospy.is_shutdown():
         ros_correction_path = "/scr/hxu/catkin_ws/src/panda_plasticine_pipeline/panda_plasticine_pipeline/dataset/"\
-            + f"ngrip_fixed_robot_1-18/18-Jan-2022-23:14:55.123998/plasticine_{iter}.bag"
-        init_pose_seq, act_seq, loss_seq = planner.trajectory_optimization(iter, ros_correction_path)
+            + f"ngrip_fixed_robot_1-18/19-Jan-2022-11:55:52.828149/plasticine_{iter}.bag"
+        
+        if os.path.exists(ros_correction_path):
+            with torch.no_grad():
+                init_pose_seq, act_seq, loss_seq = planner.trajectory_optimization(iter, ros_correction_path)
 
-    print(init_pose_seq.shape, act_seq.shape)
-    print(f"Best init pose: {init_pose_seq[:, task_params['gripper_mid_pt'], :7]}")
-    print(f"Best model loss: {loss_seq}")
+                print(init_pose_seq.shape, act_seq.shape)
+                print(f"Best init pose: {init_pose_seq[:, task_params['gripper_mid_pt'], :7]}")
+                print(f"Best model loss: {loss_seq}")
 
-    # pdb.set_trace()
-    init_pose_seq_pub.publish(init_pose_seq.numpy().flatten())
-    act_seq_pub.publish(act_seq.numpy().flatten())
+                # pdb.set_trace()
+                init_pose_seq_pub.publish(init_pose_seq.numpy().flatten())
+                act_seq_pub.publish(act_seq.numpy().flatten())
 
-    with open(f"{control_out_dir}/init_pose_seq_opt_{iter}.npy", 'wb') as f:
-        np.save(f, init_pose_seq)
+                with open(f"{control_out_dir}/init_pose_seq_opt_{iter}.npy", 'wb') as f:
+                    np.save(f, init_pose_seq)
 
-    with open(f"{control_out_dir}/act_seq_opt_{iter}.npy", 'wb') as f:
-        np.save(f, act_seq)
+                with open(f"{control_out_dir}/act_seq_opt_{iter}.npy", 'wb') as f:
+                    np.save(f, act_seq)
 
-    rospy.spin()
+        rate.sleep()
+
+    print(f"Control finishes after {iter} iterations!!")
 
 
 if __name__ == '__main__':
