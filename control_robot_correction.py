@@ -39,7 +39,7 @@ device = torch.device("cuda" if torch.cuda.is_available() and use_gpu else "cpu"
 task_params = {
     "mid_point": np.array([0.5, 0.14, 0.5, 0, 0, 0]),
     "sample_radius": 0.4,
-    "len_per_grip": 30,
+    "len_per_grip": 20,
     "len_per_grip_back": 10,
     "floor_pos": np.array([0.5, 0, 0.5]),
     "n_shapes": 3, 
@@ -47,8 +47,8 @@ task_params = {
     "n_shapes_per_gripper": 11,
     "gripper_mid_pt": int((11 - 1) / 2),
     "gripper_gap_limits": np.array([0.14, 0.06]), # ((0.4 * 2 - (0.23)) / (2 * 30), (0.4 * 2 - 0.15) / (2 * 30)),
-    "p_noise_scale": 0.02,
-    "p_noise_bound": 0.06,
+    "p_noise_scale": 0.08,
+    "p_noise_bound": 0.1,
     "loss_weights": [0.3, 0.7, 0.1, 0.0],
     "tool_size": 0.045
 }
@@ -354,7 +354,7 @@ def sample_particles(ros_correction_path, n_points=300, visualize=False):
     # print(prim_pos, prim_rot)
 
     pcd = preprocessing.merge_point_cloud(pcd_msgs, visualize=visualize)
-    rest, cube = preprocessing.process_raw_pcd(pcd, visualize=visualize)
+    rest, cube = preprocessing.process_raw_pcd(pcd, visualize=False)
 
     lower = cube.get_min_bound()
     upper = cube.get_max_bound()
@@ -373,28 +373,28 @@ def sample_particles(ros_correction_path, n_points=300, visualize=False):
     sampled_pcd = o3d.geometry.PointCloud()
     sampled_pcd.points = o3d.utility.Vector3dVector(sampled_points)
 
-    if visualize:
-        sampled_pcd.paint_uniform_color([0,0,0])
-        preprocessing.o3d_visualize([sampled_pcd])
+    # if visualize:
+    #     sampled_pcd.paint_uniform_color([0,0,0])
+    #     preprocessing.o3d_visualize([sampled_pcd])
 
     for tool_pos, tool_rot in zip(prim_pos, prim_rot):
         # if not in the tool, then it's valid
-        inside_idx = preprocessing.is_inside(sampled_points, tool_pos, tool_rot)
+        inside_idx = preprocessing.is_inside(0.007, sampled_points, tool_pos, tool_rot)
         sampled_points = sampled_points[inside_idx > 0]  
 
     sampled_pcd.points = o3d.utility.Vector3dVector(sampled_points)
     sampled_pcd = sampled_pcd.voxel_down_sample(voxel_size=0.002)
 
-    if visualize:
-        sampled_pcd.paint_uniform_color([0,0,0])
-        preprocessing.o3d_visualize([sampled_pcd])
+    # if visualize:
+    #     sampled_pcd.paint_uniform_color([0,0,0])
+    #     preprocessing.o3d_visualize([sampled_pcd])
 
     cl, inlier_ind = sampled_pcd.remove_statistical_outlier(nb_neighbors=40, std_ratio=1.5)
     sampled_pcd = sampled_pcd.select_by_index(inlier_ind)
 
-    if visualize:
-        sampled_pcd.paint_uniform_color([0,0,0])
-        preprocessing.o3d_visualize([sampled_pcd])
+    # if visualize:
+    #     sampled_pcd.paint_uniform_color([0,0,0])
+    #     preprocessing.o3d_visualize([sampled_pcd])
 
     selected_points = preprocessing.fps(np.asarray(sampled_pcd.points), n_points)
     # selected_pcd.points = o3d.utility.Vector3dVector(selected_points)
@@ -465,8 +465,11 @@ class Planner(object):
             if os.path.exists(ros_correction_path):
                 _, selected_points = sample_particles(ros_correction_path, visualize=True)
 
+                # pdb.set_trace()
+                # mean and std at the first frame
                 selected_points = (selected_points - np.mean(selected_points[:self.n_particle], axis=0)) / np.std(selected_points[:self.n_particle], axis=0)
-                selected_points = np.array([selected_points.T[0], selected_points.T[2], selected_points.T[1]]).T * self.args.std_p + self.args.mean_p
+                selected_points = np.array([selected_points.T[0], selected_points.T[2], selected_points.T[1]]).T \
+                    * np.array([0.06, self.args.std_p[1], 0.06]) + np.array([0.5, self.args.mean_p[1], 0.5])
 
                 state_cur = expand(self.args.n_his, torch.tensor(selected_points).unsqueeze(0))
 
@@ -1045,7 +1048,7 @@ def main():
         print("Please specify a valid goal shape name!")
         raise ValueError
 
-    control_out_dir = os.path.join(args.outf, 'control', shape_goal_dir, test_name, datetime.now().strftime("%d-%b-%Y-%H:%M:%S.%f"))
+    control_out_dir = os.path.join(args.outf, 'control_robot', shape_goal_dir, test_name)
     # os.system('rm -r ' + control_out_dir)
     os.system('mkdir -p ' + control_out_dir)
 
@@ -1127,9 +1130,9 @@ def main():
                     rollout_path=control_out_dir)
 
     with torch.no_grad():
-        iter = 0
+        iter = 2
         ros_correction_path = "/scr/hxu/catkin_ws/src/panda_plasticine_pipeline/panda_plasticine_pipeline/dataset/"\
-            + f"ngrip_fixed_robot_1-16/17-Jan-2022-16:56:47.522905/plasticine_{iter}.bag"
+            + f"ngrip_fixed_robot_1-18/18-Jan-2022-23:14:55.123998/plasticine_{iter}.bag"
         init_pose_seq, act_seq, loss_seq = planner.trajectory_optimization(iter, ros_correction_path)
 
     print(init_pose_seq.shape, act_seq.shape)
