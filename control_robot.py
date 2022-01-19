@@ -645,7 +645,7 @@ class Planner(object):
             # else:
             state_seqs = self.model_rollout(state_cur, init_pose_seqs, act_seqs)
             
-            reward_seqs = self.evaluate_traj(state_seqs, state_goal)
+            reward_seqs = self.evaluate_traj(state_seqs, state_goal, self.args.reward_type)
             # print(f"reward seqs: {reward_seqs}")
             # reward_seqs = reward_seqs.data.cpu().numpy()
 
@@ -787,6 +787,7 @@ class Planner(object):
         self,
         state_seqs,     # [n_sample, n_look_ahead, state_dim]
         state_goal,     # [state_dim]
+        reward_type
     ):
         # print(state_seqs.shape, state_goal.shape)
         reward_seqs = []
@@ -797,11 +798,11 @@ class Planner(object):
                 raise ValueError
 
             # smaller loss, larger reward
-            if self.args.reward_type == "emd":
+            if reward_type == "emd":
                 loss = emd_loss(state_final, state_goal)
-            elif self.args.reward_type == "chamfer":
+            elif reward_type == "chamfer":
                 loss = chamfer_loss(state_final, state_goal)
-            elif self.args.reward_type == "emd_chamfer_uh_clip":
+            elif reward_type == "emd_chamfer_uh_clip":
                 emd_weight, chamfer_weight, uh_weight, clip_weight = task_params["loss_weights"]
                 loss = 0
                 if emd_weight > 0:
@@ -1193,7 +1194,6 @@ def main():
     # print(f"GT init pose: {init_pose_gt[0, :, task_params['gripper_mid_pt'], :7]}")
     # print(act_seq_gt)
     # load goal shape
-
     if len(args.goal_shape_name) > 0 and args.goal_shape_name != 'none' and args.goal_shape_name[:3] != 'vid':
         if len(args.goal_shape_name) > 1:
             shape_type = 'simple'

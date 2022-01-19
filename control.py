@@ -409,6 +409,12 @@ class Planner(object):
                 init_pose_seq, act_seq, loss_seq = self.trajectory_optimization_with_horizon(
                     grip_num, self.args.correction)
 
+                with open(f"{self.rollout_path}/init_pose_seq_{grip_num}.npy", 'wb') as f:
+                    np.save(f, init_pose_seq)
+
+                with open(f"{self.rollout_path}/act_seq_{grip_num}.npy", 'wb') as f:
+                    np.save(f, act_seq)
+
                 loss_sim = self.visualize_results(init_pose_seq, act_seq, state_goal_final, grip_num)
                 model_loss_list.append([grip_num, loss_seq.item()])
                 sim_loss_list.append([grip_num, loss_sim.item()])
@@ -430,6 +436,8 @@ class Planner(object):
 
             visualize_rollout_loss([model_loss_list, sim_loss_list], os.path.join(self.rollout_path, f'rollout_loss'))
             os.system(f"cp {os.path.join(self.rollout_path, f'anim_{best_idx}.gif')} {os.path.join(self.rollout_path, f'best_anim.gif')}")
+            os.system(f"cp {os.path.join(self.rollout_path, f'init_pose_seq_{best_idx}.npy')} {os.path.join(self.rollout_path, f'init_pose_seq_opt.npy')}")
+            os.system(f"cp {os.path.join(self.rollout_path, f'act_seq_{best_idx}.npy')} {os.path.join(self.rollout_path, f'act_seq_opt.npy')}")
 
         elif self.args.control_algo == 'predict':
             checkpoint = None
@@ -440,6 +448,12 @@ class Planner(object):
                 init_pose_seq, act_seq, loss_seq = self.trajectory_optimization_with_horizon(
                     self.args.predict_horizon, i==n_iters-1, checkpoint=checkpoint)
                 checkpoint = [init_pose_seq[:1-self.args.predict_horizon], act_seq[:1-self.args.predict_horizon]]
+
+                with open(f"{self.rollout_path}/init_pose_seq_{i}.npy", 'wb') as f:
+                    np.save(f, init_pose_seq)
+
+                with open(f"{self.rollout_path}/act_seq_{i}.npy", 'wb') as f:
+                    np.save(f, act_seq)
 
                 loss_sim = self.visualize_results(init_pose_seq, act_seq, state_goal_final, i)
                 model_loss_list.append([i, loss_seq.item()])
@@ -462,6 +476,8 @@ class Planner(object):
 
             visualize_rollout_loss([model_loss_list, sim_loss_list], os.path.join(self.rollout_path, f'rollout_loss'))
             os.system(f"cp {os.path.join(self.rollout_path, f'anim_{best_idx}.gif')} {os.path.join(self.rollout_path, f'best_anim.gif')}")
+            os.system(f"cp {os.path.join(self.rollout_path, f'init_pose_seq_{best_idx}.npy')} {os.path.join(self.rollout_path, f'init_pose_seq_opt.npy')}")
+            os.system(f"cp {os.path.join(self.rollout_path, f'act_seq_{best_idx}.npy')} {os.path.join(self.rollout_path, f'act_seq_opt.npy')}")
 
         return best_init_pose_seq.cpu(), best_act_seq.cpu(), best_model_loss.cpu(), best_sim_loss.cpu()
 
@@ -559,7 +575,8 @@ class Planner(object):
             act_seq = torch.cat((act_seq, act_seq_opt.clone()))
             loss_seq = loss_opt.clone()
 
-            if not correction: break
+            if not correction: 
+                break
 
         return init_pose_seq, act_seq, loss_seq
 
@@ -1188,7 +1205,7 @@ def main():
 
     # load data (state, actions)
     unit_quat_pad = np.tile([1, 0, 0, 0], (task_params["n_shapes_per_gripper"], 1))
-    task_name = 'gripper'
+    task_name = 'ngrip_fixed'
     data_names = ['positions', 'shape_quats', 'scene_params']
     rollout_dir = f"./data/data_{args.data_type}/train/"
     steps_per_grip = task_params["len_per_grip"] + task_params["len_per_grip_back"]
@@ -1202,15 +1219,12 @@ def main():
     gt_frame_list = sorted(glob.glob(os.path.join(args.dataf, 'train', str(vid_idx).zfill(3), 'shape_gt_*.h5')))
     args.time_step = (len(frame_list) - len(gt_frame_list))
     for t in range(args.time_step):
-        if task_name == "gripper":
-            frame_name = str(t) + '.h5'
-            if args.gt_state_goal:
-                frame_name = 'gt_' + frame_name
-            if args.shape_aug:
-                frame_name = 'shape_' + frame_name
-            frame_path = os.path.join(rollout_dir, str(vid_idx).zfill(3), frame_name) 
-        else:
-            raise NotImplementedError
+        frame_name = str(t) + '.h5'
+        if args.gt_state_goal:
+            frame_name = 'gt_' + frame_name
+        if args.shape_aug:
+            frame_name = 'shape_' + frame_name
+        frame_path = os.path.join(rollout_dir, str(vid_idx).zfill(3), frame_name) 
         this_data = load_data(data_names, frame_path)
 
         n_particle, n_shape, scene_params = get_scene_info(this_data)
@@ -1309,11 +1323,11 @@ def main():
     print(f"Best init pose: {init_pose_seq[:, task_params['gripper_mid_pt'], :7]}")
     print(f"Best model loss: {loss_seq}; Best sim loss: {loss_sim_seq}")
 
-    with open(f"{control_out_dir}/init_pose_seq_opt.npy", 'wb') as f:
-        np.save(f, init_pose_seq)
+    # with open(f"{control_out_dir}/init_pose_seq_opt.npy", 'wb') as f:
+    #     np.save(f, init_pose_seq)
 
-    with open(f"{control_out_dir}/act_seq_opt.npy", 'wb') as f:
-        np.save(f, act_seq)
+    # with open(f"{control_out_dir}/act_seq_opt.npy", 'wb') as f:
+    #     np.save(f, act_seq)
 
 
 if __name__ == '__main__':
