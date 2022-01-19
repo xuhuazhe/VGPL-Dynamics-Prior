@@ -29,7 +29,7 @@ device = torch.device("cuda" if torch.cuda.is_available() and use_gpu else "cpu"
 task_params = {
     "mid_point": np.array([0.5, 0.14, 0.5, 0, 0, 0]),
     "sample_radius": 0.4,
-    "len_per_grip": 30,
+    "len_per_grip": 20,
     "len_per_grip_back": 10,
     "floor_pos": np.array([0.5, 0, 0.5]),
     "n_shapes": 3, 
@@ -37,9 +37,9 @@ task_params = {
     "n_shapes_per_gripper": 11,
     "gripper_mid_pt": int((11 - 1) / 2),
     "gripper_gap_limits": np.array([0.14, 0.06]), # ((0.4 * 2 - (0.23)) / (2 * 30), (0.4 * 2 - 0.15) / (2 * 30)),
-    "p_noise_scale": 0.03,
+    "p_noise_scale": 0.08,
     "p_noise_bound": 0.1,
-    "loss_weights": [0.3, 0.7, 0.1, 0.0],
+    "loss_weights": [0.9, 0.1, 0.0, 0.0],
     "tool_size": 0.045
 }
 
