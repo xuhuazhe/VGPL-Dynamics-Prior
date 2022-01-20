@@ -753,7 +753,8 @@ def real_sim_remap(args, data, n_particle):
     points = data[0]
     # print(np.mean(points[:n_particle], axis=0), np.std(points[:n_particle], axis=0))
     points = (points - np.mean(points[:n_particle], axis=0)) / np.std(points[:n_particle], axis=0)
-    points = np.array([points.T[0], points.T[2], points.T[1]]).T * args.std_p + args.mean_p
+    points = np.array([points.T[0], points.T[2], points.T[1]]).T * np.array([0.06, args.std_p[1], 0.06]) \
+        + np.array([0.5, args.mean_p[1], 0.5])
 
     n_shapes_floor = 9
     n_shapes_per_gripper = 11
@@ -881,13 +882,12 @@ class PhysicsFleXDataset(Dataset):
         args = self.args
 
         idx_curr = idx
-        for i in range(len(self.n_frame_list)):
-            offset = self.n_frame_list[i] - args.sequence_length + 1
-            if idx_curr < offset:
-                idx_rollout = i
-                break
-            else:
-                idx_curr -= offset
+        idx_rollout = 0
+        offset = self.n_frame_list[idx_rollout] - args.sequence_length + 1
+        while idx_curr >= offset:
+            idx_curr -= offset
+            idx_rollout = (idx_rollout + 1) % len(self.n_frame_list)
+            offset = self.n_frame_list[idx_rollout] - args.sequence_length + 1
         
         # offset = args.time_step - args.sequence_length + 1
         # idx_rollout = idx // offset

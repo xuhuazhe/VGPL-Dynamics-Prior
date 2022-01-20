@@ -1099,7 +1099,7 @@ def main():
         task_params["p_noise_scale"] = 0.03
 
     if 'small' in args.data_type:
-        task_params['tool_size'] = 0.025
+        task_params['tool_size'] = 0.03
 
     task_params["gripper_rate_limits"] = [
         (task_params['sample_radius'] * 2 - (task_params['gripper_gap_limits'][0] + 2 * task_params['tool_size'])) / (2 * task_params['len_per_grip']),
