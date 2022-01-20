@@ -30,7 +30,7 @@ device = torch.device("cuda" if torch.cuda.is_available() and use_gpu else "cpu"
 task_params = {
     "mid_point": np.array([0.5, 0.14, 0.5, 0, 0, 0]),
     "sample_radius": 0.4,
-    "len_per_grip": 20,
+    "len_per_grip": 30,
     "len_per_grip_back": 10,
     "floor_pos": np.array([0.5, 0, 0.5]),
     "n_shapes": 3, 
