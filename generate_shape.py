@@ -98,7 +98,7 @@ if __name__ == "__main__":
             print(f'size_ratio: {size_ratio}')
 
             w, h = measure_image(scaled_image_path)
-            f = image(scaled_image_path).scale((shape_size[0] / 0.6 / w, shape_size[2] / 0.6 / h))\
+            f = image(scaled_image_path).scale((shape_size[0] / 0.5 / w, shape_size[2] / 0.5 / h))\
                                         .extrude(shape_size[1]).orient(Y).translate(shape_pos)
             f.save(point_cloud_path, step=0.01)
 
