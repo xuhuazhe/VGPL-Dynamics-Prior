@@ -62,7 +62,8 @@ if __name__ == "__main__":
         # 'fish', 'clover', 'heart', 'flower', 'mushroom', 'octagon', 'hat', 'wang', 'butterfly'
         image_names = ['fish', 'clover', 'heart', 'flower', 'mushroom', 'octagon', 'hat', 'wang', 'butterfly']
     elif prefix in ['shapes/alphabet_black', 'shapes/alphabet_bold', 'shapes/alphabet_regular']:
-        image_names = list(ascii_uppercase)
+        # image_names = list(ascii_uppercase)
+        image_names = ['H']
     else:
         raise NotImplementedError
     shape_size = (1.0 * 0.25, 0.15, 1.0 * 0.25)
@@ -98,7 +99,7 @@ if __name__ == "__main__":
             print(f'size_ratio: {size_ratio}')
 
             w, h = measure_image(scaled_image_path)
-            f = image(scaled_image_path).scale((shape_size[0] / 0.5 / w, shape_size[2] / 0.5 / h))\
+            f = image(scaled_image_path).scale((shape_size[0] / 0.6 / w, shape_size[2] / 0.6 / h))\
                                         .extrude(shape_size[1]).orient(Y).translate(shape_pos)
             f.save(point_cloud_path, step=0.01)
 
