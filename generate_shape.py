@@ -56,12 +56,12 @@ if __name__ == "__main__":
 
     update = True
     debug = False
-    prefix = 'shapes/simple'
+    prefix = 'shapes/alphabet_regular'
     suffix = ''
     if prefix == 'shapes/simple':
         # 'fish', 'clover', 'heart', 'flower', 'mushroom', 'octagon', 'hat', 'wang', 'butterfly'
         image_names = ['fish', 'clover', 'heart', 'flower', 'mushroom', 'octagon', 'hat', 'wang', 'butterfly']
-    elif prefix == 'shapes/alphabet':
+    elif prefix in ['shapes/alphabet_black', 'shapes/alphabet_bold', 'shapes/alphabet_regular']:
         image_names = list(ascii_uppercase)
     else:
         raise NotImplementedError
@@ -81,8 +81,11 @@ if __name__ == "__main__":
             scaled_image_path = f'{prefix}/{n}/{n}_scaled.png'
             
             orig_image = cv2.imread(image_path)
-            size = min(orig_image.shape[0], orig_image.shape[1])
-            orig_image = cv2.resize(orig_image, (size, size))
+            if prefix in ['shapes/alphabet_bold', 'shapes/alphabet_regular']:
+                orig_image = cv2.bitwise_not(orig_image)
+            # size = min(orig_image.shape[0], orig_image.shape[1])
+            # orig_image = cv2.resize(orig_image, (size, size))
+            orig_image = cv2.copyMakeBorder(orig_image, 50, 50, 50, 50, cv2.BORDER_CONSTANT,value=[0,0,0])
             cv2.imwrite(scaled_image_path, orig_image)
 
             scaled_image = cv2.imread(scaled_image_path)
@@ -92,9 +95,10 @@ if __name__ == "__main__":
             pixels = cv2.countNonZero(thresh)
             image_area = scaled_image.shape[0] * scaled_image.shape[1]
             size_ratio = np.sqrt(pixels / image_area)
+            print(f'size_ratio: {size_ratio}')
 
             w, h = measure_image(scaled_image_path)
-            f = image(scaled_image_path).scale((shape_size[0] / size_ratio / w, shape_size[2] / size_ratio / h))\
+            f = image(scaled_image_path).scale((shape_size[0] / 0.6 / w, shape_size[2] / 0.6 / h))\
                                         .extrude(shape_size[1]).orient(Y).translate(shape_pos)
             f.save(point_cloud_path, step=0.01)
 

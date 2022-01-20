@@ -450,6 +450,8 @@ class Planner(object):
         self.grip_cur = ''
         self.CEM_opt_iter_cur = 0
 
+        self.p_stats_pub = rospy.Publisher('/p_stats', numpy_msg(Floats), queue_size=10)
+
         if args.debug:
             self.batch_size = 1
             self.sample_size = 4
@@ -471,7 +473,8 @@ class Planner(object):
                 self.mean_p = np.mean(selected_points[:self.n_particle], axis=0)
                 self.std_p = np.std(selected_points[:self.n_particle], axis=0)
                 print(f"The first frame: {self.mean_p} +- {self.std_p}")
-                
+                self.p_stats_pub.publish(np.concatenate((self.mean_p, self.std_p), axis=None).astype(np.float32))
+
             selected_points = (selected_points - self.mean_p) / self.std_p
             selected_points = np.array([selected_points.T[0], selected_points.T[2], selected_points.T[1]]).T \
                 * np.array([0.06, self.args.std_p[1], 0.06]) + np.array([0.5, self.args.mean_p[1], 0.5])
@@ -1142,27 +1145,30 @@ def main():
                     rollout_path=control_out_dir)
 
     rate = rospy.Rate(1)
+    last_iter = -1
     while not rospy.is_shutdown():
         ros_correction_path = "/scr/hxu/catkin_ws/src/panda_plasticine_pipeline/panda_plasticine_pipeline/dataset/"\
-            + f"ngrip_fixed_robot_1-18/19-Jan-2022-11:55:52.828149/plasticine_{iter}.bag"
+            + f"ngrip_fixed_robot_1-18/19-Jan-2022-13:54:51.889999/plasticine_{iter}.bag"
         
-        if os.path.exists(ros_correction_path):
+        if iter > last_iter and os.path.exists(ros_correction_path):
             with torch.no_grad():
                 init_pose_seq, act_seq, loss_seq = planner.trajectory_optimization(iter, ros_correction_path)
 
-                print(init_pose_seq.shape, act_seq.shape)
-                print(f"Best init pose: {init_pose_seq[:, task_params['gripper_mid_pt'], :7]}")
-                print(f"Best model loss: {loss_seq}")
+            print(init_pose_seq.shape, act_seq.shape)
+            print(f"Best init pose: {init_pose_seq[:, task_params['gripper_mid_pt'], :7]}")
+            print(f"Best model loss: {loss_seq}")
 
-                # pdb.set_trace()
-                init_pose_seq_pub.publish(init_pose_seq.numpy().flatten())
-                act_seq_pub.publish(act_seq.numpy().flatten())
+            # pdb.set_trace()
+            init_pose_seq_pub.publish(init_pose_seq.numpy().flatten())
+            act_seq_pub.publish(act_seq.numpy().flatten())
 
-                with open(f"{control_out_dir}/init_pose_seq_opt_{iter}.npy", 'wb') as f:
-                    np.save(f, init_pose_seq)
+            with open(f"{control_out_dir}/init_pose_seq_opt_{iter}.npy", 'wb') as f:
+                np.save(f, init_pose_seq)
 
-                with open(f"{control_out_dir}/act_seq_opt_{iter}.npy", 'wb') as f:
-                    np.save(f, act_seq)
+            with open(f"{control_out_dir}/act_seq_opt_{iter}.npy", 'wb') as f:
+                np.save(f, act_seq)
+
+            last_iter = iter
 
         rate.sleep()
 
