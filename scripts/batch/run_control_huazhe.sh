@@ -8,10 +8,10 @@ declare -a arr2=("5") # n_grips: 2,3,4,*5,6
 declare -a arr3=("GD") # opt_algo: CEM, *GD, CEM_GD
 declare -a arr4=("1") # correction: 0, *1
 declare -a arr5=("emd_chamfer_uh_clip") # reward_type: emd, chamfer, *emd_chamfer_uh_clip
-declare -a arr6=("simple") # simple, alphabet_black, alphabet_bold, alphabet_regular
+declare -a arr6=("alphabet_regular") # simple, alphabet_black, alphabet_bold, alphabet_regular
 # "fish" "clover" "heart" "flower" "mushroom" "octagon" "hat" "wang" "butterfly"
 # "A" "B" "C" "D" "E" "F" "G" "H" "I" "J" "K" "L" "M" "N" "O" "P" "Q" "R" "S" "T" "U" "V" "W" "X" "Y" "Z"
-declare -a arr7=("fish" "clover" "heart" "flower" "mushroom" "octagon" "hat" "wang" "butterfly") 
+declare -a arr7=("U" "W" "X" "Y" "Z" "B" "C") 
 declare -a arr8=("0") # debug: 0, 1
 for i in "${arr[@]}"
 do
@@ -30,7 +30,7 @@ do
                             for p in "${arr8[@]}"
                             do
                                 echo "$i $j $k $l $m $n $o $p"
-                                sbatch ./scripts/control/control.sh $i $j $k $l $m $n $o $p
+                                sbatch ./scripts/control/control_huazhe.sh $i $j $k $l $m $n $o $p
                                 # sbatch ./scripts/control/control_render.sh $i $j $k $l $m $n $o $p
                                 
                                 # bash ./scripts/control/control.sh $i $j $k $l $m $n $o $p
