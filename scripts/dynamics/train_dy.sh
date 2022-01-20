@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 #SBATCH --job-name=VGPL-Gripper
 #SBATCH --partition=viscam
-#SBATCH --nodelist=viscam3
+#SBATCH --nodelist=viscam4
 #SBATCH --gres=gpu:1
 #SBATCH --mem=32G
 #SBATCH --time=3-00:00:00
@@ -43,9 +43,9 @@ kernprof -l train.py \
 	--n_rollout 50 \
 	--ckp_per_iter 10000 \
 	--sequence_length 6 \
-	--emd_weight 0.3 \
-	--chamfer_weight 0.7 \
-	--uh_weight 0.1 \
+	--emd_weight 0.9 \
+	--chamfer_weight 0.1 \
+	--uh_weight 0.0 \
 	--clip_weight 0.0 \
 	--augment_ratio 0.05 \
 	--p_rigid 1.0 \

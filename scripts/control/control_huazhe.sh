@@ -1,11 +1,12 @@
 #!/usr/bin/env bash
 #SBATCH --job-name=VGPL-Gripper
 #SBATCH --partition=viscam
+#SBATCH --nodelist=viscam4
 #SBATCH --gres=gpu:1
 #SBATCH --mem=16G
 #SBATCH --time=3-00:00:00
 #SBATCH --cpus-per-task=4
-#SBATCH --output=/sailhome/hshi74/output/deformable/%A.out
+#SBATCH --output=/sailhome/hxu/VGPL/%A.out
 
 kernprof -l control.py \
 	--env Gripper \

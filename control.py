@@ -1099,7 +1099,7 @@ def main():
         task_params["p_noise_scale"] = 0.03
 
     if 'small' in args.data_type:
-        task_params['tool_size'] = 0.025
+        task_params['tool_size'] = 0.03
 
     task_params["gripper_rate_limits"] = [
         (task_params['sample_radius'] * 2 - (task_params['gripper_gap_limits'][0] + 2 * task_params['tool_size'])) / (2 * task_params['len_per_grip']),
@@ -1112,7 +1112,7 @@ def main():
     if args.gt_action:
         test_name = f'sim_{args.use_sim}+gt_action_{args.gt_action}+{args.reward_type}'
     else:
-        test_name = f'sim_{args.use_sim}+algo_{args.control_algo}+{args.n_grips}_grips+{args.opt_algo}+{args.reward_type}+correction_{args.correction}+debug_{args.debug}'
+        test_name = f'sim_{args.use_sim}+{args.shape_type}+algo_{args.control_algo}+{args.n_grips}_grips+{args.opt_algo}+{args.reward_type}+correction_{args.correction}+debug_{args.debug}'
 
     if len(args.goal_shape_name) > 0 and args.goal_shape_name != 'none':
         vid_idx = 0
