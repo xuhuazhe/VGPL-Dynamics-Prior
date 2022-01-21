@@ -329,7 +329,7 @@ def get_gripper_rate_from_action_seq(act_seq):
     return gripper_rate_seq
 
 
-def sample_particles(env, cam_params, k_fps_particles, n_particles=2000):
+def sample_particles(env, cam_params, k_fps_particles, size='large', n_particles=2000):
     prim_pos1 = env.primitives.primitives[0].get_state(0)
     prim_pos2 = env.primitives.primitives[1].get_state(0)
     prim_pos = [prim_pos1[:3], prim_pos2[:3]]
@@ -337,8 +337,10 @@ def sample_particles(env, cam_params, k_fps_particles, n_particles=2000):
 
     img = env.render_multi(mode='rgb_array', spp=3)
     rgb, depth = img[0], img[1]
-
-    tool_info = {'tool_size': task_params["tool_size"]}
+    if size == 'large':
+        tool_info = {'tool_size': task_params["tool_size_large"]}
+    elif size == 'small':
+        tool_info = {'tool_size': task_params["tool_size_small"]}
 
     sampled_points = sample_data.gen_data_one_frame(rgb, depth, cam_params, prim_pos, prim_rot, n_particles,
                                                     k_fps_particles, tool_info)
@@ -537,8 +539,8 @@ class Planner(object):
                 init_pose_seq_cur_small = init_pose_seq_small
                 act_seq_cur_small = act_seq_small
 
-            state_cur_sim_large = self.sim_rollout(init_pose_seq_cur_large.unsqueeze(0), act_seq_cur_large.unsqueeze(0))[0].squeeze()
-            state_cur_sim_small = self.sim_rollout(init_pose_seq_cur_small.unsqueeze(0), act_seq_cur_small.unsqueeze(0))[0].squeeze()
+            state_cur_sim_large = self.sim_rollout(init_pose_seq_cur_large.unsqueeze(0), act_seq_cur_large.unsqueeze(0), size='large')[0].squeeze()
+            state_cur_sim_small = self.sim_rollout(init_pose_seq_cur_small.unsqueeze(0), act_seq_cur_small.unsqueeze(0), size='small')[0].squeeze()
             state_cur_sim_particles_large = state_cur_sim_large[:, :self.n_particle].clone()
             state_cur_sim_particles_small = state_cur_sim_small[:, :self.n_particle].clone()
             self.floor_state = state_cur_sim_large[:,
@@ -600,11 +602,13 @@ class Planner(object):
                         act_seq_opt = act_seq_opt_large
                         loss_opt = loss_opt_large
                         state_seq_opt = state_seq_opt_large
+                        chosen_one = 'large'
                     else:
                         init_pose_seq_opt = init_pose_seqs_pool_small
                         act_seq_opt = act_seq_opt_small
                         loss_opt = loss_opt_small
                         state_seq_opt = state_seq_opt_small
+                        chosen_one = 'small'
 
             elif self.args.opt_algo == "CEM_GD":
                 for j in range(self.args.CEM_opt_iter):
@@ -740,11 +744,17 @@ class Planner(object):
         return reward_seqs_rollout, state_seqs_rollout
 
     @profile
-    def sim_rollout(self, init_pose_seqs, act_seqs):
+    def sim_rollout(self, init_pose_seqs, act_seqs, size='large'):
         sample_state_seq_batch = []
         state_seq_batch = []
         for t in range(act_seqs.shape[0]):
             self.taichi_env.set_state(**self.env_init_state)
+            if size == 'large':
+                self.taichi_env.primitives.primitives[0].r = task_params['tool_size_large']
+                self.taichi_env.primitives.primitives[1].r = task_params['tool_size_large']
+            elif size == 'small':
+                self.taichi_env.primitives.primitives[0].r = task_params['tool_size_small']
+                self.taichi_env.primitives.primitives[1].r = task_params['tool_size_small']
             state_seq = []
             for i in range(act_seqs.shape[1]):
                 self.taichi_env.primitives.primitives[0].set_state(0,
@@ -763,7 +773,7 @@ class Planner(object):
                     # print(f"x after: {x.shape}")
                     state_seq.append(particles)
 
-            sample_state = sample_particles(self.taichi_env, self.cam_params, self.n_particle)
+            sample_state = sample_particles(self.taichi_env, self.cam_params, self.n_particle, size=size)
             state_seq_sample = []
             for i in range(self.args.n_his):
                 state_seq_sample.append(sample_state)
@@ -1330,7 +1340,6 @@ def main():
     frame_list = sorted(glob.glob(os.path.join(args.dataf, 'train', str(vid_idx).zfill(3), 'shape_*.h5')))
     gt_frame_list = sorted(glob.glob(os.path.join(args.dataf, 'train', str(vid_idx).zfill(3), 'shape_gt_*.h5')))
     args.time_step = (len(frame_list) - len(gt_frame_list))
-    import pdb; pdb.set_trace()
     for t in range(args.time_step):
         if task_name == "gripper":
             frame_name = str(t) + '.h5'
