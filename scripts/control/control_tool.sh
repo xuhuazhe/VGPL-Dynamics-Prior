@@ -25,7 +25,7 @@ kernprof -l control_tool.py \
 	--gt_action 0 \
 	--gt_state_goal 0 \
 	--subgoal 0 \
-	--control_sample_size 500 \
+	--control_sample_size 200 \
 	--control_batch_size 4 \
 	--predict_horizon 2 \
 	--CEM_opt_iter 3 \
