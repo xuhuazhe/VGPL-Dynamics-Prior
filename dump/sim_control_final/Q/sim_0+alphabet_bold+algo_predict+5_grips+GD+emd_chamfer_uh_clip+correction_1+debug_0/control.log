@@ -1,0 +1,537 @@
+ENV:
+  loss:
+    soft_contact: False
+    target_path: envs/assets/Chopsticks3D-v1.npy
+    weight:
+      contact: 1
+      density: 10
+      sdf: 10
+  n_observed_particles: 200
+PRIMITIVES: [{'shape': 'Capsule', 'h': 0.2, 'r': 0.045, 'init_pos': '(0.35, 0.4, 0.5)', 'init_rot': '(1., 0., 0., 0.)', 'color': '(0.8, 0.8, 0.8)', 'friction': 1.0, 'action': {'dim': 6, 'scale': '(0.02, 0.02, 0.02, 0.04, 0.04, 0.04)'}}, {'shape': 'Capsule', 'h': 0.2, 'r': 0.045, 'init_pos': '(0.65, 0.4, 0.5)', 'init_rot': '(1., 0., 0., 0.)', 'color': '(0.8, 0.8, 0.8)', 'friction': 1.0, 'action': {'dim': 6, 'scale': '(0.02, 0.02, 0.02, 0.04, 0.04, 0.04)'}}, {'shape': 'Capsule', 'h': 0.13, 'r': 0.025, 'init_pos': '(0.5, 0.1, 0.5)', 'init_rot': '(1., 0., 0., 0.)', 'color': '(0.2, 0.2, 0.2)', 'friction': 15.0}]
+RENDERER:
+  bake_size: 6
+  camera_pos: (0.5, 1.2, 4.0)
+  camera_pos_1: (0.5, 2.5, 2.2)
+  camera_pos_2: (0.5, 2.5, 2.2)
+  camera_pos_3: (0.5, 2.5, 2.2)
+  camera_pos_4: (0.5, 2.5, 2.2)
+  camera_rot: (0.2, 0)
+  camera_rot_1: (0.8, 0.0)
+  camera_rot_2: (0.8, 0.0)
+  camera_rot_3: (0.8, 0.0)
+  camera_rot_4: (0.8, 0.0)
+  dx: 0.006666666666666667
+  image_res: (512, 512)
+  light_direction: (2.0, 1.0, 0.7)
+  max_num_particles: 1000000
+  max_ray_depth: 2
+  sdf_threshold: 0.20720000000000002
+  spp: 50
+  target_res: (64, 64, 64)
+  use_directional_light: False
+  use_roulette: False
+  voxel_res: (168, 168, 168)
+SHAPES: [{'shape': 'box', 'width': '(0.25, 0.2, 0.25)', 'init_pos': '(0.5, 0.1, 0.5)', 'n_particles': 20000, 'color': '((150<<8)+ (150<<16))'}]
+SIMULATOR:
+  E: 5000.0
+  dim: 3
+  dtype: float64
+  gravity: (0, -5, 0)
+  ground_friction: 100.0
+  max_steps: 1024
+  n_particles: 9000
+  nu: 0.2
+  quality: 1
+  yield_stress: 4000.0
+VARIANTS: [{'ENV': {'loss': {'target_path': 'envs/assets/gripper-v1.npy'}}}]
+Building primitive
+action:
+  dim: 6
+  scale: (0.02, 0.02, 0.02, 0.04, 0.04, 0.04)
+color: (0.8, 0.8, 0.8)
+friction: 1.0
+h: 0.2
+init_pos: (0.35, 0.4, 0.5)
+init_rot: (1.0, 0.0, 0.0, 0.0)
+lower_bound: (0.0, 0.0, 0.0)
+r: 0.045
+shape: Capsule
+upper_bound: (1.0, 1.0, 1.0)
+variations: None
+Building primitive
+action:
+  dim: 6
+  scale: (0.02, 0.02, 0.02, 0.04, 0.04, 0.04)
+color: (0.8, 0.8, 0.8)
+friction: 1.0
+h: 0.2
+init_pos: (0.65, 0.4, 0.5)
+init_rot: (1.0, 0.0, 0.0, 0.0)
+lower_bound: (0.0, 0.0, 0.0)
+r: 0.045
+shape: Capsule
+upper_bound: (1.0, 1.0, 1.0)
+variations: None
+Building primitive
+action:
+  dim: 0
+  scale: ()
+color: (0.2, 0.2, 0.2)
+friction: 15.0
+h: 0.13
+init_pos: (0.5, 0.1, 0.5)
+init_rot: (1.0, 0.0, 0.0, 0.0)
+lower_bound: (0.0, 0.0, 0.0)
+r: 0.025
+shape: Capsule
+upper_bound: (1.0, 1.0, 1.0)
+variations: None
+{'width': (0.25, 0.2, 0.25), 'init_pos': (0.5, 0.1, 0.5), 'n_particles': 20000, 'color': 9868800}
+Initialize Renderer
+bake_size: 6  
+camera_pos: (0.5, 1.2, 4.0)  
+camera_pos_1: (0.5, 2.5, 2.2)  
+camera_pos_2: (0.5, 2.5, 2.2)  
+camera_pos_3: (0.5, 2.5, 2.2)  
+camera_pos_4: (0.5, 2.5, 2.2)  
+camera_rot: (0.2, 0)  
+camera_rot_1: (0.8, 0.0)  
+camera_rot_2: (0.8, 0.0)  
+camera_rot_3: (0.8, 0.0)  
+camera_rot_4: (0.8, 0.0)  
+dx: 0.006666666666666667  
+image_res: (512, 512)  
+light_direction: (2.0, 1.0, 0.7)  
+max_num_particles: 1000000  
+max_ray_depth: 2  
+sdf_threshold: 0.20720000000000002  
+spp: 50  
+target_res: (64, 64, 64)  
+use_directional_light: False  
+use_roulette: False  
+voxel_res: (168, 168, 168)
+[Taichi] materializing...
+model_kp #params: 443560
+GT shape: init pose: (1, 3, 11, 14); actions: (1, 3, 40, 12)
+GT init pose: [[0.76359501 0.14       0.70473839 1.         0.         0.
+  0.        ]
+ [0.13751299 0.14       0.56262855 1.         0.         0.
+  0.        ]
+ [0.20403418 0.14       0.74794012 1.         0.         0.
+  0.        ]]
+=============== 1/2 ===============
+[Open3D DEBUG] Input Points / Samples: 49783 / 31818
+[Open3D DEBUG] #   Got kernel density: 0.225273 (s), 4430.5 (MB) / 4430.5 (MB) / 4470 (MB)
+[Open3D DEBUG] #     Got normal field: 0.117786 (s), 4435.44 (MB) / 4435.44 (MB) / 4470 (MB)
+[Open3D DEBUG] Point weight / Estimated Area: 1.997646e-05 / 9.944880e-01
+[Open3D DEBUG] #       Finalized tree: 1.41683 (s), 4437.21 (MB) / 4437.21 (MB) / 4470 (MB)
+[Open3D DEBUG] #  Set FEM constraints: 1.97362 (s), 4437.21 (MB) / 4437.21 (MB) / 4470 (MB)
+[Open3D DEBUG] #Set point constraints: 0.722223 (s), 4437.21 (MB) / 4437.21 (MB) / 4470 (MB)
+[Open3D DEBUG] Leaf Nodes / Active Nodes / Ghost Nodes: 336414 / 382016 / 2457
+[Open3D DEBUG] Memory Usage: 4437.207 MB
+[Open3D DEBUG] # Linear system solved: 11.4936 (s), 4437.55 (MB) / 4437.55 (MB) / 4470 (MB)
+[Open3D DEBUG] Got average: 0.339969 (s), 4437.55 (MB) / 4437.55 (MB) / 4470 (MB)
+[Open3D DEBUG] Iso-Value: 4.966239e-01 = 2.472343e+04 / 4.978300e+04
+[Open3D DEBUG] #          Total Solve:      71.6 (s),    4457.7 (MB)
+TriangleMesh with 51100 points and 102188 triangles.
+state_cur: torch.Size([4, 300, 3]), state_goal: torch.Size([1, 300, 3])
+sampling: max: -0.0227, mean: -0.0298, std: 0.0029
+Selected top reward seqs: tensor([-0.0263, -0.0263, -0.0261, -0.0260, -0.0260, -0.0257, -0.0256, -0.0256,
+        -0.0255, -0.0255, -0.0252, -0.0251, -0.0251, -0.0247, -0.0246, -0.0245,
+        -0.0245, -0.0243, -0.0240, -0.0227])
+Batch 0/20:
+reward seqs after 7 iterations: tensor([-0.0266], grad_fn=<CatBackward>)
+Batch 1/20:
+reward seqs after 12 iterations: tensor([-0.0235], grad_fn=<CatBackward>)
+Batch 2/20:
+reward seqs after 2 iterations: tensor([-0.0246], grad_fn=<CatBackward>)
+Batch 3/20:
+reward seqs after 2 iterations: tensor([-0.0246], grad_fn=<CatBackward>)
+Batch 4/20:
+reward seqs after 2 iterations: tensor([-0.0246], grad_fn=<CatBackward>)
+Batch 5/20:
+reward seqs after 16 iterations: tensor([-0.0229], grad_fn=<CatBackward>)
+Batch 6/20:
+reward seqs after 6 iterations: tensor([-0.0221], grad_fn=<CatBackward>)
+Batch 7/20:
+reward seqs after 2 iterations: tensor([-0.0246], grad_fn=<CatBackward>)
+Batch 8/20:
+reward seqs after 17 iterations: tensor([-0.0250], grad_fn=<CatBackward>)
+Batch 9/20:
+reward seqs after 2 iterations: tensor([-0.0225], grad_fn=<CatBackward>)
+Batch 10/20:
+reward seqs after 15 iterations: tensor([-0.0221], grad_fn=<CatBackward>)
+Batch 11/20:
+reward seqs after 6 iterations: tensor([-0.0233], grad_fn=<CatBackward>)
+Batch 12/20:
+reward seqs after 9 iterations: tensor([-0.0228], grad_fn=<CatBackward>)
+Batch 13/20:
+reward seqs after 11 iterations: tensor([-0.0220], grad_fn=<CatBackward>)
+Batch 14/20:
+reward seqs after 17 iterations: tensor([-0.0228], grad_fn=<CatBackward>)
+Batch 15/20:
+reward seqs after 2 iterations: tensor([-0.0246], grad_fn=<CatBackward>)
+Batch 16/20:
+reward seqs after 16 iterations: tensor([-0.0217], grad_fn=<CatBackward>)
+Batch 17/20:
+reward seqs after 19 iterations: tensor([-0.0219], grad_fn=<CatBackward>)
+Batch 18/20:
+reward seqs after 5 iterations: tensor([-0.0220], grad_fn=<CatBackward>)
+Batch 19/20:
+reward seqs after 18 iterations: tensor([-0.0220], grad_fn=<CatBackward>)
+Loss: 0.021687332540750504
+Optimal set of params:
+mid_point: tensor([[0.5561, 0.1400, 0.4993],
+        [0.5520, 0.1400, 0.4757]])
+angle: tensor([1.5098, 2.1301], grad_fn=<SelectBackward>)
+gripper_rate: tensor([0.0092, 0.0095], grad_fn=<ClampBackward1>)
+Optimal init pose seq: tensor([[0.5317, 0.1400, 0.8985, 1.0000, 0.0000, 0.0000, 0.0000],
+        [0.7642, 0.1400, 0.8147, 1.0000, 0.0000, 0.0000, 0.0000]],
+       grad_fn=<SliceBackward>)
+[Open3D DEBUG] Input Points / Samples: 49953 / 42207
+[Open3D DEBUG] #   Got kernel density: 0.265054 (s), 6397.82 (MB) / 6397.82 (MB) / 6426 (MB)
+[Open3D DEBUG] #     Got normal field: 0.55432 (s), 6405.21 (MB) / 6405.21 (MB) / 6426 (MB)
+[Open3D DEBUG] Point weight / Estimated Area: 4.615693e-05 / 2.305677e+00
+[Open3D DEBUG] #       Finalized tree: 1.65405 (s), 6406.25 (MB) / 6406.25 (MB) / 6426 (MB)
+[Open3D DEBUG] #  Set FEM constraints: 2.23786 (s), 6406.25 (MB) / 6406.25 (MB) / 6426 (MB)
+[Open3D DEBUG] #Set point constraints: 1.20938 (s), 6406.25 (MB) / 6406.25 (MB) / 6426 (MB)
+[Open3D DEBUG] Leaf Nodes / Active Nodes / Ghost Nodes: 535144 / 525176 / 86417
+[Open3D DEBUG] Memory Usage: 6406.254 MB
+[Open3D DEBUG] # Linear system solved: 16.1652 (s), 6406.89 (MB) / 6406.89 (MB) / 6426 (MB)
+[Open3D DEBUG] Got average: 0.497594 (s), 6406.92 (MB) / 6406.92 (MB) / 6426 (MB)
+[Open3D DEBUG] Iso-Value: 5.020875e-01 = 2.508078e+04 / 4.995300e+04
+[Open3D DEBUG] #          Total Solve:      92.6 (s),    6423.5 (MB)
+TriangleMesh with 80360 points and 160680 triangles.
+EMD: tensor([0.0278], dtype=torch.float64)
+Chamfer: tensor([0.0353], dtype=torch.float64)
+=============== Iteration 0 -> model_loss: tensor([0.0217]); sim_loss: tensor([0.0286], dtype=torch.float64) ===============
+=============== 1/2 ===============
+[Open3D DEBUG] Input Points / Samples: 49148 / 37171
+[Open3D DEBUG] #   Got kernel density: 0.277156 (s), 6429.71 (MB) / 6429.71 (MB) / 6461 (MB)
+[Open3D DEBUG] #     Got normal field: 0.565387 (s), 6432.45 (MB) / 6432.45 (MB) / 6461 (MB)
+[Open3D DEBUG] Point weight / Estimated Area: 3.142359e-05 / 1.544407e+00
+[Open3D DEBUG] #       Finalized tree: 1.63907 (s), 6433.21 (MB) / 6433.21 (MB) / 6461 (MB)
+[Open3D DEBUG] #  Set FEM constraints: 2.30911 (s), 6433.21 (MB) / 6433.21 (MB) / 6461 (MB)
+[Open3D DEBUG] #Set point constraints: 2.01529 (s), 6433.36 (MB) / 6433.36 (MB) / 6461 (MB)
+[Open3D DEBUG] Leaf Nodes / Active Nodes / Ghost Nodes: 452957 / 499600 / 18065
+[Open3D DEBUG] Memory Usage: 6433.355 MB
+[Open3D DEBUG] # Linear system solved: 14.9403 (s), 6434.16 (MB) / 6434.16 (MB) / 6461 (MB)
+[Open3D DEBUG] Got average: 0.386052 (s), 6434.16 (MB) / 6434.16 (MB) / 6461 (MB)
+[Open3D DEBUG] Iso-Value: 5.037814e-01 = 2.475985e+04 / 4.914800e+04
+[Open3D DEBUG] #          Total Solve:      86.2 (s),    6445.5 (MB)
+TriangleMesh with 72985 points and 145958 triangles.
+state_cur: torch.Size([4, 300, 3]), state_goal: torch.Size([1, 300, 3])
+sampling: max: -0.0238, mean: -0.0300, std: 0.0030
+Selected top reward seqs: tensor([-0.0263, -0.0262, -0.0261, -0.0261, -0.0259, -0.0259, -0.0259, -0.0258,
+        -0.0257, -0.0257, -0.0255, -0.0254, -0.0254, -0.0254, -0.0252, -0.0251,
+        -0.0245, -0.0241, -0.0239, -0.0238])
+Batch 0/20:
+reward seqs after 7 iterations: tensor([-0.0245], grad_fn=<CatBackward>)
+Batch 1/20:
+reward seqs after 2 iterations: tensor([-0.0246], grad_fn=<CatBackward>)
+Batch 2/20:
+reward seqs after 17 iterations: tensor([-0.0236], grad_fn=<CatBackward>)
+Batch 3/20:
+reward seqs after 16 iterations: tensor([-0.0254], grad_fn=<CatBackward>)
+Batch 4/20:
+reward seqs after 10 iterations: tensor([-0.0233], grad_fn=<CatBackward>)
+Batch 5/20:
+reward seqs after 13 iterations: tensor([-0.0255], grad_fn=<CatBackward>)
+Batch 6/20:
+reward seqs after 13 iterations: tensor([-0.0242], grad_fn=<CatBackward>)
+Batch 7/20:
+reward seqs after 12 iterations: tensor([-0.0238], grad_fn=<CatBackward>)
+Batch 8/20:
+reward seqs after 12 iterations: tensor([-0.0253], grad_fn=<CatBackward>)
+Batch 9/20:
+reward seqs after 12 iterations: tensor([-0.0240], grad_fn=<CatBackward>)
+Batch 10/20:
+reward seqs after 11 iterations: tensor([-0.0238], grad_fn=<CatBackward>)
+Batch 11/20:
+reward seqs after 9 iterations: tensor([-0.0244], grad_fn=<CatBackward>)
+Batch 12/20:
+reward seqs after 8 iterations: tensor([-0.0240], grad_fn=<CatBackward>)
+Batch 13/20:
+reward seqs after 8 iterations: tensor([-0.0240], grad_fn=<CatBackward>)
+Batch 14/20:
+reward seqs after 17 iterations: tensor([-0.0232], grad_fn=<CatBackward>)
+Batch 15/20:
+reward seqs after 6 iterations: tensor([-0.0243], grad_fn=<CatBackward>)
+Batch 16/20:
+reward seqs after 13 iterations: tensor([-0.0236], grad_fn=<CatBackward>)
+Batch 17/20:
+reward seqs after 16 iterations: tensor([-0.0241], grad_fn=<CatBackward>)
+Batch 18/20:
+reward seqs after 13 iterations: tensor([-0.0235], grad_fn=<CatBackward>)
+Batch 19/20:
+reward seqs after 10 iterations: tensor([-0.0224], grad_fn=<CatBackward>)
+Loss: 0.02235576882958412
+Optimal set of params:
+mid_point: tensor([[0.5579, 0.1400, 0.4281],
+        [0.5705, 0.1400, 0.4600]])
+angle: tensor([2.8291, 2.1832], grad_fn=<SelectBackward>)
+gripper_rate: tensor([0.0099, 0.0099], grad_fn=<ClampBackward1>)
+Optimal init pose seq: tensor([[0.9386, 0.1400, 0.5511, 1.0000, 0.0000, 0.0000, 0.0000],
+        [0.8004, 0.1400, 0.7874, 1.0000, 0.0000, 0.0000, 0.0000]],
+       grad_fn=<SliceBackward>)
+[Open3D DEBUG] Input Points / Samples: 50148 / 42852
+[Open3D DEBUG] #   Got kernel density: 0.344505 (s), 6446.06 (MB) / 6446.06 (MB) / 6478 (MB)
+[Open3D DEBUG] #     Got normal field: 0.273114 (s), 6449.25 (MB) / 6449.25 (MB) / 6478 (MB)
+[Open3D DEBUG] Point weight / Estimated Area: 4.618292e-05 / 2.315981e+00
+[Open3D DEBUG] #       Finalized tree: 1.73798 (s), 6450.03 (MB) / 6450.03 (MB) / 6478 (MB)
+[Open3D DEBUG] #  Set FEM constraints: 2.59562 (s), 6450.03 (MB) / 6450.03 (MB) / 6478 (MB)
+[Open3D DEBUG] #Set point constraints: 1.24964 (s), 6450.03 (MB) / 6450.03 (MB) / 6478 (MB)
+[Open3D DEBUG] Leaf Nodes / Active Nodes / Ghost Nodes: 550187 / 544600 / 84185
+[Open3D DEBUG] Memory Usage: 6450.027 MB
+[Open3D DEBUG] # Linear system solved: 17.6832 (s), 6450.04 (MB) / 6450.04 (MB) / 6478 (MB)
+[Open3D DEBUG] Got average: 0.39561 (s), 6450.05 (MB) / 6450.05 (MB) / 6478 (MB)
+[Open3D DEBUG] Iso-Value: 5.035059e-01 = 2.524981e+04 / 5.014800e+04
+[Open3D DEBUG] #          Total Solve:      90.3 (s),    6460.1 (MB)
+TriangleMesh with 83798 points and 167520 triangles.
+EMD: tensor([0.0281], dtype=torch.float64)
+Chamfer: tensor([0.0344], dtype=torch.float64)
+=============== Iteration 1 -> model_loss: tensor([0.0224]); sim_loss: tensor([0.0287], dtype=torch.float64) ===============
+=============== 1/2 ===============
+[Open3D DEBUG] Input Points / Samples: 49592 / 40699
+[Open3D DEBUG] #   Got kernel density: 0.376122 (s), 6467.46 (MB) / 6467.46 (MB) / 6497 (MB)
+[Open3D DEBUG] #     Got normal field: 0.484954 (s), 6471.26 (MB) / 6471.26 (MB) / 6497 (MB)
+[Open3D DEBUG] Point weight / Estimated Area: 4.026652e-05 / 1.996897e+00
+[Open3D DEBUG] #       Finalized tree: 1.61082 (s), 6472.0 (MB) / 6472.0 (MB) / 6497 (MB)
+[Open3D DEBUG] #  Set FEM constraints: 2.20724 (s), 6472.0 (MB) / 6472.0 (MB) / 6497 (MB)
+[Open3D DEBUG] #Set point constraints: 2.11169 (s), 6472.0 (MB) / 6472.0 (MB) / 6497 (MB)
+[Open3D DEBUG] Leaf Nodes / Active Nodes / Ghost Nodes: 514606 / 531752 / 56369
+[Open3D DEBUG] Memory Usage: 6472.000 MB
+[Open3D DEBUG] # Linear system solved: 14.785 (s), 6472.05 (MB) / 6472.05 (MB) / 6497 (MB)
+[Open3D DEBUG] Got average: 0.467191 (s), 6472.05 (MB) / 6472.05 (MB) / 6497 (MB)
+[Open3D DEBUG] Iso-Value: 5.023044e-01 = 2.491028e+04 / 4.959200e+04
+[Open3D DEBUG] #          Total Solve:      80.1 (s),    6476.2 (MB)
+TriangleMesh with 81366 points and 162764 triangles.
+state_cur: torch.Size([4, 300, 3]), state_goal: torch.Size([1, 300, 3])
+sampling: max: -0.0222, mean: -0.0295, std: 0.0027
+Selected top reward seqs: tensor([-0.0258, -0.0257, -0.0256, -0.0255, -0.0254, -0.0254, -0.0254, -0.0253,
+        -0.0253, -0.0253, -0.0252, -0.0252, -0.0252, -0.0249, -0.0243, -0.0240,
+        -0.0238, -0.0235, -0.0224, -0.0222])
+Batch 0/20:
+reward seqs after 10 iterations: tensor([-0.0238], grad_fn=<CatBackward>)
+Batch 1/20:
+reward seqs after 15 iterations: tensor([-0.0238], grad_fn=<CatBackward>)
+Batch 2/20:
+reward seqs after 11 iterations: tensor([-0.0244], grad_fn=<CatBackward>)
+Batch 3/20:
+reward seqs after 9 iterations: tensor([-0.0232], grad_fn=<CatBackward>)
+Batch 4/20:
+reward seqs after 8 iterations: tensor([-0.0249], grad_fn=<CatBackward>)
+Batch 5/20:
+reward seqs after 16 iterations: tensor([-0.0241], grad_fn=<CatBackward>)
+Batch 6/20:
+reward seqs after 7 iterations: tensor([-0.0241], grad_fn=<CatBackward>)
+Batch 7/20:
+reward seqs after 14 iterations: tensor([-0.0232], grad_fn=<CatBackward>)
+Batch 8/20:
+reward seqs after 11 iterations: tensor([-0.0247], grad_fn=<CatBackward>)
+Batch 9/20:
+reward seqs after 11 iterations: tensor([-0.0252], grad_fn=<CatBackward>)
+Batch 10/20:
+reward seqs after 22 iterations: tensor([-0.0242], grad_fn=<CatBackward>)
+Batch 11/20:
+reward seqs after 3 iterations: tensor([-0.0240], grad_fn=<CatBackward>)
+Batch 12/20:
+reward seqs after 6 iterations: tensor([-0.0243], grad_fn=<CatBackward>)
+Batch 13/20:
+reward seqs after 11 iterations: tensor([-0.0238], grad_fn=<CatBackward>)
+Batch 14/20:
+reward seqs after 8 iterations: tensor([-0.0232], grad_fn=<CatBackward>)
+Batch 15/20:
+reward seqs after 4 iterations: tensor([-0.0232], grad_fn=<CatBackward>)
+Batch 16/20:
+reward seqs after 10 iterations: tensor([-0.0244], grad_fn=<CatBackward>)
+Batch 17/20:
+reward seqs after 11 iterations: tensor([-0.0224], grad_fn=<CatBackward>)
+Batch 18/20:
+reward seqs after 9 iterations: tensor([-0.0228], grad_fn=<CatBackward>)
+Batch 19/20:
+reward seqs after 23 iterations: tensor([-0.0218], grad_fn=<CatBackward>)
+Loss: 0.02178998850286007
+Optimal set of params:
+mid_point: tensor([[0.4822, 0.1400, 0.5300],
+        [0.5632, 0.1400, 0.4548]])
+angle: tensor([0.4945, 1.9866], grad_fn=<SelectBackward>)
+gripper_rate: tensor([0.0108, 0.0108], grad_fn=<ClampBackward1>)
+Optimal init pose seq: tensor([[0.1301, 0.1400, 0.7199, 1.0000, 0.0000, 0.0000, 0.0000],
+        [0.7247, 0.1400, 0.8208, 1.0000, 0.0000, 0.0000, 0.0000]],
+       grad_fn=<SliceBackward>)
+[Open3D DEBUG] Input Points / Samples: 49687 / 44181
+[Open3D DEBUG] #   Got kernel density: 0.350727 (s), 6488.43 (MB) / 6488.43 (MB) / 6520 (MB)
+[Open3D DEBUG] #     Got normal field: 0.28869 (s), 6493.57 (MB) / 6493.57 (MB) / 6520 (MB)
+[Open3D DEBUG] Point weight / Estimated Area: 5.553541e-05 / 2.759388e+00
+[Open3D DEBUG] #       Finalized tree: 1.94328 (s), 6494.19 (MB) / 6494.19 (MB) / 6520 (MB)
+[Open3D DEBUG] #  Set FEM constraints: 3.19935 (s), 6494.19 (MB) / 6494.19 (MB) / 6520 (MB)
+[Open3D DEBUG] #Set point constraints: 1.98625 (s), 6494.19 (MB) / 6494.19 (MB) / 6520 (MB)
+[Open3D DEBUG] Leaf Nodes / Active Nodes / Ghost Nodes: 582534 / 547360 / 118393
+[Open3D DEBUG] Memory Usage: 6494.188 MB
+[Open3D DEBUG] # Linear system solved: 15.7046 (s), 6494.19 (MB) / 6494.19 (MB) / 6520 (MB)
+[Open3D DEBUG] Got average: 0.485007 (s), 6494.19 (MB) / 6494.19 (MB) / 6520 (MB)
+[Open3D DEBUG] Iso-Value: 5.019333e-01 = 2.493956e+04 / 4.968700e+04
+[Open3D DEBUG] #          Total Solve:      91.0 (s),    6505.3 (MB)
+TriangleMesh with 86787 points and 173500 triangles.
+EMD: tensor([0.0322], dtype=torch.float64)
+Chamfer: tensor([0.0384], dtype=torch.float64)
+=============== Iteration 2 -> model_loss: tensor([0.0218]); sim_loss: tensor([0.0328], dtype=torch.float64) ===============
+=============== 1/2 ===============
+[Open3D DEBUG] Input Points / Samples: 51249 / 45285
+[Open3D DEBUG] #   Got kernel density: 0.396068 (s), 6510.7 (MB) / 6510.7 (MB) / 6543 (MB)
+[Open3D DEBUG] #     Got normal field: 0.304359 (s), 6514.09 (MB) / 6514.09 (MB) / 6543 (MB)
+[Open3D DEBUG] Point weight / Estimated Area: 5.637722e-05 / 2.889276e+00
+[Open3D DEBUG] #       Finalized tree: 1.93876 (s), 6514.12 (MB) / 6514.12 (MB) / 6543 (MB)
+[Open3D DEBUG] #  Set FEM constraints: 2.61184 (s), 6514.12 (MB) / 6514.12 (MB) / 6543 (MB)
+[Open3D DEBUG] #Set point constraints: 2.00956 (s), 6514.12 (MB) / 6514.12 (MB) / 6543 (MB)
+[Open3D DEBUG] Leaf Nodes / Active Nodes / Ghost Nodes: 589030 / 543680 / 129497
+[Open3D DEBUG] Memory Usage: 6514.121 MB
+[Open3D DEBUG] # Linear system solved: 16.6499 (s), 6514.12 (MB) / 6514.12 (MB) / 6543 (MB)
+[Open3D DEBUG] Got average: 0.551445 (s), 6514.12 (MB) / 6514.12 (MB) / 6543 (MB)
+[Open3D DEBUG] Iso-Value: 5.016408e-01 = 2.570859e+04 / 5.124900e+04
+[Open3D DEBUG] #          Total Solve:      87.8 (s),    6521.0 (MB)
+TriangleMesh with 86008 points and 171952 triangles.
+state_cur: torch.Size([4, 300, 3]), state_goal: torch.Size([1, 300, 3])
+sampling: max: -0.0238, mean: -0.0332, std: 0.0039
+Selected top reward seqs: tensor([-0.0276, -0.0276, -0.0275, -0.0274, -0.0274, -0.0274, -0.0273, -0.0272,
+        -0.0271, -0.0271, -0.0270, -0.0266, -0.0265, -0.0263, -0.0262, -0.0261,
+        -0.0260, -0.0259, -0.0257, -0.0238])
+Batch 0/20:
+reward seqs after 15 iterations: tensor([-0.0278], grad_fn=<CatBackward>)
+Batch 1/20:
+reward seqs after 5 iterations: tensor([-0.0256], grad_fn=<CatBackward>)
+Batch 2/20:
+reward seqs after 6 iterations: tensor([-0.0283], grad_fn=<CatBackward>)
+Batch 3/20:
+reward seqs after 13 iterations: tensor([-0.0266], grad_fn=<CatBackward>)
+Batch 4/20:
+reward seqs after 7 iterations: tensor([-0.0274], grad_fn=<CatBackward>)
+Batch 5/20:
+reward seqs after 21 iterations: tensor([-0.0274], grad_fn=<CatBackward>)
+Batch 6/20:
+reward seqs after 8 iterations: tensor([-0.0276], grad_fn=<CatBackward>)
+Batch 7/20:
+reward seqs after 8 iterations: tensor([-0.0277], grad_fn=<CatBackward>)
+Batch 8/20:
+reward seqs after 13 iterations: tensor([-0.0276], grad_fn=<CatBackward>)
+Batch 9/20:
+reward seqs after 9 iterations: tensor([-0.0290], grad_fn=<CatBackward>)
+Batch 10/20:
+reward seqs after 10 iterations: tensor([-0.0245], grad_fn=<CatBackward>)
+Batch 11/20:
+reward seqs after 14 iterations: tensor([-0.0261], grad_fn=<CatBackward>)
+Batch 12/20:
+reward seqs after 8 iterations: tensor([-0.0254], grad_fn=<CatBackward>)
+Batch 13/20:
+reward seqs after 29 iterations: tensor([-0.0269], grad_fn=<CatBackward>)
+Batch 14/20:
+reward seqs after 9 iterations: tensor([-0.0257], grad_fn=<CatBackward>)
+Batch 15/20:
+reward seqs after 37 iterations: tensor([-0.0259], grad_fn=<CatBackward>)
+Batch 16/20:
+reward seqs after 4 iterations: tensor([-0.0260], grad_fn=<CatBackward>)
+Batch 17/20:
+reward seqs after 10 iterations: tensor([-0.0252], grad_fn=<CatBackward>)
+Batch 18/20:
+reward seqs after 12 iterations: tensor([-0.0254], grad_fn=<CatBackward>)
+Batch 19/20:
+reward seqs after 12 iterations: tensor([-0.0229], grad_fn=<CatBackward>)
+Loss: 0.022860370576381683
+Optimal set of params:
+mid_point: tensor([[0.4506, 0.1400, 0.5735],
+        [0.4717, 0.1400, 0.5099]])
+angle: tensor([2.8542, 1.2216], grad_fn=<SelectBackward>)
+gripper_rate: tensor([0.0106, 0.0100], grad_fn=<ClampBackward1>)
+Optimal init pose seq: tensor([[0.8342, 0.1400, 0.6869, 1.0000, 0.0000, 0.0000, 0.0000],
+        [0.3348, 0.1400, 0.8857, 1.0000, 0.0000, 0.0000, 0.0000]],
+       grad_fn=<SliceBackward>)
+=============== 2/2 ===============
+[Open3D DEBUG] Input Points / Samples: 51864 / 45125
+[Open3D DEBUG] #   Got kernel density: 0.534041 (s), 6884.46 (MB) / 6884.46 (MB) / 6916 (MB)
+[Open3D DEBUG] #     Got normal field: 0.359334 (s), 6885.05 (MB) / 6885.05 (MB) / 6916 (MB)
+[Open3D DEBUG] Point weight / Estimated Area: 4.866280e-05 / 2.523848e+00
+[Open3D DEBUG] #       Finalized tree: 1.75716 (s), 6885.34 (MB) / 6885.34 (MB) / 6916 (MB)
+[Open3D DEBUG] #  Set FEM constraints: 2.71646 (s), 6885.34 (MB) / 6885.34 (MB) / 6916 (MB)
+[Open3D DEBUG] #Set point constraints: 1.53085 (s), 6885.34 (MB) / 6885.34 (MB) / 6916 (MB)
+[Open3D DEBUG] Leaf Nodes / Active Nodes / Ghost Nodes: 592999 / 589192 / 88521
+[Open3D DEBUG] Memory Usage: 6885.340 MB
+[Open3D DEBUG] # Linear system solved: 16.8916 (s), 6885.34 (MB) / 6885.34 (MB) / 6916 (MB)
+[Open3D DEBUG] Got average: 0.404762 (s), 6885.34 (MB) / 6885.34 (MB) / 6916 (MB)
+[Open3D DEBUG] Iso-Value: 5.008550e-01 = 2.597634e+04 / 5.186400e+04
+[Open3D DEBUG] #          Total Solve:      87.8 (s),    6892.2 (MB)
+TriangleMesh with 93366 points and 186720 triangles.
+state_cur: torch.Size([4, 300, 3]), state_goal: torch.Size([1, 300, 3])
+sampling: max: -0.0272, mean: -0.0393, std: 0.0048
+Selected top reward seqs: tensor([-0.0325, -0.0325, -0.0324, -0.0323, -0.0321, -0.0320, -0.0320, -0.0320,
+        -0.0319, -0.0317, -0.0308, -0.0306, -0.0305, -0.0301, -0.0298, -0.0292,
+        -0.0291, -0.0287, -0.0283, -0.0272])
+Batch 0/20:
+reward seqs after 11 iterations: tensor([-0.0331], grad_fn=<CatBackward>)
+Batch 1/20:
+reward seqs after 9 iterations: tensor([-0.0312], grad_fn=<CatBackward>)
+Batch 2/20:
+reward seqs after 8 iterations: tensor([-0.0337], grad_fn=<CatBackward>)
+Batch 3/20:
+reward seqs after 12 iterations: tensor([-0.0331], grad_fn=<CatBackward>)
+Batch 4/20:
+reward seqs after 13 iterations: tensor([-0.0290], grad_fn=<CatBackward>)
+Batch 5/20:
+reward seqs after 21 iterations: tensor([-0.0298], grad_fn=<CatBackward>)
+Batch 6/20:
+reward seqs after 17 iterations: tensor([-0.0310], grad_fn=<CatBackward>)
+Batch 7/20:
+reward seqs after 16 iterations: tensor([-0.0318], grad_fn=<CatBackward>)
+Batch 8/20:
+reward seqs after 19 iterations: tensor([-0.0284], grad_fn=<CatBackward>)
+Batch 9/20:
+reward seqs after 6 iterations: tensor([-0.0307], grad_fn=<CatBackward>)
+Batch 10/20:
+reward seqs after 11 iterations: tensor([-0.0304], grad_fn=<CatBackward>)
+Batch 11/20:
+reward seqs after 11 iterations: tensor([-0.0308], grad_fn=<CatBackward>)
+Batch 12/20:
+reward seqs after 8 iterations: tensor([-0.0294], grad_fn=<CatBackward>)
+Batch 13/20:
+reward seqs after 28 iterations: tensor([-0.0308], grad_fn=<CatBackward>)
+Batch 14/20:
+reward seqs after 13 iterations: tensor([-0.0296], grad_fn=<CatBackward>)
+Batch 15/20:
+reward seqs after 7 iterations: tensor([-0.0290], grad_fn=<CatBackward>)
+Batch 16/20:
+reward seqs after 10 iterations: tensor([-0.0286], grad_fn=<CatBackward>)
+Batch 17/20:
+reward seqs after 11 iterations: tensor([-0.0289], grad_fn=<CatBackward>)
+Batch 18/20:
+reward seqs after 7 iterations: tensor([-0.0287], grad_fn=<CatBackward>)
+Batch 19/20:
+reward seqs after 10 iterations: tensor([-0.0260], grad_fn=<CatBackward>)
+Loss: 0.02599983662366867
+Optimal set of params:
+mid_point: tensor([[0.4858, 0.1400, 0.4826]])
+angle: tensor([1.1794], grad_fn=<SelectBackward>)
+gripper_rate: tensor([0.0103], grad_fn=<ClampBackward1>)
+Optimal init pose seq: tensor([[0.3332, 0.1400, 0.8524, 1.0000, 0.0000, 0.0000, 0.0000]],
+       grad_fn=<SliceBackward>)
+[Open3D DEBUG] Input Points / Samples: 50068 / 44063
+[Open3D DEBUG] #   Got kernel density: 0.429707 (s), 6814.57 (MB) / 6892.23 (MB) / 6916 (MB)
+[Open3D DEBUG] #     Got normal field: 0.663884 (s), 6815.02 (MB) / 6892.23 (MB) / 6916 (MB)
+[Open3D DEBUG] Point weight / Estimated Area: 5.107300e-05 / 2.557123e+00
+[Open3D DEBUG] #       Finalized tree: 1.88463 (s), 6815.19 (MB) / 6892.23 (MB) / 6916 (MB)
+[Open3D DEBUG] #  Set FEM constraints: 2.65838 (s), 6815.19 (MB) / 6892.23 (MB) / 6916 (MB)
+[Open3D DEBUG] #Set point constraints: 1.70558 (s), 6815.19 (MB) / 6892.23 (MB) / 6916 (MB)
+[Open3D DEBUG] Leaf Nodes / Active Nodes / Ghost Nodes: 592831 / 585096 / 92425
+[Open3D DEBUG] Memory Usage: 6815.191 MB
+[Open3D DEBUG] # Linear system solved: 16.8935 (s), 6815.3 (MB) / 6892.23 (MB) / 6916 (MB)
+[Open3D DEBUG] Got average: 0.491237 (s), 6815.3 (MB) / 6892.23 (MB) / 6916 (MB)
+[Open3D DEBUG] Iso-Value: 5.018359e-01 = 2.512592e+04 / 5.006800e+04
+[Open3D DEBUG] #          Total Solve:      94.4 (s),    6892.2 (MB)
+TriangleMesh with 95057 points and 190146 triangles.
+EMD: tensor([0.0409], dtype=torch.float64)
+Chamfer: tensor([0.0441], dtype=torch.float64)
+=============== Iteration 3 -> model_loss: tensor([0.0260]); sim_loss: tensor([0.0412], dtype=torch.float64) ===============
+torch.Size([2, 11, 14]) torch.Size([2, 40, 12])
+Best init pose: tensor([[0.5317, 0.1400, 0.8985, 1.0000, 0.0000, 0.0000, 0.0000],
+        [0.7642, 0.1400, 0.8147, 1.0000, 0.0000, 0.0000, 0.0000]])
+Best model loss: tensor([0.0217]); Best sim loss: tensor([0.0286], dtype=torch.float64)
+Wrote profile results to control.py.lprof
