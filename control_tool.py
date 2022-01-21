@@ -1390,7 +1390,7 @@ def main():
     act_seq_gt = np.expand_dims(act_seq_gt, axis=0)
 
     print(f"GT shape: init pose: {init_pose_gt.shape}; actions: {act_seq_gt.shape}")
-    print(f"GT init pose: {init_pose_gt[0, :, task_params['gripper_mid_pt'], :7]}")
+    # print(f"GT init pose: {init_pose_gt[0, :, task_params['gripper_mid_pt'], :7]}")
     # print(act_seq_gt)
 
     cam_params = np.load(rollout_dir + "../cam_params.npy", allow_pickle=True)
