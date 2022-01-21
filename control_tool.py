@@ -459,9 +459,9 @@ class Planner(object):
             sim_loss_list = []
             n_iters = self.args.n_grips - self.args.predict_horizon + 1
             for i in range(n_iters):
-                init_pose_seq, act_seq, loss_seq = self.trajectory_optimization_with_horizon(
+                init_pose_seq, act_seq, loss_seq, tool_seq = self.trajectory_optimization_with_horizon(
                     self.args.predict_horizon, i == n_iters - 1, checkpoint=checkpoint)
-                checkpoint = [init_pose_seq[:1 - self.args.predict_horizon], act_seq[:1 - self.args.predict_horizon]]
+                checkpoint = [init_pose_seq[:1 - self.args.predict_horizon], act_seq[:1 - self.args.predict_horizon], tool_seq[:1 - self.args.predict_horizon]]
 
                 with open(f"{self.rollout_path}/init_pose_seq_{i}.npy", 'wb') as f:
                     np.save(f, init_pose_seq)
@@ -499,12 +499,13 @@ class Planner(object):
 
     def trajectory_optimization_with_horizon(self, grip_num, correction, checkpoint=None):
         if checkpoint:
-            init_pose_seq, act_seq = checkpoint
+            init_pose_seq, act_seq, tool_seq = checkpoint
         else:
-            init_pose_seq_large = torch.Tensor()
-            act_seq_large = torch.Tensor()
-            init_pose_seq_small = torch.Tensor()
-            act_seq_small = torch.Tensor()
+            init_pose_seq = torch.Tensor()
+            act_seq = torch.Tensor()
+            tool_seq = torch.tensor()
+            # init_pose_seq_small = torch.Tensor()
+            # act_seq_small = torch.Tensor()
 
         for i in range(grip_num):
             self.grip_cur = f'{grip_num}-{i+1}'
@@ -528,40 +529,50 @@ class Planner(object):
             if init_pose_seq.numel() == 0:
                 init_pose_seq_cur_large = init_pose_seqs_pool_large[0]
                 act_seq_cur_large = act_seqs_pool_large[0, 0, 0].unsqueeze(0).unsqueeze(0)
-            else:
-                init_pose_seq_cur_large = init_pose_seq_large
-                act_seq_cur_large = act_seq_large
-
-            if init_pose_seq.numel() == 0:
+                tool_seq_cur_large = np.zeros_like(act_seqs_pool_large[0, 0, 0].unsqueeze(0).unsqueeze(0))
                 init_pose_seq_cur_small = init_pose_seqs_pool_small[0]
                 act_seq_cur_small = act_seqs_pool_small[0, 0, 0].unsqueeze(0).unsqueeze(0)
-            else:
-                init_pose_seq_cur_small = init_pose_seq_small
-                act_seq_cur_small = act_seq_small
+                tool_seq_cur_small = np.zeros_like(act_seqs_pool_small[0, 0, 0].unsqueeze(0).unsqueeze(0))
 
-            state_cur_sim_large = self.sim_rollout(init_pose_seq_cur_large.unsqueeze(0), act_seq_cur_large.unsqueeze(0), size='large')[0].squeeze()
-            state_cur_sim_small = self.sim_rollout(init_pose_seq_cur_small.unsqueeze(0), act_seq_cur_small.unsqueeze(0), size='small')[0].squeeze()
-            state_cur_sim_particles_large = state_cur_sim_large[:, :self.n_particle].clone()
-            state_cur_sim_particles_small = state_cur_sim_small[:, :self.n_particle].clone()
-            self.floor_state = state_cur_sim_large[:,
+            else:
+                init_pose_seq_cur_large = init_pose_seq
+                act_seq_cur_large = act_seq
+                tool_seq_cur_large = tool_seq
+                init_pose_seq_cur_small = init_pose_seq
+                act_seq_cur_small = act_seq
+                tool_seq_cur_small = tool_seq
+
+
+            # if init_pose_seq.numel() == 0:
+            #     init_pose_seq_cur_small = init_pose_seqs_pool_small[0]
+            #     act_seq_cur_small = act_seqs_pool_small[0, 0, 0].unsqueeze(0).unsqueeze(0)
+            # else:
+            #     init_pose_seq_cur_small = init_pose_seq_small
+            #     act_seq_cur_small = act_seq_small
+
+            state_cur_sim = self.sim_rollout(init_pose_seq_cur_large.unsqueeze(0), act_seq_cur_large.unsqueeze(0), tool_seq_cur_large.unsqueeze(0))[0].squeeze()
+            # state_cur_sim_small = self.sim_rollout(init_pose_seq_cur_small.unsqueeze(0), act_seq_cur_small.unsqueeze(0), size='small')[0].squeeze()
+            state_cur_sim_particles = state_cur_sim[:, :self.n_particle].clone()
+            # state_cur_sim_particles_small = state_cur_sim_small[:, :self.n_particle].clone()
+            self.floor_state = state_cur_sim[:,
                                self.n_particle: self.n_particle + task_params["n_shapes_floor"]].clone()
 
-            visualize_points(state_cur_sim_large[-1], self.n_particle,
+            visualize_points(state_cur_sim[-1], self.n_particle,
                              os.path.join(self.rollout_path, f'sim_particles_large_{self.grip_cur}'))
-            visualize_points(state_cur_sim_small[-1], self.n_particle,
-                             os.path.join(self.rollout_path, f'sim_particles_small_{self.grip_cur}'))
+            # visualize_points(state_cur_sim_small[-1], self.n_particle,
+            #                  os.path.join(self.rollout_path, f'sim_particles_small_{self.grip_cur}'))
             # visualize_points(state_cur_gt[-1], self.n_particle, os.path.join(self.rollout_path, f'gt_particles_{i}'))
 
             if checkpoint == None and i == 0:
-                self.initial_state = state_cur_sim_particles_large
+                self.initial_state = state_cur_sim_particles
 
-            if self.args.correction and i != 0:
-                if chosen_one == 'large':
-                    state_cur = state_cur_sim_particles_large
-                elif chosen_one == 'small':
-                    state_cur = state_cur_sim_particles_small
-            elif i == 0:
-                state_cur = state_cur_sim_particles_large
+            if self.args.correction or i == 0:
+            #     if chosen_one == 'large':
+            #         state_cur = state_cur_sim_particles_large
+            #     elif chosen_one == 'small':
+            #         state_cur = state_cur_sim_particles_small
+            # elif i == 0:
+                state_cur = state_cur_sim_particles
             else:
                 state_cur = state_seq_opt[-self.args.n_his:].clone()
 
@@ -596,19 +607,19 @@ class Planner(object):
                         init_pose_seqs_pool_large, act_seqs_pool_large, reward_seqs_large, state_cur, state_goal)
                     init_pose_seq_opt_small, act_seq_opt_small, loss_opt_small, state_seq_opt_small = self.optimize_action_GD(
                         init_pose_seqs_pool_small, act_seqs_pool_small, reward_seqs_small, state_cur, state_goal)
-
+                    import pdb; pdb.set_trace()
                     if loss_opt_large <= loss_opt_small:
                         init_pose_seq_opt = init_pose_seqs_pool_large
                         act_seq_opt = act_seq_opt_large
                         loss_opt = loss_opt_large
                         state_seq_opt = state_seq_opt_large
-                        chosen_one = 'large'
+                        tool_seq_opt = torch.ones([1, 1])
                     else:
                         init_pose_seq_opt = init_pose_seqs_pool_small
                         act_seq_opt = act_seq_opt_small
                         loss_opt = loss_opt_small
                         state_seq_opt = state_seq_opt_small
-                        chosen_one = 'small'
+                        tool_seq_opt = torch.zeros([1, 1])
 
             elif self.args.opt_algo == "CEM_GD":
                 for j in range(self.args.CEM_opt_iter):
@@ -633,11 +644,12 @@ class Planner(object):
 
             init_pose_seq = torch.cat((init_pose_seq, init_pose_seq_opt.clone()))
             act_seq = torch.cat((act_seq, act_seq_opt.clone()))
+            tool_seq = torch.cat((tool_seq, tool_seq_opt.clone()))
             loss_seq = loss_opt.clone()
 
             if not correction: break
 
-        return init_pose_seq, act_seq, loss_seq
+        return init_pose_seq, act_seq, loss_seq, tool_seq
 
     def visualize_results(self, init_pose_seq, act_seq, state_goal, i):
         model_state_seq = self.model_rollout(self.initial_state, init_pose_seq.unsqueeze(0), act_seq.unsqueeze(0))
@@ -744,15 +756,15 @@ class Planner(object):
         return reward_seqs_rollout, state_seqs_rollout
 
     @profile
-    def sim_rollout(self, init_pose_seqs, act_seqs, size='large'):
+    def sim_rollout(self, init_pose_seqs, act_seqs, tool_seqs):
         sample_state_seq_batch = []
         state_seq_batch = []
         for t in range(act_seqs.shape[0]):
             self.taichi_env.set_state(**self.env_init_state)
-            if size == 'large':
+            if tool_seqs[t] == 1:
                 self.taichi_env.primitives.primitives[0].r = task_params['tool_size_large']
                 self.taichi_env.primitives.primitives[1].r = task_params['tool_size_large']
-            elif size == 'small':
+            elif tool_seqs == 0:
                 self.taichi_env.primitives.primitives[0].r = task_params['tool_size_small']
                 self.taichi_env.primitives.primitives[1].r = task_params['tool_size_small']
             state_seq = []
