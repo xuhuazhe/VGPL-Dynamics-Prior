@@ -529,7 +529,8 @@ class Planner(object):
             if init_pose_seq.numel() == 0:
                 init_pose_seq_cur_large = init_pose_seqs_pool_large[0]
                 act_seq_cur_large = act_seqs_pool_large[0, 0, 0].unsqueeze(0).unsqueeze(0)
-                tool_seq_cur_large = np.zeros_like(act_seqs_pool_large[0, 0, 0].unsqueeze(0).unsqueeze(0))
+                import pdb; pdb.set_trace()
+                tool_seq_cur_large = torch.zeros_like(act_seqs_pool_large[0, 0, 0].unsqueeze(0).unsqueeze(0))
                 init_pose_seq_cur_small = init_pose_seqs_pool_small[0]
                 act_seq_cur_small = act_seqs_pool_small[0, 0, 0].unsqueeze(0).unsqueeze(0)
                 tool_seq_cur_small = np.zeros_like(act_seqs_pool_small[0, 0, 0].unsqueeze(0).unsqueeze(0))
