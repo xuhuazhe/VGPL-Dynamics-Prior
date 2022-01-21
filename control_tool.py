@@ -1205,7 +1205,6 @@ act_seq_gt = []
 def main():
     global init_pose_gt
     global act_seq_gt
-    import pdb; pdb.set_trace()
     args = gen_args()
     set_seed(args.random_seed)
 
@@ -1331,6 +1330,7 @@ def main():
     frame_list = sorted(glob.glob(os.path.join(args.dataf, 'train', str(vid_idx).zfill(3), 'shape_*.h5')))
     gt_frame_list = sorted(glob.glob(os.path.join(args.dataf, 'train', str(vid_idx).zfill(3), 'shape_gt_*.h5')))
     args.time_step = (len(frame_list) - len(gt_frame_list))
+    import pdb; pdb.set_trace()
     for t in range(args.time_step):
         if task_name == "gripper":
             frame_name = str(t) + '.h5'
