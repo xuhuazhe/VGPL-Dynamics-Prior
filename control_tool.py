@@ -604,9 +604,9 @@ class Planner(object):
             elif self.args.opt_algo == "GD":
                 with torch.set_grad_enabled(True):
                     init_pose_seq_opt_large, act_seq_opt_large, loss_opt_large, state_seq_opt_large = self.optimize_action_GD(
-                        init_pose_seqs_pool_large, act_seqs_pool_large, reward_seqs_large, state_cur, state_goal)
+                        init_pose_seqs_pool_large, act_seqs_pool_large, reward_seqs_large, state_cur, state_goal, size='large')
                     init_pose_seq_opt_small, act_seq_opt_small, loss_opt_small, state_seq_opt_small = self.optimize_action_GD(
-                        init_pose_seqs_pool_small, act_seqs_pool_small, reward_seqs_small, state_cur, state_goal)
+                        init_pose_seqs_pool_small, act_seqs_pool_small, reward_seqs_small, state_cur, state_goal, size='small')
                     if loss_opt_large <= loss_opt_small:
                         init_pose_seq_opt = init_pose_seqs_pool_large
                         act_seq_opt = act_seq_opt_large
@@ -1054,7 +1054,8 @@ class Planner(object):
             state_cur,
             state_goal,
             lr=1e-1,
-            best_k_ratio=0.1
+            best_k_ratio=0.1,
+            size='large'
     ):
         idx = torch.argsort(reward_seqs)
         best_k = max(4, int(reward_seqs.shape[0] * best_k_ratio))
@@ -1129,9 +1130,12 @@ class Planner(object):
 
                     # pdb.set_trace()
                     init_pose_seq_sample = torch.stack(init_pose_seq_sample)
-
-                    gripper_rate_clipped = torch.clamp(gripper_rates[start_idx + i], min=0,
-                                                       max=task_params["gripper_rate_limits"][1])
+                    if size == 'large':
+                        gripper_rate_clipped = torch.clamp(gripper_rates[start_idx + i], min=0,
+                                                       max=task_params["gripper_rate_limits_large"][1])
+                    elif size == 'small':
+                        gripper_rate_clipped = torch.clamp(gripper_rates[start_idx + i], min=0,
+                                                           max=task_params["gripper_rate_limits_small"][1])
                     act_seq_sample = get_action_seq_from_pose(init_pose_seq_sample, gripper_rate_clipped)
 
                     init_pose_seq_samples.append(init_pose_seq_sample)
