@@ -503,7 +503,7 @@ class Planner(object):
         else:
             init_pose_seq = torch.Tensor()
             act_seq = torch.Tensor()
-            tool_seq = torch.tensor()
+            tool_seq = torch.Tensor()
             # init_pose_seq_small = torch.Tensor()
             # act_seq_small = torch.Tensor()
 
