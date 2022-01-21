@@ -1320,7 +1320,7 @@ def main():
     unit_quat_pad = np.tile([1, 0, 0, 0], (task_params["n_shapes_per_gripper"], 1))
     task_name = 'gripper'
     data_names = ['positions', 'shape_quats', 'scene_params']
-    rollout_dir = f"./data/data_{args.data_type}/train/"
+    rollout_dir = f"/viscam/u/hshi74/projects/deformable/VGPL-Dynamics-Prior/data/data_{args.data_type}/train/"
     steps_per_grip = task_params["len_per_grip"] + task_params["len_per_grip_back"]
 
     # init_pose_gt = []
