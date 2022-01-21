@@ -7,7 +7,7 @@
 #SBATCH --cpus-per-task=4
 #SBATCH --output=/sailhome/hshi74/output/deformable/%A.out
 
-kernprof -l control.py \
+kernprof -l control_tool.py \
 	--env Gripper \
 	--data_type ngrip_fixed_small \
 	--stage control \
