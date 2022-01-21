@@ -63,11 +63,11 @@ if __name__ == "__main__":
         image_names = ['fish', 'clover', 'heart', 'flower', 'mushroom', 'octagon', 'hat', 'wang', 'butterfly']
     elif prefix in ['shapes/alphabet_black', 'shapes/alphabet_bold', 'shapes/alphabet_regular']:
         # image_names = list(ascii_uppercase)
-        image_names = ['K']
+        image_names = ['Z']
     else:
         raise NotImplementedError
     shape_size = (1.0 * 0.25, 0.15, 1.0 * 0.25)
-    shape_pos = (0.525, 0.125, 0.5)
+    shape_pos = (0.5, 0.125, 0.5)
     # dataset_image_path = f'shapes/alphabet_dataset.png'
     # dataset_image = cv2.imread(dataset_image_path)
     for i, n in enumerate(image_names):
