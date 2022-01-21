@@ -1205,7 +1205,7 @@ act_seq_gt = []
 def main():
     global init_pose_gt
     global act_seq_gt
-
+    import pdb; pdb.set_trace()
     args = gen_args()
     set_seed(args.random_seed)
 
@@ -1344,7 +1344,6 @@ def main():
         this_data = load_data(data_names, frame_path)
 
         n_particle, n_shape, scene_params = get_scene_info(this_data)
-        import pdb; pdb.set_trace()
         scene_params = torch.FloatTensor(scene_params).unsqueeze(0)
         g1_idx = n_particle + task_params["n_shapes_floor"]
         g2_idx = g1_idx + task_params["n_shapes_per_gripper"]
