@@ -37,5 +37,6 @@ kernprof -l control_tool.py \
 	--opt_algo $3 \
 	--correction $4 \
 	--reward_type $5 \
-	--goal_shape_name $6 \
-	--debug $7
+	--shape_type $6 \
+	--goal_shape_name $7 \
+	--debug $8
