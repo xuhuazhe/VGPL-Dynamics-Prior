@@ -529,10 +529,10 @@ class Planner(object):
             if init_pose_seq.numel() == 0:
                 init_pose_seq_cur_large = init_pose_seqs_pool_large[0]
                 act_seq_cur_large = act_seqs_pool_large[0, 0, 0].unsqueeze(0).unsqueeze(0)
-                tool_seq_cur_large = torch.zeros([1, 3, 1])
+                tool_seq_cur_large = torch.zeros([1, 1, 1])
                 init_pose_seq_cur_small = init_pose_seqs_pool_small[0]
                 act_seq_cur_small = act_seqs_pool_small[0, 0, 0].unsqueeze(0).unsqueeze(0)
-                tool_seq_cur_small = torch.zeros([1, 3, 1])
+                tool_seq_cur_small = torch.zeros([1, 1, 1])
 
             else:
                 init_pose_seq_cur_large = init_pose_seq
@@ -607,7 +607,6 @@ class Planner(object):
                         init_pose_seqs_pool_large, act_seqs_pool_large, reward_seqs_large, state_cur, state_goal)
                     init_pose_seq_opt_small, act_seq_opt_small, loss_opt_small, state_seq_opt_small = self.optimize_action_GD(
                         init_pose_seqs_pool_small, act_seqs_pool_small, reward_seqs_small, state_cur, state_goal)
-                    import pdb; pdb.set_trace()
                     if loss_opt_large <= loss_opt_small:
                         init_pose_seq_opt = init_pose_seqs_pool_large
                         act_seq_opt = act_seq_opt_large
@@ -646,7 +645,7 @@ class Planner(object):
             act_seq = torch.cat((act_seq, act_seq_opt.clone()))
             tool_seq = torch.cat((tool_seq, tool_seq_opt.clone()))
             loss_seq = loss_opt.clone()
-
+            import pdb; pdb.set_trace()
             if not correction: break
 
         return init_pose_seq, act_seq, loss_seq, tool_seq
@@ -761,15 +760,14 @@ class Planner(object):
         state_seq_batch = []
         for t in range(act_seqs.shape[0]):
             self.taichi_env.set_state(**self.env_init_state)
-            import pdb; pdb.set_trace()
-            if tool_seqs[t] == 1:
-                self.taichi_env.primitives.primitives[0].r = task_params['tool_size_large']
-                self.taichi_env.primitives.primitives[1].r = task_params['tool_size_large']
-            elif tool_seqs == 0:
-                self.taichi_env.primitives.primitives[0].r = task_params['tool_size_small']
-                self.taichi_env.primitives.primitives[1].r = task_params['tool_size_small']
             state_seq = []
             for i in range(act_seqs.shape[1]):
+                if tool_seqs[0, i, 0, 0].item() == 1:
+                    self.taichi_env.primitives.primitives[0].r = task_params['tool_size_large']
+                    self.taichi_env.primitives.primitives[1].r = task_params['tool_size_large']
+                elif tool_seqs[0, i, 0, 0].item() == 0:
+                    self.taichi_env.primitives.primitives[0].r = task_params['tool_size_small']
+                    self.taichi_env.primitives.primitives[1].r = task_params['tool_size_small']
                 self.taichi_env.primitives.primitives[0].set_state(0,
                                                                    init_pose_seqs[t, i, task_params["gripper_mid_pt"],
                                                                    :7])
