@@ -761,6 +761,7 @@ class Planner(object):
         state_seq_batch = []
         for t in range(act_seqs.shape[0]):
             self.taichi_env.set_state(**self.env_init_state)
+            import pdb; pdb.set_trace()
             if tool_seqs[t] == 1:
                 self.taichi_env.primitives.primitives[0].r = task_params['tool_size_large']
                 self.taichi_env.primitives.primitives[1].r = task_params['tool_size_large']
