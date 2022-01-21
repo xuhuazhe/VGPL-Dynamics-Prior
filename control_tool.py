@@ -529,11 +529,10 @@ class Planner(object):
             if init_pose_seq.numel() == 0:
                 init_pose_seq_cur_large = init_pose_seqs_pool_large[0]
                 act_seq_cur_large = act_seqs_pool_large[0, 0, 0].unsqueeze(0).unsqueeze(0)
-                import pdb; pdb.set_trace()
-                tool_seq_cur_large = torch.zeros_like(act_seqs_pool_large[0, 0, 0].unsqueeze(0).unsqueeze(0))
+                tool_seq_cur_large = torch.zeros([1, 3, 1])
                 init_pose_seq_cur_small = init_pose_seqs_pool_small[0]
                 act_seq_cur_small = act_seqs_pool_small[0, 0, 0].unsqueeze(0).unsqueeze(0)
-                tool_seq_cur_small = np.zeros_like(act_seqs_pool_small[0, 0, 0].unsqueeze(0).unsqueeze(0))
+                tool_seq_cur_small = torch.zeros([1, 3, 1])
 
             else:
                 init_pose_seq_cur_large = init_pose_seq
@@ -614,13 +613,13 @@ class Planner(object):
                         act_seq_opt = act_seq_opt_large
                         loss_opt = loss_opt_large
                         state_seq_opt = state_seq_opt_large
-                        tool_seq_opt = torch.ones([1, 1])
+                        tool_seq_opt = torch.ones([1, 1, 1])
                     else:
                         init_pose_seq_opt = init_pose_seqs_pool_small
                         act_seq_opt = act_seq_opt_small
                         loss_opt = loss_opt_small
                         state_seq_opt = state_seq_opt_small
-                        tool_seq_opt = torch.zeros([1, 1])
+                        tool_seq_opt = torch.zeros([1, 1, 1])
 
             elif self.args.opt_algo == "CEM_GD":
                 for j in range(self.args.CEM_opt_iter):
