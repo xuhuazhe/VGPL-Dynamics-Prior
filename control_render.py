@@ -98,7 +98,7 @@ def main():
 
     init_pose_seq = np.load(f"{control_out_dir}/init_pose_seq_opt.npy", allow_pickle=True)
     act_seq = np.load(f"{control_out_dir}/act_seq_opt.npy", allow_pickle=True)
-    if os.path.exists(f"{control_out_dir}/act_seq_opt.npy"):
+    if os.path.exists(f"{control_out_dir}/tool_seq_opt.npy"):
         tool_seq = np.load(f"{control_out_dir}/tool_seq_opt.npy", allow_pickle=True)
     else:
         tool_seq = np.ones([act_seq.shape[0],1,1])
