@@ -21,10 +21,10 @@ from plb.config import load
 from plb.algorithms import sample_data
 
 from sys import platform
-import gc
+import gcu
 
 import taichi as ti
-ti.init(arch=ti.cuda)
+ti.init(arch=ti.cpu)
 
 task_params = {
     "mid_point": np.array([0.5, 0.4, 0.5, 0, 0, 0]),
@@ -62,7 +62,8 @@ def main():
         print("Please specify a valid goal shape name!")
         raise ValueError
 
-    control_out_dir = os.path.join(args.outf, 'control', shape_goal_dir, test_name)
+    parent_dir = os.path.join(args.outf, 'sim_control_final', shape_goal_dir)
+    control_out_dir = os.walk(parent_dir)
     print(control_out_dir)
 
     # set up the env
@@ -111,9 +112,20 @@ def main():
 
     init_pose_seq = np.load(f"{control_out_dir}/init_pose_seq_opt.npy", allow_pickle=True)
     act_seq = np.load(f"{control_out_dir}/act_seq_opt.npy", allow_pickle=True)
+    if os.path.exists(f"{control_out_dir}/act_seq_opt.npy"):
+        tool_seq = np.load(f"{control_out_dir}/tool_seq_opt.npy", allow_pickle=True)
+    else:
+        tool_seq = np.ones([act_seq.shape[0],1,1])
+
     print(init_pose_seq.shape, act_seq.shape)
 
     for i in range(act_seq.shape[0]):
+        if tool_seq[i, 0, 0] == 1:
+            env.primitives.primitives[0].r = task_params['tool_size_large']
+            env.primitives.primitives[1].r = task_params['tool_size_large']
+        else:
+            env.primitives.primitives[0].r = task_params['tool_size_small']
+            env.primitives.primitives[1].r = task_params['tool_size_small']
         env.primitives.primitives[0].set_state(0, init_pose_seq[i, task_params["gripper_mid_pt"], :7])
         env.primitives.primitives[1].set_state(0, init_pose_seq[i, task_params["gripper_mid_pt"], 7:])
         for j in range(act_seq.shape[1]):
