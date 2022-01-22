@@ -608,13 +608,13 @@ class Planner(object):
                     init_pose_seq_opt_small, act_seq_opt_small, loss_opt_small, state_seq_opt_small = self.optimize_action_GD(
                         init_pose_seqs_pool_small, act_seqs_pool_small, reward_seqs_small, state_cur, state_goal, size='small')
                     if loss_opt_large <= loss_opt_small:
-                        init_pose_seq_opt = init_pose_seqs_opt_large
+                        init_pose_seq_opt = init_pose_seq_opt_large
                         act_seq_opt = act_seq_opt_large
                         loss_opt = loss_opt_large
                         state_seq_opt = state_seq_opt_large
                         tool_seq_opt = torch.ones([1, 1, 1])
                     else:
-                        init_pose_seq_opt = init_pose_seqs_opt_small
+                        init_pose_seq_opt = init_pose_seq_opt_small
                         act_seq_opt = act_seq_opt_small
                         loss_opt = loss_opt_small
                         state_seq_opt = state_seq_opt_small
