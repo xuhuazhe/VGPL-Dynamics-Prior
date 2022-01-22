@@ -30,11 +30,5 @@ python control_render.py \
 	--CEM_opt_iter 3 \
 	--CEM_init_pose_sample_size 80 \
 	--CEM_gripper_rate_sample_size 4 \
-	--GD_batch_size 1
-#	--control_algo $1 \
-#	--n_grips $2 \
-#	--opt_algo $3 \
-#	--correction $4 \
-#	--reward_type $5 \
-#	--goal_shape_name $6 \
-#	--debug $7
+	--GD_batch_size 1 \
+	--goal_shape_name $1
