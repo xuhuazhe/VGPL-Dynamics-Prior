@@ -50,6 +50,7 @@ def main():
 
     parent_dir = os.path.join(args.outf, 'sim_control_final', shape_goal_dir)
     control_out_dir = os.walk(parent_dir)
+    import pdb; pdb.set_trace()
     print(control_out_dir)
 
     # set up the env
