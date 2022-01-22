@@ -126,7 +126,7 @@ def main():
                 true_idx = i * act_seq.shape[1] + j
                 env.step(act_seq[i][j])
                 rgb_img, depth_img = env.render(mode='get')
-                import pdb; pdb.set_trace()
+                # import pdb; pdb.set_trace()
                 rgb_img = np.flip(rgb_img, 0)
                 imageio.imwrite(f"{control_out_dir}/{true_idx:03d}_rgb.png", rgb_img)
 
