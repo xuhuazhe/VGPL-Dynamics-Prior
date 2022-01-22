@@ -469,7 +469,7 @@ class Planner(object):
                 with open(f"{self.rollout_path}/act_seq_{i}.npy", 'wb') as f:
                     np.save(f, act_seq)
 
-                loss_sim = self.visualize_results(init_pose_seq, act_seq, tool_seq.repeat(self.args.predict_horizon,1,1), state_goal_final, i)
+                loss_sim = self.visualize_results(init_pose_seq, act_seq, tool_seq.repeat(self.args.predict_horizon,1,1), state_goal_final, i, self.args.reward_type)
                 model_loss_list.append([i, loss_seq.item()])
                 sim_loss_list.append([i, loss_sim.item()])
                 print(f"=============== Iteration {i} -> model_loss: {loss_seq}; sim_loss: {loss_sim} ===============")
@@ -649,7 +649,7 @@ class Planner(object):
 
         return init_pose_seq, act_seq, loss_seq, tool_seq
 
-    def visualize_results(self, init_pose_seq, act_seq, tool_seq, state_goal, i):
+    def visualize_results(self, init_pose_seq, act_seq, tool_seq, state_goal, i, reward_type):
         model_state_seq = self.model_rollout(self.initial_state, init_pose_seq.unsqueeze(0), act_seq.unsqueeze(0))
         sample_state_seq, sim_state_seq = self.sim_rollout(init_pose_seq.unsqueeze(0), act_seq.unsqueeze(0), tool_seq.unsqueeze(0))
         model_state_seq = add_shapes(model_state_seq[0], init_pose_seq, act_seq, self.n_particle)
@@ -661,7 +661,7 @@ class Planner(object):
         plt_render([sim_state_seq, model_state_seq], state_goal[0], self.n_particle,
                    os.path.join(self.rollout_path, f'anim_{i}.gif'))
 
-        loss_sim = torch.neg(self.evaluate_traj(sample_state_seq[:, :self.n_particle].unsqueeze(0), state_goal))
+        loss_sim = torch.neg(self.evaluate_traj(sample_state_seq[:, :self.n_particle].unsqueeze(0), state_goal, reward_type))
 
         return loss_sim
 
