@@ -82,10 +82,10 @@ def main():
     set_parameters(env, yield_stress=200, E=5e3, nu=0.2) # 200， 5e3, 0.2
 
     def update_camera(env):
-        env.renderer.camera_pos[0] = 0.5 #np.array([float(i) for i in (0.5, 2.5, 0.5)]) #(0.5, 2.5, 0.5)  #.from_numpy(np.array([[0.5, 2.5, 0.5]]))
+        env.renderer.camera_pos[0] = 0.5
         env.renderer.camera_pos[1] = 2.5
-        env.renderer.camera_pos[2] = 2.2
-        env.renderer.camera_rot = (0.8, 0.0)
+        env.renderer.camera_pos[2] = 0.5
+        env.renderer.camera_rot = (1.50, 0.0)
         env.render_cfg.defrost()
         env.render_cfg.camera_pos_1 = (0.5, 2.5, 2.2)
         env.render_cfg.camera_rot_1 = (0.8, 0.)
