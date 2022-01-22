@@ -607,7 +607,6 @@ class Planner(object):
                         init_pose_seqs_pool_large, act_seqs_pool_large, reward_seqs_large, state_cur, state_goal, size='large')
                     init_pose_seq_opt_small, act_seq_opt_small, loss_opt_small, state_seq_opt_small = self.optimize_action_GD(
                         init_pose_seqs_pool_small, act_seqs_pool_small, reward_seqs_small, state_cur, state_goal, size='small')
-                    import pdb; pdb.set_trace()
                     if loss_opt_large <= loss_opt_small:
                         init_pose_seq_opt = init_pose_seqs_pool_large
                         act_seq_opt = act_seq_opt_large
@@ -651,6 +650,7 @@ class Planner(object):
         return init_pose_seq, act_seq, loss_seq, tool_seq
 
     def visualize_results(self, init_pose_seq, act_seq, state_goal, i):
+        import pdb; pdb.set_trace()
         model_state_seq = self.model_rollout(self.initial_state, init_pose_seq.unsqueeze(0), act_seq.unsqueeze(0))
         sample_state_seq, sim_state_seq = self.sim_rollout(init_pose_seq.unsqueeze(0), act_seq.unsqueeze(0))
         model_state_seq = add_shapes(model_state_seq[0], init_pose_seq, act_seq, self.n_particle)
