@@ -461,7 +461,7 @@ class Planner(object):
             for i in range(n_iters):
                 init_pose_seq, act_seq, loss_seq, tool_seq = self.trajectory_optimization_with_horizon(
                     self.args.predict_horizon, i == n_iters - 1, checkpoint=checkpoint)
-                checkpoint = [init_pose_seq[:1 - self.args.predict_horizon], act_seq[:1 - self.args.predict_horizon], tool_seq[:1 - self.args.predict_horizon]]
+                checkpoint = [init_pose_seq[:1 - self.args.predict_horizon], act_seq[:1 - self.args.predict_horizon], tool_seq]
 
                 with open(f"{self.rollout_path}/init_pose_seq_{i}.npy", 'wb') as f:
                     np.save(f, init_pose_seq)
