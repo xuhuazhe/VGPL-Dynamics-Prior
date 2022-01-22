@@ -398,8 +398,8 @@ class Planner(object):
 
         if args.debug:
             self.batch_size = 1
-            self.sample_size = 8
-            self.CEM_init_pose_sample_size = 8
+            self.sample_size = 4
+            self.CEM_init_pose_sample_size = 4
             self.CEM_gripper_rate_sample_size = 4
 
     @profile
@@ -461,7 +461,7 @@ class Planner(object):
             for i in range(n_iters):
                 init_pose_seq, act_seq, loss_seq, tool_seq = self.trajectory_optimization_with_horizon(
                     self.args.predict_horizon, i == n_iters - 1, checkpoint=checkpoint)
-                checkpoint = [init_pose_seq[:1 - self.args.predict_horizon], act_seq[:1 - self.args.predict_horizon], tool_seq[:1 - self.args.predict_horizon]]
+                checkpoint = [init_pose_seq[:1 - self.args.predict_horizon], act_seq[:1 - self.args.predict_horizon], tool_seq]
 
                 with open(f"{self.rollout_path}/init_pose_seq_{i}.npy", 'wb') as f:
                     np.save(f, init_pose_seq)
@@ -469,7 +469,7 @@ class Planner(object):
                 with open(f"{self.rollout_path}/act_seq_{i}.npy", 'wb') as f:
                     np.save(f, act_seq)
 
-                loss_sim = self.visualize_results(init_pose_seq, act_seq, state_goal_final, i)
+                loss_sim = self.visualize_results(init_pose_seq, act_seq, tool_seq.repeat(self.args.predict_horizon,1,1), state_goal_final, i, self.args.reward_type)
                 model_loss_list.append([i, loss_seq.item()])
                 sim_loss_list.append([i, loss_sim.item()])
                 print(f"=============== Iteration {i} -> model_loss: {loss_seq}; sim_loss: {loss_sim} ===============")
@@ -549,8 +549,10 @@ class Planner(object):
             # else:
             #     init_pose_seq_cur_small = init_pose_seq_small
             #     act_seq_cur_small = act_seq_small
-
+            # try:
             state_cur_sim = self.sim_rollout(init_pose_seq_cur_large.unsqueeze(0), act_seq_cur_large.unsqueeze(0), tool_seq_cur_large.unsqueeze(0))[0].squeeze()
+            # except:
+            #     import pdb; pdb.set_trace()
             # state_cur_sim_small = self.sim_rollout(init_pose_seq_cur_small.unsqueeze(0), act_seq_cur_small.unsqueeze(0), size='small')[0].squeeze()
             state_cur_sim_particles = state_cur_sim[:, :self.n_particle].clone()
             # state_cur_sim_particles_small = state_cur_sim_small[:, :self.n_particle].clone()
@@ -608,17 +610,18 @@ class Planner(object):
                     init_pose_seq_opt_small, act_seq_opt_small, loss_opt_small, state_seq_opt_small = self.optimize_action_GD(
                         init_pose_seqs_pool_small, act_seqs_pool_small, reward_seqs_small, state_cur, state_goal, size='small')
                     if loss_opt_large <= loss_opt_small:
-                        init_pose_seq_opt = init_pose_seqs_pool_large
+                        init_pose_seq_opt = init_pose_seq_opt_large
                         act_seq_opt = act_seq_opt_large
                         loss_opt = loss_opt_large
                         state_seq_opt = state_seq_opt_large
                         tool_seq_opt = torch.ones([1, 1, 1])
                     else:
-                        init_pose_seq_opt = init_pose_seqs_pool_small
+                        init_pose_seq_opt = init_pose_seq_opt_small
                         act_seq_opt = act_seq_opt_small
                         loss_opt = loss_opt_small
                         state_seq_opt = state_seq_opt_small
                         tool_seq_opt = torch.zeros([1, 1, 1])
+
 
             elif self.args.opt_algo == "CEM_GD":
                 for j in range(self.args.CEM_opt_iter):
@@ -636,7 +639,6 @@ class Planner(object):
             else:
                 raise NotImplementedError
 
-            # pdb.set_trace()
             if not self.args.subgoal and correction:
                 init_pose_seq_opt = init_pose_seq_opt[0].unsqueeze(0)
                 act_seq_opt = act_seq_opt[0].unsqueeze(0)
@@ -645,14 +647,13 @@ class Planner(object):
             act_seq = torch.cat((act_seq, act_seq_opt.clone()))
             tool_seq = torch.cat((tool_seq, tool_seq_opt.clone()))
             loss_seq = loss_opt.clone()
-            import pdb; pdb.set_trace()
             if not correction: break
 
         return init_pose_seq, act_seq, loss_seq, tool_seq
 
-    def visualize_results(self, init_pose_seq, act_seq, state_goal, i):
+    def visualize_results(self, init_pose_seq, act_seq, tool_seq, state_goal, i, reward_type):
         model_state_seq = self.model_rollout(self.initial_state, init_pose_seq.unsqueeze(0), act_seq.unsqueeze(0))
-        sample_state_seq, sim_state_seq = self.sim_rollout(init_pose_seq.unsqueeze(0), act_seq.unsqueeze(0))
+        sample_state_seq, sim_state_seq = self.sim_rollout(init_pose_seq.unsqueeze(0), act_seq.unsqueeze(0), tool_seq.unsqueeze(0))
         model_state_seq = add_shapes(model_state_seq[0], init_pose_seq, act_seq, self.n_particle)
         sim_state_seq = add_shapes(sim_state_seq[0], init_pose_seq, act_seq, self.n_particle)
 
@@ -662,7 +663,7 @@ class Planner(object):
         plt_render([sim_state_seq, model_state_seq], state_goal[0], self.n_particle,
                    os.path.join(self.rollout_path, f'anim_{i}.gif'))
 
-        loss_sim = torch.neg(self.evaluate_traj(sample_state_seq[:, :self.n_particle].unsqueeze(0), state_goal))
+        loss_sim = torch.neg(self.evaluate_traj(sample_state_seq[:, :self.n_particle].unsqueeze(0), state_goal, reward_type))
 
         return loss_sim
 
@@ -1191,8 +1192,10 @@ class Planner(object):
             init_pose_seq_opt.append(init_pose)
 
         init_pose_seq_opt = torch.stack(init_pose_seq_opt)
-
-        gripper_rate_opt = torch.clamp(gripper_rates[idx[-1]], min=0, max=task_params["gripper_rate_limits"][1])
+        if size == 'large':
+            gripper_rate_opt = torch.clamp(gripper_rates[idx[-1]], min=0, max=task_params["gripper_rate_limits_large"][1])
+        elif size == 'small':
+            gripper_rate_opt = torch.clamp(gripper_rates[idx[-1]], min=0, max=task_params["gripper_rate_limits_small"][1])
         act_seq_opt = get_action_seq_from_pose(init_pose_seq_opt, gripper_rate_opt)
 
         print(
