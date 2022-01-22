@@ -636,7 +636,7 @@ class Planner(object):
             else:
                 raise NotImplementedError
 
-            # pdb.set_trace()
+            import pdb; pdb.set_trace()
             if not self.args.subgoal and correction:
                 init_pose_seq_opt = init_pose_seq_opt[0].unsqueeze(0)
                 act_seq_opt = act_seq_opt[0].unsqueeze(0)
