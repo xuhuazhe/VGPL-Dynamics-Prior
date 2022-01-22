@@ -984,7 +984,6 @@ class Planner(object):
         n_batch = int(math.ceil(best_k / self.args.GD_batch_size))
         reward_list = None
         model_state_seq_list = None
-        import pdb; pdb.set_trace()
         for b in range(n_batch):
             print(f"Batch {b}/{n_batch}:")
 

@@ -1191,6 +1191,7 @@ class Planner(object):
             init_pose_seq_opt.append(init_pose)
 
         init_pose_seq_opt = torch.stack(init_pose_seq_opt)
+        import pdb; pdb.set_trace()
         if size == 'large':
             gripper_rate_opt = torch.clamp(gripper_rates[idx[-1]], min=0, max=task_params["gripper_rate_limits_large"][1])
         elif size == 'small':
