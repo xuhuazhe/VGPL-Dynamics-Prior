@@ -607,6 +607,7 @@ class Planner(object):
                         init_pose_seqs_pool_large, act_seqs_pool_large, reward_seqs_large, state_cur, state_goal, size='large')
                     init_pose_seq_opt_small, act_seq_opt_small, loss_opt_small, state_seq_opt_small = self.optimize_action_GD(
                         init_pose_seqs_pool_small, act_seqs_pool_small, reward_seqs_small, state_cur, state_goal, size='small')
+                    import pdb; pdb.set_trace()
                     if loss_opt_large <= loss_opt_small:
                         init_pose_seq_opt = init_pose_seqs_pool_large
                         act_seq_opt = act_seq_opt_large
@@ -645,7 +646,6 @@ class Planner(object):
             act_seq = torch.cat((act_seq, act_seq_opt.clone()))
             tool_seq = torch.cat((tool_seq, tool_seq_opt.clone()))
             loss_seq = loss_opt.clone()
-            import pdb; pdb.set_trace()
             if not correction: break
 
         return init_pose_seq, act_seq, loss_seq, tool_seq
