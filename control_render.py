@@ -1,27 +1,13 @@
 import os
-import math
 import numpy as np
-import pandas as pd
-import torch
-from tqdm import tqdm, trange
-import copy
 import imageio
 
-from matplotlib import cm
-import matplotlib.pyplot as plt
-import pdb
 
 from config import gen_args
-from data_utils import load_data, get_scene_info, get_env_group, prepare_input
-from models import Model, EarthMoverLoss, L1ShapeLoss
 from utils import create_instance_colors, set_seed,  Tee, count_parameters
 
 from plb.engine.taichi_env import TaichiEnv
 from plb.config import load
-from plb.algorithms import sample_data
-
-from sys import platform
-import gcu
 
 import taichi as ti
 ti.init(arch=ti.cpu)
