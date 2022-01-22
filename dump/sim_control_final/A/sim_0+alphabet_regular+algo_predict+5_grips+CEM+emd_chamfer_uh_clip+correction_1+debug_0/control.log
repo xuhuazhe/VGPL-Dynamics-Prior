@@ -1,0 +1,349 @@
+ENV:
+  loss:
+    soft_contact: False
+    target_path: envs/assets/Chopsticks3D-v1.npy
+    weight:
+      contact: 1
+      density: 10
+      sdf: 10
+  n_observed_particles: 200
+PRIMITIVES: [{'shape': 'Capsule', 'h': 0.2, 'r': 0.045, 'init_pos': '(0.35, 0.4, 0.5)', 'init_rot': '(1., 0., 0., 0.)', 'color': '(0.8, 0.8, 0.8)', 'friction': 1.0, 'action': {'dim': 6, 'scale': '(0.02, 0.02, 0.02, 0.04, 0.04, 0.04)'}}, {'shape': 'Capsule', 'h': 0.2, 'r': 0.045, 'init_pos': '(0.65, 0.4, 0.5)', 'init_rot': '(1., 0., 0., 0.)', 'color': '(0.8, 0.8, 0.8)', 'friction': 1.0, 'action': {'dim': 6, 'scale': '(0.02, 0.02, 0.02, 0.04, 0.04, 0.04)'}}, {'shape': 'Capsule', 'h': 0.13, 'r': 0.025, 'init_pos': '(0.5, 0.1, 0.5)', 'init_rot': '(1., 0., 0., 0.)', 'color': '(0.2, 0.2, 0.2)', 'friction': 15.0}]
+RENDERER:
+  bake_size: 6
+  camera_pos: (0.5, 1.2, 4.0)
+  camera_pos_1: (0.5, 2.5, 2.2)
+  camera_pos_2: (0.5, 2.5, 2.2)
+  camera_pos_3: (0.5, 2.5, 2.2)
+  camera_pos_4: (0.5, 2.5, 2.2)
+  camera_rot: (0.2, 0)
+  camera_rot_1: (0.8, 0.0)
+  camera_rot_2: (0.8, 0.0)
+  camera_rot_3: (0.8, 0.0)
+  camera_rot_4: (0.8, 0.0)
+  dx: 0.006666666666666667
+  image_res: (512, 512)
+  light_direction: (2.0, 1.0, 0.7)
+  max_num_particles: 1000000
+  max_ray_depth: 2
+  sdf_threshold: 0.20720000000000002
+  spp: 50
+  target_res: (64, 64, 64)
+  use_directional_light: False
+  use_roulette: False
+  voxel_res: (168, 168, 168)
+SHAPES: [{'shape': 'box', 'width': '(0.25, 0.2, 0.25)', 'init_pos': '(0.5, 0.1, 0.5)', 'n_particles': 20000, 'color': '((150<<8)+ (150<<16))'}]
+SIMULATOR:
+  E: 5000.0
+  dim: 3
+  dtype: float64
+  gravity: (0, -5, 0)
+  ground_friction: 100.0
+  max_steps: 1024
+  n_particles: 9000
+  nu: 0.2
+  quality: 1
+  yield_stress: 4000.0
+VARIANTS: [{'ENV': {'loss': {'target_path': 'envs/assets/gripper-v1.npy'}}}]
+Building primitive
+action:
+  dim: 6
+  scale: (0.02, 0.02, 0.02, 0.04, 0.04, 0.04)
+color: (0.8, 0.8, 0.8)
+friction: 1.0
+h: 0.2
+init_pos: (0.35, 0.4, 0.5)
+init_rot: (1.0, 0.0, 0.0, 0.0)
+lower_bound: (0.0, 0.0, 0.0)
+r: 0.045
+shape: Capsule
+upper_bound: (1.0, 1.0, 1.0)
+variations: None
+Building primitive
+action:
+  dim: 6
+  scale: (0.02, 0.02, 0.02, 0.04, 0.04, 0.04)
+color: (0.8, 0.8, 0.8)
+friction: 1.0
+h: 0.2
+init_pos: (0.65, 0.4, 0.5)
+init_rot: (1.0, 0.0, 0.0, 0.0)
+lower_bound: (0.0, 0.0, 0.0)
+r: 0.045
+shape: Capsule
+upper_bound: (1.0, 1.0, 1.0)
+variations: None
+Building primitive
+action:
+  dim: 0
+  scale: ()
+color: (0.2, 0.2, 0.2)
+friction: 15.0
+h: 0.13
+init_pos: (0.5, 0.1, 0.5)
+init_rot: (1.0, 0.0, 0.0, 0.0)
+lower_bound: (0.0, 0.0, 0.0)
+r: 0.025
+shape: Capsule
+upper_bound: (1.0, 1.0, 1.0)
+variations: None
+{'width': (0.25, 0.2, 0.25), 'init_pos': (0.5, 0.1, 0.5), 'n_particles': 20000, 'color': 9868800}
+Initialize Renderer
+bake_size: 6  
+camera_pos: (0.5, 1.2, 4.0)  
+camera_pos_1: (0.5, 2.5, 2.2)  
+camera_pos_2: (0.5, 2.5, 2.2)  
+camera_pos_3: (0.5, 2.5, 2.2)  
+camera_pos_4: (0.5, 2.5, 2.2)  
+camera_rot: (0.2, 0)  
+camera_rot_1: (0.8, 0.0)  
+camera_rot_2: (0.8, 0.0)  
+camera_rot_3: (0.8, 0.0)  
+camera_rot_4: (0.8, 0.0)  
+dx: 0.006666666666666667  
+image_res: (512, 512)  
+light_direction: (2.0, 1.0, 0.7)  
+max_num_particles: 1000000  
+max_ray_depth: 2  
+sdf_threshold: 0.20720000000000002  
+spp: 50  
+target_res: (64, 64, 64)  
+use_directional_light: False  
+use_roulette: False  
+voxel_res: (168, 168, 168)
+[Taichi] materializing...
+model_kp #params: 443560
+GT shape: init pose: (1, 3, 11, 14); actions: (1, 3, 40, 12)
+GT init pose: [[0.76359501 0.14       0.70473839 1.         0.         0.
+  0.        ]
+ [0.13751299 0.14       0.56262855 1.         0.         0.
+  0.        ]
+ [0.20403418 0.14       0.74794012 1.         0.         0.
+  0.        ]]
+=============== 1/2 ===============
+[Open3D DEBUG] Input Points / Samples: 49783 / 31818
+[Open3D DEBUG] #   Got kernel density: 0.0408721 (s), 4456.95 (MB) / 4456.95 (MB) / 4492 (MB)
+[Open3D DEBUG] #     Got normal field: 0.120543 (s), 4458.7 (MB) / 4458.7 (MB) / 4492 (MB)
+[Open3D DEBUG] Point weight / Estimated Area: 1.997653e-05 / 9.944913e-01
+[Open3D DEBUG] #       Finalized tree: 0.224376 (s), 4458.95 (MB) / 4458.95 (MB) / 4492 (MB)
+[Open3D DEBUG] #  Set FEM constraints: 0.229202 (s), 4459.28 (MB) / 4459.28 (MB) / 4492 (MB)
+[Open3D DEBUG] #Set point constraints: 0.0525708 (s), 4459.28 (MB) / 4459.28 (MB) / 4492 (MB)
+[Open3D DEBUG] Leaf Nodes / Active Nodes / Ghost Nodes: 336414 / 382016 / 2457
+[Open3D DEBUG] Memory Usage: 4459.277 MB
+[Open3D DEBUG] # Linear system solved: 1.09825 (s), 4459.28 (MB) / 4459.28 (MB) / 4492 (MB)
+[Open3D DEBUG] Got average: 0.0129049 (s), 4459.28 (MB) / 4459.28 (MB) / 4492 (MB)
+[Open3D DEBUG] Iso-Value: 4.966238e-01 = 2.472342e+04 / 4.978300e+04
+[Open3D DEBUG] #          Total Solve:      18.6 (s),    4482.1 (MB)
+TriangleMesh with 51100 points and 102188 triangles.
+state_cur: torch.Size([4, 300, 3]), state_goal: torch.Size([1, 300, 3])
+sampling: max: -0.0287, mean: -0.0368, std: 0.0035
+Selected top reward seqs: tensor([-0.0321, -0.0320, -0.0318, -0.0318, -0.0318, -0.0314, -0.0311, -0.0308,
+        -0.0307, -0.0307, -0.0305, -0.0303, -0.0300, -0.0297, -0.0296, -0.0295,
+        -0.0294, -0.0294, -0.0294, -0.0287])
+Init pose seq pool shape: torch.Size([640, 2, 11, 14]); Act seq pool shape: torch.Size([640, 2, 40, 12])
+Selected top reward seqs: tensor([-0.0281, -0.0281, -0.0281, -0.0281, -0.0281, -0.0281, -0.0281, -0.0280,
+        -0.0280, -0.0280, -0.0280, -0.0280, -0.0280, -0.0279, -0.0279, -0.0279,
+        -0.0279, -0.0279, -0.0279, -0.0279, -0.0279, -0.0279, -0.0279, -0.0278,
+        -0.0277, -0.0277, -0.0277, -0.0277, -0.0276, -0.0276, -0.0275, -0.0275,
+        -0.0274, -0.0274, -0.0273, -0.0273, -0.0272, -0.0271, -0.0271, -0.0271,
+        -0.0271, -0.0270, -0.0270, -0.0270, -0.0269, -0.0269, -0.0267, -0.0267,
+        -0.0266, -0.0265, -0.0265, -0.0264, -0.0262, -0.0259, -0.0259, -0.0259,
+        -0.0258, -0.0257, -0.0257, -0.0256, -0.0252, -0.0251, -0.0247, -0.0244])
+Init pose seq pool shape: torch.Size([776, 2, 11, 14]); Act seq pool shape: torch.Size([776, 2, 40, 12])
+Selected idx: 768 with reward -0.02430904470384121
+[Open3D DEBUG] Input Points / Samples: 51271 / 45199
+[Open3D DEBUG] #   Got kernel density: 0.14819 (s), 5974.03 (MB) / 5974.03 (MB) / 6353 (MB)
+[Open3D DEBUG] #     Got normal field: 0.180413 (s), 5976.81 (MB) / 5976.81 (MB) / 6353 (MB)
+[Open3D DEBUG] Point weight / Estimated Area: 6.029744e-05 / 3.091510e+00
+[Open3D DEBUG] #       Finalized tree: 0.463453 (s), 5976.81 (MB) / 5976.81 (MB) / 6353 (MB)
+[Open3D DEBUG] #  Set FEM constraints: 0.400512 (s), 5976.81 (MB) / 5976.81 (MB) / 6353 (MB)
+[Open3D DEBUG] #Set point constraints: 0.123987 (s), 5976.81 (MB) / 5976.81 (MB) / 6353 (MB)
+[Open3D DEBUG] Leaf Nodes / Active Nodes / Ghost Nodes: 586965 / 524664 / 146153
+[Open3D DEBUG] Memory Usage: 5976.809 MB
+[Open3D DEBUG] # Linear system solved: 1.46302 (s), 5976.81 (MB) / 5976.81 (MB) / 6353 (MB)
+[Open3D DEBUG] Got average: 0.0203800 (s), 5976.81 (MB) / 5976.81 (MB) / 6353 (MB)
+[Open3D DEBUG] Iso-Value: 5.015462e-01 = 2.571478e+04 / 5.127100e+04
+[Open3D DEBUG] #          Total Solve:      27.6 (s),    5989.9 (MB)
+TriangleMesh with 83012 points and 165888 triangles.
+EMD: tensor([0.0301], dtype=torch.float64)
+Chamfer: tensor([0.0377], dtype=torch.float64)
+=============== Iteration 0 -> model_loss: tensor([0.0243]); sim_loss: tensor([0.0309], dtype=torch.float64) ===============
+=============== 1/2 ===============
+[Open3D DEBUG] Input Points / Samples: 50308 / 40507
+[Open3D DEBUG] #   Got kernel density: 0.0191009 (s), 6000.74 (MB) / 6000.74 (MB) / 6353 (MB)
+[Open3D DEBUG] #     Got normal field: 0.168672 (s), 6001.15 (MB) / 6001.15 (MB) / 6353 (MB)
+[Open3D DEBUG] Point weight / Estimated Area: 3.916943e-05 / 1.970536e+00
+[Open3D DEBUG] #       Finalized tree: 0.381087 (s), 6001.15 (MB) / 6001.15 (MB) / 6353 (MB)
+[Open3D DEBUG] #  Set FEM constraints: 0.36626 (s), 6001.15 (MB) / 6001.15 (MB) / 6353 (MB)
+[Open3D DEBUG] #Set point constraints: 0.101266 (s), 6001.15 (MB) / 6001.15 (MB) / 6353 (MB)
+[Open3D DEBUG] Leaf Nodes / Active Nodes / Ghost Nodes: 514655 / 538320 / 49857
+[Open3D DEBUG] Memory Usage: 6001.152 MB
+[Open3D DEBUG] # Linear system solved: 1.27587 (s), 6001.15 (MB) / 6001.15 (MB) / 6353 (MB)
+[Open3D DEBUG] Got average: 0.036571 (s), 6001.15 (MB) / 6001.15 (MB) / 6353 (MB)
+[Open3D DEBUG] Iso-Value: 5.034107e-01 = 2.532559e+04 / 5.030800e+04
+[Open3D DEBUG] #          Total Solve:      20.0 (s),    6019.9 (MB)
+TriangleMesh with 82179 points and 164358 triangles.
+state_cur: torch.Size([4, 300, 3]), state_goal: torch.Size([1, 300, 3])
+sampling: max: -0.0255, mean: -0.0342, std: 0.0039
+Selected top reward seqs: tensor([-0.0287, -0.0284, -0.0277, -0.0276, -0.0275, -0.0275, -0.0274, -0.0274,
+        -0.0273, -0.0273, -0.0271, -0.0271, -0.0270, -0.0270, -0.0269, -0.0265,
+        -0.0260, -0.0259, -0.0259, -0.0255])
+Init pose seq pool shape: torch.Size([640, 2, 11, 14]); Act seq pool shape: torch.Size([640, 2, 40, 12])
+Selected top reward seqs: tensor([-0.0257, -0.0257, -0.0257, -0.0257, -0.0257, -0.0257, -0.0257, -0.0257,
+        -0.0257, -0.0257, -0.0257, -0.0257, -0.0257, -0.0257, -0.0256, -0.0256,
+        -0.0256, -0.0256, -0.0256, -0.0256, -0.0256, -0.0256, -0.0256, -0.0255,
+        -0.0255, -0.0255, -0.0255, -0.0255, -0.0255, -0.0255, -0.0255, -0.0254,
+        -0.0254, -0.0254, -0.0254, -0.0254, -0.0254, -0.0254, -0.0254, -0.0253,
+        -0.0253, -0.0253, -0.0253, -0.0253, -0.0252, -0.0252, -0.0252, -0.0252,
+        -0.0252, -0.0252, -0.0251, -0.0251, -0.0250, -0.0250, -0.0249, -0.0249,
+        -0.0249, -0.0248, -0.0248, -0.0248, -0.0247, -0.0247, -0.0246, -0.0246])
+Init pose seq pool shape: torch.Size([776, 2, 11, 14]); Act seq pool shape: torch.Size([776, 2, 40, 12])
+Selected idx: 759 with reward -0.024095023050904274
+[Open3D DEBUG] Input Points / Samples: 52132 / 43651
+[Open3D DEBUG] #   Got kernel density: 0.0489631 (s), 6071.99 (MB) / 6071.99 (MB) / 6410 (MB)
+[Open3D DEBUG] #     Got normal field: 0.188189 (s), 6073.19 (MB) / 6073.19 (MB) / 6410 (MB)
+[Open3D DEBUG] Point weight / Estimated Area: 4.442440e-05 / 2.315933e+00
+[Open3D DEBUG] #       Finalized tree: 0.660439 (s), 6073.36 (MB) / 6073.36 (MB) / 6410 (MB)
+[Open3D DEBUG] #  Set FEM constraints: 0.33276 (s), 6073.36 (MB) / 6073.36 (MB) / 6410 (MB)
+[Open3D DEBUG] #Set point constraints: 0.131783 (s), 6073.36 (MB) / 6073.36 (MB) / 6410 (MB)
+[Open3D DEBUG] Leaf Nodes / Active Nodes / Ghost Nodes: 563235 / 570816 / 72881
+[Open3D DEBUG] Memory Usage: 6073.363 MB
+[Open3D DEBUG] # Linear system solved: 1.70074 (s), 6073.36 (MB) / 6073.36 (MB) / 6410 (MB)
+[Open3D DEBUG] Got average: 0.016968 (s), 6073.36 (MB) / 6073.36 (MB) / 6410 (MB)
+[Open3D DEBUG] Iso-Value: 5.033613e-01 = 2.624123e+04 / 5.213200e+04
+[Open3D DEBUG] #          Total Solve:      22.8 (s),    6083.2 (MB)
+TriangleMesh with 89008 points and 178008 triangles.
+EMD: tensor([0.0430], dtype=torch.float64)
+Chamfer: tensor([0.0450], dtype=torch.float64)
+=============== Iteration 1 -> model_loss: tensor([0.0241]); sim_loss: tensor([0.0432], dtype=torch.float64) ===============
+=============== 1/2 ===============
+[Open3D DEBUG] Input Points / Samples: 50622 / 42096
+[Open3D DEBUG] #   Got kernel density: 0.0441341 (s), 6089.14 (MB) / 6089.14 (MB) / 6410 (MB)
+[Open3D DEBUG] #     Got normal field: 0.175938 (s), 6089.41 (MB) / 6089.41 (MB) / 6410 (MB)
+[Open3D DEBUG] Point weight / Estimated Area: 4.469971e-05 / 2.262789e+00
+[Open3D DEBUG] #       Finalized tree: 0.367951 (s), 6089.5 (MB) / 6089.5 (MB) / 6410 (MB)
+[Open3D DEBUG] #  Set FEM constraints: 0.305629 (s), 6089.5 (MB) / 6089.5 (MB) / 6410 (MB)
+[Open3D DEBUG] #Set point constraints: 0.103898 (s), 6089.5 (MB) / 6089.5 (MB) / 6410 (MB)
+[Open3D DEBUG] Leaf Nodes / Active Nodes / Ghost Nodes: 526422 / 520632 / 80993
+[Open3D DEBUG] Memory Usage: 6089.504 MB
+[Open3D DEBUG] # Linear system solved: 1.32147 (s), 6089.5 (MB) / 6089.5 (MB) / 6410 (MB)
+[Open3D DEBUG] Got average: 0.016619 (s), 6089.5 (MB) / 6089.5 (MB) / 6410 (MB)
+[Open3D DEBUG] Iso-Value: 5.006233e-01 = 2.534256e+04 / 5.062200e+04
+[Open3D DEBUG] #          Total Solve:      14.4 (s),    6099.2 (MB)
+TriangleMesh with 80005 points and 160010 triangles.
+state_cur: torch.Size([4, 300, 3]), state_goal: torch.Size([1, 300, 3])
+sampling: max: -0.0267, mean: -0.0381, std: 0.0049
+Selected top reward seqs: tensor([-0.0318, -0.0318, -0.0316, -0.0315, -0.0313, -0.0308, -0.0308, -0.0306,
+        -0.0306, -0.0303, -0.0299, -0.0299, -0.0296, -0.0295, -0.0293, -0.0289,
+        -0.0286, -0.0280, -0.0274, -0.0267])
+Init pose seq pool shape: torch.Size([640, 2, 11, 14]); Act seq pool shape: torch.Size([640, 2, 40, 12])
+Selected top reward seqs: tensor([-0.0274, -0.0274, -0.0274, -0.0274, -0.0274, -0.0274, -0.0274, -0.0274,
+        -0.0274, -0.0274, -0.0274, -0.0273, -0.0273, -0.0273, -0.0273, -0.0273,
+        -0.0272, -0.0272, -0.0272, -0.0272, -0.0272, -0.0271, -0.0271, -0.0271,
+        -0.0271, -0.0271, -0.0271, -0.0271, -0.0270, -0.0270, -0.0270, -0.0270,
+        -0.0270, -0.0270, -0.0269, -0.0269, -0.0269, -0.0269, -0.0269, -0.0269,
+        -0.0269, -0.0268, -0.0268, -0.0268, -0.0268, -0.0268, -0.0268, -0.0267,
+        -0.0267, -0.0267, -0.0267, -0.0267, -0.0266, -0.0266, -0.0266, -0.0266,
+        -0.0265, -0.0265, -0.0265, -0.0265, -0.0264, -0.0264, -0.0263, -0.0262])
+Init pose seq pool shape: torch.Size([776, 2, 11, 14]); Act seq pool shape: torch.Size([776, 2, 40, 12])
+Selected idx: 666 with reward -0.02553129754960537
+[Open3D DEBUG] Input Points / Samples: 52471 / 43504
+[Open3D DEBUG] #   Got kernel density: 0.0651209 (s), 6165.43 (MB) / 6165.43 (MB) / 6451 (MB)
+[Open3D DEBUG] #     Got normal field: 0.209882 (s), 6169.77 (MB) / 6169.77 (MB) / 6451 (MB)
+[Open3D DEBUG] Point weight / Estimated Area: 4.043656e-05 / 2.121747e+00
+[Open3D DEBUG] #       Finalized tree: 0.464908 (s), 6169.88 (MB) / 6169.88 (MB) / 6451 (MB)
+[Open3D DEBUG] #  Set FEM constraints: 0.329485 (s), 6169.88 (MB) / 6169.88 (MB) / 6451 (MB)
+[Open3D DEBUG] #Set point constraints: 0.0928099 (s), 6169.88 (MB) / 6169.88 (MB) / 6451 (MB)
+[Open3D DEBUG] Leaf Nodes / Active Nodes / Ghost Nodes: 580392 / 618088 / 45217
+[Open3D DEBUG] Memory Usage: 6169.883 MB
+[Open3D DEBUG] # Linear system solved: 1.4345 (s), 6169.88 (MB) / 6169.88 (MB) / 6451 (MB)
+[Open3D DEBUG] Got average: 0.02723 (s), 6169.88 (MB) / 6169.88 (MB) / 6451 (MB)
+[Open3D DEBUG] Iso-Value: 5.032327e-01 = 2.640512e+04 / 5.247100e+04
+[Open3D DEBUG] #          Total Solve:      22.0 (s),    6181.4 (MB)
+TriangleMesh with 98098 points and 196180 triangles.
+EMD: tensor([0.0406], dtype=torch.float64)
+Chamfer: tensor([0.0463], dtype=torch.float64)
+=============== Iteration 2 -> model_loss: tensor([0.0255]); sim_loss: tensor([0.0412], dtype=torch.float64) ===============
+=============== 1/2 ===============
+[Open3D DEBUG] Input Points / Samples: 51059 / 38783
+[Open3D DEBUG] #   Got kernel density: 0.031575 (s), 6187.67 (MB) / 6187.67 (MB) / 6451 (MB)
+[Open3D DEBUG] #     Got normal field: 0.166042 (s), 6187.68 (MB) / 6187.68 (MB) / 6451 (MB)
+[Open3D DEBUG] Point weight / Estimated Area: 2.823174e-05 / 1.441484e+00
+[Open3D DEBUG] #       Finalized tree: 0.346872 (s), 6187.68 (MB) / 6187.68 (MB) / 6451 (MB)
+[Open3D DEBUG] #  Set FEM constraints: 0.286008 (s), 6187.68 (MB) / 6187.68 (MB) / 6451 (MB)
+[Open3D DEBUG] #Set point constraints: 0.0877991 (s), 6187.68 (MB) / 6187.68 (MB) / 6451 (MB)
+[Open3D DEBUG] Leaf Nodes / Active Nodes / Ghost Nodes: 460489 / 517064 / 9209
+[Open3D DEBUG] Memory Usage: 6187.680 MB
+[Open3D DEBUG] # Linear system solved: 1.48831 (s), 6187.68 (MB) / 6187.68 (MB) / 6451 (MB)
+[Open3D DEBUG] Got average: 0.0209529 (s), 6187.68 (MB) / 6187.68 (MB) / 6451 (MB)
+[Open3D DEBUG] Iso-Value: 5.017986e-01 = 2.562134e+04 / 5.105900e+04
+[Open3D DEBUG] #          Total Solve:      23.3 (s),    6194.6 (MB)
+TriangleMesh with 78556 points and 157120 triangles.
+state_cur: torch.Size([4, 300, 3]), state_goal: torch.Size([1, 300, 3])
+sampling: max: -0.0267, mean: -0.0473, std: 0.0095
+Selected top reward seqs: tensor([-0.0344, -0.0342, -0.0341, -0.0334, -0.0327, -0.0327, -0.0325, -0.0323,
+        -0.0307, -0.0305, -0.0304, -0.0298, -0.0296, -0.0289, -0.0289, -0.0287,
+        -0.0285, -0.0283, -0.0278, -0.0267])
+Init pose seq pool shape: torch.Size([640, 2, 11, 14]); Act seq pool shape: torch.Size([640, 2, 40, 12])
+Selected top reward seqs: tensor([-0.0271, -0.0271, -0.0271, -0.0271, -0.0270, -0.0270, -0.0270, -0.0270,
+        -0.0270, -0.0270, -0.0270, -0.0270, -0.0270, -0.0270, -0.0270, -0.0269,
+        -0.0269, -0.0269, -0.0268, -0.0268, -0.0268, -0.0268, -0.0267, -0.0267,
+        -0.0267, -0.0267, -0.0267, -0.0266, -0.0266, -0.0266, -0.0266, -0.0266,
+        -0.0265, -0.0265, -0.0265, -0.0265, -0.0265, -0.0265, -0.0265, -0.0265,
+        -0.0265, -0.0265, -0.0264, -0.0264, -0.0264, -0.0263, -0.0263, -0.0263,
+        -0.0263, -0.0263, -0.0263, -0.0262, -0.0262, -0.0262, -0.0262, -0.0262,
+        -0.0261, -0.0261, -0.0260, -0.0259, -0.0259, -0.0258, -0.0258, -0.0252])
+Init pose seq pool shape: torch.Size([776, 2, 11, 14]); Act seq pool shape: torch.Size([776, 2, 40, 12])
+Selected idx: 655 with reward -0.024823719635605812
+=============== 2/2 ===============
+[Open3D DEBUG] Input Points / Samples: 53260 / 45395
+[Open3D DEBUG] #   Got kernel density: 0.0678859 (s), 6433.09 (MB) / 6433.09 (MB) / 6502 (MB)
+[Open3D DEBUG] #     Got normal field: 0.209504 (s), 6434.57 (MB) / 6434.57 (MB) / 6502 (MB)
+[Open3D DEBUG] Point weight / Estimated Area: 4.465662e-05 / 2.378412e+00
+[Open3D DEBUG] #       Finalized tree: 0.516895 (s), 6434.57 (MB) / 6434.57 (MB) / 6502 (MB)
+[Open3D DEBUG] #  Set FEM constraints: 0.362003 (s), 6434.57 (MB) / 6434.57 (MB) / 6502 (MB)
+[Open3D DEBUG] #Set point constraints: 0.0906420 (s), 6434.57 (MB) / 6434.57 (MB) / 6502 (MB)
+[Open3D DEBUG] Leaf Nodes / Active Nodes / Ghost Nodes: 592334 / 605280 / 71673
+[Open3D DEBUG] Memory Usage: 6434.574 MB
+[Open3D DEBUG] # Linear system solved: 1.42647 (s), 6434.57 (MB) / 6434.57 (MB) / 6502 (MB)
+[Open3D DEBUG] Got average: 0.0143511 (s), 6434.57 (MB) / 6434.57 (MB) / 6502 (MB)
+[Open3D DEBUG] Iso-Value: 5.031278e-01 = 2.679659e+04 / 5.326000e+04
+[Open3D DEBUG] #          Total Solve:      23.7 (s),    6439.8 (MB)
+TriangleMesh with 99383 points and 198780 triangles.
+state_cur: torch.Size([4, 300, 3]), state_goal: torch.Size([1, 300, 3])
+sampling: max: -0.0338, mean: -0.0500, std: 0.0050
+Selected top reward seqs: tensor([-0.0439, -0.0434, -0.0433, -0.0432, -0.0432, -0.0428, -0.0426, -0.0423,
+        -0.0420, -0.0419, -0.0419, -0.0417, -0.0414, -0.0400, -0.0398, -0.0397,
+        -0.0393, -0.0363, -0.0346, -0.0338])
+Init pose seq pool shape: torch.Size([640, 1, 11, 14]); Act seq pool shape: torch.Size([640, 1, 40, 12])
+Selected top reward seqs: tensor([-0.0346, -0.0346, -0.0345, -0.0345, -0.0345, -0.0345, -0.0344, -0.0343,
+        -0.0343, -0.0343, -0.0343, -0.0343, -0.0343, -0.0342, -0.0342, -0.0342,
+        -0.0341, -0.0341, -0.0340, -0.0340, -0.0340, -0.0340, -0.0340, -0.0340,
+        -0.0339, -0.0339, -0.0339, -0.0339, -0.0339, -0.0338, -0.0338, -0.0338,
+        -0.0338, -0.0337, -0.0337, -0.0336, -0.0335, -0.0335, -0.0335, -0.0335,
+        -0.0335, -0.0334, -0.0334, -0.0334, -0.0333, -0.0333, -0.0332, -0.0332,
+        -0.0331, -0.0330, -0.0330, -0.0330, -0.0330, -0.0330, -0.0329, -0.0329,
+        -0.0328, -0.0327, -0.0327, -0.0326, -0.0325, -0.0325, -0.0323, -0.0323])
+Init pose seq pool shape: torch.Size([776, 1, 11, 14]); Act seq pool shape: torch.Size([776, 1, 40, 12])
+Selected idx: 439 with reward -0.03225338086485863
+[Open3D DEBUG] Input Points / Samples: 52478 / 45954
+[Open3D DEBUG] #   Got kernel density: 0.118407 (s), 6225.57 (MB) / 6439.77 (MB) / 6522 (MB)
+[Open3D DEBUG] #     Got normal field: 0.217090 (s), 6227.35 (MB) / 6439.77 (MB) / 6522 (MB)
+[Open3D DEBUG] Point weight / Estimated Area: 5.089852e-05 / 2.671052e+00
+[Open3D DEBUG] #       Finalized tree: 0.54352 (s), 6227.41 (MB) / 6439.77 (MB) / 6522 (MB)
+[Open3D DEBUG] #  Set FEM constraints: 0.386789 (s), 6227.47 (MB) / 6439.77 (MB) / 6522 (MB)
+[Open3D DEBUG] #Set point constraints: 0.0991311 (s), 6227.47 (MB) / 6439.77 (MB) / 6522 (MB)
+[Open3D DEBUG] Leaf Nodes / Active Nodes / Ghost Nodes: 620922 / 613896 / 95729
+[Open3D DEBUG] Memory Usage: 6227.469 MB
+[Open3D DEBUG] # Linear system solved: 1.4377 (s), 6227.47 (MB) / 6439.77 (MB) / 6522 (MB)
+[Open3D DEBUG] Got average: 0.0263112 (s), 6227.47 (MB) / 6439.77 (MB) / 6522 (MB)
+[Open3D DEBUG] Iso-Value: 5.015469e-01 = 2.632018e+04 / 5.247800e+04
+[Open3D DEBUG] #          Total Solve:      23.4 (s),    6439.8 (MB)
+TriangleMesh with 102241 points and 204538 triangles.
+EMD: tensor([0.0367], dtype=torch.float64)
+Chamfer: tensor([0.0448], dtype=torch.float64)
+=============== Iteration 3 -> model_loss: tensor([0.0323]); sim_loss: tensor([0.0375], dtype=torch.float64) ===============
+torch.Size([2, 11, 14]) torch.Size([2, 40, 12])
+Best init pose: tensor([[0.1011, 0.1400, 0.5780, 1.0000, 0.0000, 0.0000, 0.0000],
+        [0.7955, 0.1400, 0.7940, 1.0000, 0.0000, 0.0000, 0.0000]])
+Best model loss: tensor([0.0243]); Best sim loss: tensor([0.0309], dtype=torch.float64)
+Wrote profile results to control.py.lprof

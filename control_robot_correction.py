@@ -1151,8 +1151,9 @@ def main():
     last_iter = -1
     n_iters = args.n_grips - args.predict_horizon + 1
     while not rospy.is_shutdown():
+        print(f"Spinning at iteration {iter}")
         ros_correction_path = "/scr/hxu/catkin_ws/src/panda_plasticine_pipeline/panda_plasticine_pipeline/dataset/"\
-            + f"ngrip_fixed_robot_1-21/21-Jan-2022-22:03:38.772818/plasticine_{iter}.bag"
+            + f"ngrip_fixed_robot_1-21/21-Jan-2022-22:45:22.061191/plasticine_{iter}.bag"
 
         if iter > last_iter and os.path.exists(ros_correction_path):
             with torch.no_grad():
