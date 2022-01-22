@@ -635,7 +635,7 @@ def prepare_input(positions, n_particle, n_shape, args, var=False, stdreg=0):
             disp2 = np.sqrt(np.sum((pos[:n_particle, [0,2]] - pos[n_particle + 2, [0,2]]) ** 2, 1))
             # disp2 = np.sqrt(np.sum((pos[:n_particle] - pos[n_particle + 2]) ** 2, 1))
             # np.sqrt(np.sum((pos[:n_particle, :] - pos[n_particle+1, :])**2, axis=1))
-            nodes2 = np.nonzero(disp2 < (args.neighbor_radius + args.gripper_extra_neighbor_radius)[0]
+            nodes2 = np.nonzero(disp2 < (args.neighbor_radius + args.gripper_extra_neighbor_radius))[0]
             # print('visualize prim neighbors')
             # visualize_neighbors(pos, pos, 0, nodes)
             # print(np.sort(dis)[:10])
