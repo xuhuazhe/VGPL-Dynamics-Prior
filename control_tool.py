@@ -619,6 +619,9 @@ class Planner(object):
                         loss_opt = loss_opt_small
                         state_seq_opt = state_seq_opt_small
                         tool_seq_opt = torch.zeros([1, 1, 1])
+                    import pdb;
+                    pdb.set_trace()
+
 
             elif self.args.opt_algo == "CEM_GD":
                 for j in range(self.args.CEM_opt_iter):
@@ -636,7 +639,6 @@ class Planner(object):
             else:
                 raise NotImplementedError
 
-            import pdb; pdb.set_trace()
             if not self.args.subgoal and correction:
                 init_pose_seq_opt = init_pose_seq_opt[0].unsqueeze(0)
                 act_seq_opt = act_seq_opt[0].unsqueeze(0)
@@ -1191,7 +1193,6 @@ class Planner(object):
             init_pose_seq_opt.append(init_pose)
 
         init_pose_seq_opt = torch.stack(init_pose_seq_opt)
-        import pdb; pdb.set_trace()
         if size == 'large':
             gripper_rate_opt = torch.clamp(gripper_rates[idx[-1]], min=0, max=task_params["gripper_rate_limits_large"][1])
         elif size == 'small':
