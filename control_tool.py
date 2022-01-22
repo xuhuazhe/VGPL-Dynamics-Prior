@@ -549,10 +549,10 @@ class Planner(object):
             # else:
             #     init_pose_seq_cur_small = init_pose_seq_small
             #     act_seq_cur_small = act_seq_small
-            try:
-                state_cur_sim = self.sim_rollout(init_pose_seq_cur_large.unsqueeze(0), act_seq_cur_large.unsqueeze(0), tool_seq_cur_large.unsqueeze(0))[0].squeeze()
-            except:
-                import pdb; pdb.set_trace()
+            # try:
+            state_cur_sim = self.sim_rollout(init_pose_seq_cur_large.unsqueeze(0), act_seq_cur_large.unsqueeze(0), tool_seq_cur_large.unsqueeze(0))[0].squeeze()
+            # except:
+            #     import pdb; pdb.set_trace()
             # state_cur_sim_small = self.sim_rollout(init_pose_seq_cur_small.unsqueeze(0), act_seq_cur_small.unsqueeze(0), size='small')[0].squeeze()
             state_cur_sim_particles = state_cur_sim[:, :self.n_particle].clone()
             # state_cur_sim_particles_small = state_cur_sim_small[:, :self.n_particle].clone()
