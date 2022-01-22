@@ -88,9 +88,9 @@ def main():
 
         def update_camera(env):
             env.renderer.camera_pos[0] = 0.5
-            env.renderer.camera_pos[1] = 2.5
+            env.renderer.camera_pos[1] = 2.2
             env.renderer.camera_pos[2] = 0.5
-            env.renderer.camera_rot = (1.5, 0.0)
+            env.renderer.camera_rot = (np.pi/2, 0.0)
             env.render_cfg.defrost()
             env.render_cfg.camera_pos_1 = (0.5, 2.5, 2.2)
             env.render_cfg.camera_rot_1 = (0.8, 0.)
@@ -128,7 +128,7 @@ def main():
                 rgb_img, depth_img = env.render(mode='get')
                 imageio.imwrite(f"{control_out_dir}/{true_idx:03d}_rgb.png", rgb_img)
 
-        os.system(f'ffmpeg -y -i {control_out_dir}/%03d_rgb.png -c:v libx264 -vf fps=25 -pix_fmt yuv420p {control_out_dir}/vid000.mp4')
+        os.system(f'ffmpeg -y -i {control_out_dir}/%03d_rgb.png -c:v libx264 -vf vflip fps=25 -pix_fmt yuv420p {control_out_dir}/vid000.mp4')
 
 
 if __name__ == "__main__":
