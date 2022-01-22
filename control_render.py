@@ -49,7 +49,7 @@ def main():
         raise ValueError
 
     parent_dir = os.path.join(args.outf, 'sim_control_final', shape_goal_dir)
-    control_out_dir = os.walk(parent_dir)
+    control_out_dir = os.path.join(parent_dir, os.listdir(parent_dir)[0])
     import pdb; pdb.set_trace()
     print(control_out_dir)
 
