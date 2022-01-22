@@ -1072,7 +1072,7 @@ class Planner(object):
             mid_point_clipped_opt.append(mid_point_clipped)
             init_pose = get_pose(mid_point_clipped, angles[idx[-1], i])
             init_pose_seq_opt.append(init_pose)
-
+        import pdb; pdb.set_trace()
         init_pose_seq_opt = torch.stack(init_pose_seq_opt)
 
         gripper_rate_opt = torch.clamp(gripper_rates[idx[-1]], min=0, max=task_params["gripper_rate_limits"][1])
