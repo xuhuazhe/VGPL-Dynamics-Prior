@@ -469,6 +469,10 @@ class Planner(object):
                 with open(f"{self.rollout_path}/act_seq_{i}.npy", 'wb') as f:
                     np.save(f, act_seq)
 
+                with open(f"{self.rollout_path}/tool_seq_{i}.npy", 'wb') as f:
+                    np.save(f, tool_seq)
+                print(f"chosen_tool_{tool_seq}")
+
                 loss_sim = self.visualize_results(init_pose_seq, act_seq, tool_seq.repeat(self.args.predict_horizon,1,1), state_goal_final, i, self.args.reward_type)
                 model_loss_list.append([i, loss_seq.item()])
                 sim_loss_list.append([i, loss_sim.item()])
@@ -495,6 +499,8 @@ class Planner(object):
                 f"cp {os.path.join(self.rollout_path, f'init_pose_seq_{best_idx}.npy')} {os.path.join(self.rollout_path, f'init_pose_seq_opt.npy')}")
             os.system(
                 f"cp {os.path.join(self.rollout_path, f'act_seq_{best_idx}.npy')} {os.path.join(self.rollout_path, f'act_seq_opt.npy')}")
+            os.system(
+                f"cp {os.path.join(self.rollout_path, f'tool_seq_{best_idx}.npy')} {os.path.join(self.rollout_path, f'tool_seq_opt.npy')}")
         return best_init_pose_seq.cpu(), best_act_seq.cpu(), best_model_loss.cpu(), best_sim_loss.cpu()
 
     def trajectory_optimization_with_horizon(self, grip_num, correction, checkpoint=None):
@@ -1269,7 +1275,7 @@ def main():
     if args.gt_action:
         test_name = f'sim_{args.use_sim}+gt_action_{args.gt_action}+{args.reward_type}'
     else:
-        test_name = f'sim_{args.use_sim}+{args.shape_type}+algo_{args.control_algo}+{args.n_grips}_grips+{args.opt_algo}+{args.reward_type}+correction_{args.correction}+debug_{args.debug}'
+        test_name = f'tool_sim_{args.use_sim}+{args.shape_type}+algo_{args.control_algo}+{args.n_grips}_grips+{args.opt_algo}+{args.reward_type}+correction_{args.correction}+debug_{args.debug}'
         # test_name = f'sim_{args.use_sim}+algo_{args.control_algo}+{args.n_grips}_grips+{args.opt_algo}+{args.reward_type}+correction_{args.correction}+debug_{args.debug}'
 
     if len(args.goal_shape_name) > 0 and args.goal_shape_name != 'none':
@@ -1472,11 +1478,14 @@ def main():
     print(f"Best init pose: {init_pose_seq[:, task_params['gripper_mid_pt'], :7]}")
     print(f"Best model loss: {loss_seq}; Best sim loss: {loss_sim_seq}")
 
-    with open(f"{control_out_dir}/init_pose_seq_opt.npy", 'wb') as f:
-        np.save(f, init_pose_seq)
+    # with open(f"{control_out_dir}/init_pose_seq_opt.npy", 'wb') as f:
+    #     np.save(f, init_pose_seq)
 
-    with open(f"{control_out_dir}/act_seq_opt.npy", 'wb') as f:
-        np.save(f, act_seq)
+    # with open(f"{control_out_dir}/act_seq_opt.npy", 'wb') as f:
+    #     np.save(f, act_seq)
+
+    # with open(f"{control_out_dir}/act_seq_opt.npy", 'wb') as f:
+    #     np.save(f, tool_seq)
 
 
 if __name__ == '__main__':

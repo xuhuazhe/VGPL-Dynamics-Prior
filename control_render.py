@@ -1,30 +1,16 @@
 import os
-import math
 import numpy as np
-import pandas as pd
-import torch
-from tqdm import tqdm, trange
-import copy
 import imageio
 
-from matplotlib import cm
-import matplotlib.pyplot as plt
-import pdb
 
 from config import gen_args
-from data_utils import load_data, get_scene_info, get_env_group, prepare_input
-from models import Model, EarthMoverLoss, L1ShapeLoss
 from utils import create_instance_colors, set_seed,  Tee, count_parameters
 
 from plb.engine.taichi_env import TaichiEnv
 from plb.config import load
-from plb.algorithms import sample_data
-
-from sys import platform
-import gc
 
 import taichi as ti
-ti.init(arch=ti.cuda)
+ti.init(arch=ti.gpu)
 
 task_params = {
     "mid_point": np.array([0.5, 0.4, 0.5, 0, 0, 0]),
@@ -36,7 +22,9 @@ task_params = {
     "len_per_grip_back": 10,
     "n_shapes_floor": 9,
     "n_shapes_per_gripper": 11,
-    "gripper_mid_pt": int((11 - 1) / 2)
+    "gripper_mid_pt": int((11 - 1) / 2),
+    "tool_size_small": 0.03,
+    "tool_size_large": 0.045,
 }
 
 def main():
@@ -46,10 +34,10 @@ def main():
     if len(args.outf_control) > 0:
         args.outf = args.outf_control
 
-    if args.gt_action:
-        test_name = f'sim_{args.use_sim}+gt_action_{args.gt_action}+{args.reward_type}'
-    else:
-        test_name = f'sim_{args.use_sim}+algo_{args.control_algo}+{args.n_grips}_grips+{args.opt_algo}+{args.reward_type}+correction_{args.correction}+debug_{args.debug}'
+    # if args.gt_action:
+    #     test_name = f'sim_{args.use_sim}+gt_action_{args.gt_action}+{args.reward_type}'
+    # else:
+    #     test_name = f'sim_{args.use_sim}+algo_{args.control_algo}+{args.n_grips}_grips+{args.opt_algo}+{args.reward_type}+correction_{args.correction}+debug_{args.debug}'
 
     if len(args.goal_shape_name) > 0 and args.goal_shape_name != 'none':
         vid_idx = 0
@@ -62,7 +50,8 @@ def main():
         print("Please specify a valid goal shape name!")
         raise ValueError
 
-    control_out_dir = os.path.join(args.outf, 'control', shape_goal_dir, test_name)
+    parent_dir = os.path.join(args.outf, 'sim_control_final', shape_goal_dir)
+    control_out_dir = os.path.join(parent_dir, os.listdir(parent_dir)[0])
     print(control_out_dir)
 
     # set up the env
@@ -93,10 +82,10 @@ def main():
     set_parameters(env, yield_stress=200, E=5e3, nu=0.2) # 200， 5e3, 0.2
 
     def update_camera(env):
-        env.renderer.camera_pos[0] = 0.5 #np.array([float(i) for i in (0.5, 2.5, 0.5)]) #(0.5, 2.5, 0.5)  #.from_numpy(np.array([[0.5, 2.5, 0.5]]))
+        env.renderer.camera_pos[0] = 0.5
         env.renderer.camera_pos[1] = 2.5
-        env.renderer.camera_pos[2] = 2.2
-        env.renderer.camera_rot = (0.8, 0.0)
+        env.renderer.camera_pos[2] = 0.5
+        env.renderer.camera_rot = (1.50, 0.0)
         env.render_cfg.defrost()
         env.render_cfg.camera_pos_1 = (0.5, 2.5, 2.2)
         env.render_cfg.camera_rot_1 = (0.8, 0.)
@@ -111,9 +100,20 @@ def main():
 
     init_pose_seq = np.load(f"{control_out_dir}/init_pose_seq_opt.npy", allow_pickle=True)
     act_seq = np.load(f"{control_out_dir}/act_seq_opt.npy", allow_pickle=True)
+    if os.path.exists(f"{control_out_dir}/tool_seq_opt.npy"):
+        tool_seq = np.load(f"{control_out_dir}/tool_seq_opt.npy", allow_pickle=True)
+    else:
+        tool_seq = np.ones([act_seq.shape[0],1,1])
+
     print(init_pose_seq.shape, act_seq.shape)
 
     for i in range(act_seq.shape[0]):
+        if tool_seq[i, 0, 0] == 1:
+            env.primitives.primitives[0].r = task_params['tool_size_large']
+            env.primitives.primitives[1].r = task_params['tool_size_large']
+        else:
+            env.primitives.primitives[0].r = task_params['tool_size_small']
+            env.primitives.primitives[1].r = task_params['tool_size_small']
         env.primitives.primitives[0].set_state(0, init_pose_seq[i, task_params["gripper_mid_pt"], :7])
         env.primitives.primitives[1].set_state(0, init_pose_seq[i, task_params["gripper_mid_pt"], 7:])
         for j in range(act_seq.shape[1]):
