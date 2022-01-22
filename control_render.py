@@ -66,7 +66,7 @@ def main():
     env.initialize()
     state = env.get_state()
 
-    for control_out_dir in control_out_list:
+    for index, control_out_dir in enumerate(control_out_list):
         env.set_state(**state)
         taichi_env = env
 
@@ -113,6 +113,7 @@ def main():
         print(init_pose_seq.shape, act_seq.shape)
 
         for i in range(act_seq.shape[0]):
+            print(f"folder {index}, grip {i}")
             if tool_seq[i, 0, 0] == 1:
                 env.primitives.primitives[0].r = task_params['tool_size_large']
                 env.primitives.primitives[1].r = task_params['tool_size_large']
