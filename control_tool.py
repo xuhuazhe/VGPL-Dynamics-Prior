@@ -398,9 +398,9 @@ class Planner(object):
 
         if args.debug:
             self.batch_size = 1
-            self.sample_size = 2
-            self.CEM_init_pose_sample_size = 2
-            self.CEM_gripper_rate_sample_size = 2
+            self.sample_size = 4
+            self.CEM_init_pose_sample_size = 4
+            self.CEM_gripper_rate_sample_size = 4
 
     @profile
     def trajectory_optimization(self):
