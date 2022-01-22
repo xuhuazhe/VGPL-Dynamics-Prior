@@ -22,7 +22,9 @@ task_params = {
     "len_per_grip_back": 10,
     "n_shapes_floor": 9,
     "n_shapes_per_gripper": 11,
-    "gripper_mid_pt": int((11 - 1) / 2)
+    "gripper_mid_pt": int((11 - 1) / 2),
+    "tool_size_small": 0.03,
+    "tool_size_large": 0.045,
 }
 
 def main():
