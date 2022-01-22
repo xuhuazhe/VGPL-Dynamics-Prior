@@ -217,6 +217,8 @@ def gen_args():
 
         if 'small' in args.data_type:
             args.neighbor_radius = 0.035
+        elif 'robot' in args.data_type:
+            args.neighbor_radius = 0.035
         else:
             args.neighbor_radius = 0.05
         args.neighbor_k = 20
