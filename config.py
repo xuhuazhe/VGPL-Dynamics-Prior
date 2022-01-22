@@ -44,6 +44,7 @@ parser.add_argument('--gripperf', default='../PlasticineLab/plb/envs/gripper_fix
 
 # for ablation study
 parser.add_argument('--neighbor_radius', type=float, default=-1)
+parser.add_argument('--gripper_extra_neighbor_radius', type=float, default=-1)
 parser.add_argument('--neighbor_k', type=float, default=-1)
 
 # shape state:
@@ -215,12 +216,15 @@ def gen_args():
         # [particle, floor, prim]
         args.attr_dim = 3
 
+        args.neighbor_radius = 0.05
+        
         if 'small' in args.data_type:
-            args.neighbor_radius = 0.035
+            args.gripper_extra_neighbor_radius = 0.0
         elif 'robot' in args.data_type:
-            args.neighbor_radius = 0.035
+            args.gripper_extra_neighbor_radius = 0.0
         else:
-            args.neighbor_radius = 0.05
+            args.gripper_extra_neighbor_radius = 0.015
+
         args.neighbor_k = 20
 
         suffix = ''
