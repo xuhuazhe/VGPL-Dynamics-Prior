@@ -10,7 +10,7 @@ from plb.engine.taichi_env import TaichiEnv
 from plb.config import load
 
 import taichi as ti
-ti.init(arch=ti.cpu)
+ti.init(arch=ti.gpu)
 
 task_params = {
     "mid_point": np.array([0.5, 0.4, 0.5, 0, 0, 0]),
