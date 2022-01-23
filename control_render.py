@@ -10,6 +10,7 @@ from plb.engine.taichi_env import TaichiEnv
 from plb.config import load
 
 import taichi as ti
+import glob
 ti.init(arch=ti.gpu)
 
 task_params = {
@@ -124,6 +125,9 @@ def main():
                     tool_seq = np.zeros([act_seq.shape[0], 1, 1])
                 else:
                     tool_seq = np.ones([act_seq.shape[0], 1, 1])
+        files = glob.glob(control_out_dir+'/*_rgb.png')
+        for f in files:
+            os.remove(f)
 
         print(init_pose_seq.shape, act_seq.shape)
 
