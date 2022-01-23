@@ -128,6 +128,7 @@ def main():
                 rgb_img, depth_img = env.render(mode='get')
                 # import pdb; pdb.set_trace()
                 rgb_img = np.flip(rgb_img, 0)
+                rgb_img = np.flip(rgb_img, 1)
                 imageio.imwrite(f"{control_out_dir}/{true_idx:03d}_rgb.png", rgb_img)
 
         os.system(
