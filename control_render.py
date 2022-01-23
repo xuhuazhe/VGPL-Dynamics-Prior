@@ -109,7 +109,6 @@ def main():
             if os.path.exists(f"{control_out_dir}/tool_seq_{str(chosen_appendix)}.npy"):
                 tool_seq = np.load(f"{control_out_dir}/tool_seq_{str(chosen_appendix)}.npy", allow_pickle=True)
             else:
-                import pdb; pdb.set_trace()
                 if args.goal_shape_name in small_list:
                     tool_seq = np.zeros([act_seq.shape[0], 1, 1])
                 else:
