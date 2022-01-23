@@ -5,5 +5,5 @@ declare -a arr=("B" "C" "D" "E" "F" "G" "H" "I" "J" "K" "L" "M" "N" "O" "P" "Q" 
 for i in "${arr[@]}"
 do
     echo "$i"
-    sbatch ./scripts/control/control.sh $i
+    sbatch ./scripts/control/control_render.sh $i
 done
