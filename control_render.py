@@ -108,7 +108,7 @@ def main():
             if os.path.exists(f"{control_out_dir}/tool_seq_{str(chosen_appendix)}.npy"):
                 tool_seq = np.load(f"{control_out_dir}/tool_seq_{str(chosen_appendix)}.npy", allow_pickle=True)
             else:
-                if args.goal_shape_name in 'EFKLMNSWZ':
+                if args.goal_shape_name in 'BEFKLMNSWZ':
                     tool_seq = np.zeros([act_seq.shape[0], 1, 1])
                 else:
                     tool_seq = np.ones([act_seq.shape[0], 1, 1])
