@@ -129,13 +129,16 @@ def main():
         files = glob.glob(control_out_dir+'/*_rgb.png')
         for f in files:
             os.remove(f)
+        files = glob.glob(control_out_dir + '/*.mp4')
+        for f in files:
+            os.remove(f)
 
         print(init_pose_seq.shape, act_seq.shape)
-        import pdb; pdb.set_trace()
         if args.goal_shape_name == 'D':
             init_pose_seq = init_pose_seq[1:, :, :]
             act_seq = act_seq[1:, :, :]
             tool_seq = tool_seq[1:, :, :]
+        env.set_state(**state)
         for i in range(act_seq.shape[0]):
             print(f"folder {index}, grip {i}")
             # if args.goal_shape_name == 'D' and i == 0:
