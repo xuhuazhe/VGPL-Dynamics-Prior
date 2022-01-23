@@ -128,7 +128,6 @@ def main():
 
         files = glob.glob(control_out_dir+'/*_rgb.png')
         for f in files:
-            import pdb; pdb.set_trace()
             os.remove(f)
 
         print(init_pose_seq.shape, act_seq.shape)
