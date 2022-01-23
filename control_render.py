@@ -108,15 +108,21 @@ def main():
             if os.path.exists(f"{control_out_dir}/tool_seq_{str(chosen_appendix)}.npy"):
                 tool_seq = np.load(f"{control_out_dir}/tool_seq_{str(chosen_appendix)}.npy", allow_pickle=True)
             else:
-                tool_seq = np.ones([act_seq.shape[0],1,1])
+                if args.goal_shape_name in 'EFKLMNSWZ':
+                    tool_seq = np.zeros([act_seq.shape[0], 1, 1])
+                else:
+                    tool_seq = np.ones([act_seq.shape[0], 1, 1])
         except:
             chosen_appendix = '2'
-            init_pose_seq = np.load(f"{control_out_dir}/init_pose_seq_{str(chosen_appendix)}.npy", allow_pickle=True)
-            act_seq = np.load(f"{control_out_dir}/act_seq_{str(chosen_appendix)}.npy", allow_pickle=True)
-            if os.path.exists(f"{control_out_dir}/tool_seq_{str(chosen_appendix)}.npy"):
-                tool_seq = np.load(f"{control_out_dir}/tool_seq_{str(chosen_appendix)}.npy", allow_pickle=True)
+            init_pose_seq = np.load(f"{control_out_dir}/init_pose_seq_{str(2)}.npy", allow_pickle=True)
+            act_seq = np.load(f"{control_out_dir}/act_seq_{str(2)}.npy", allow_pickle=True)
+            if os.path.exists(f"{control_out_dir}/tool_seq_{str(2)}.npy"):
+                tool_seq = np.load(f"{control_out_dir}/tool_seq_{str(2)}.npy", allow_pickle=True)
             else:
-                tool_seq = np.ones([act_seq.shape[0], 1, 1])
+                if args.goal_shape_name in 'EFKLMNSWZ':
+                    tool_seq = np.zeros([act_seq.shape[0], 1, 1])
+                else:
+                    tool_seq = np.ones([act_seq.shape[0], 1, 1])
 
         print(init_pose_seq.shape, act_seq.shape)
 
