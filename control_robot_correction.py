@@ -335,7 +335,7 @@ def get_gripper_rate_from_action_seq(act_seq):
     return gripper_rate_seq
 
 
-def sample_particles(ros_correction_path, n_points=300, visualize=False):
+def sample_particles(ros_correction_path, depth=4, n_points=300, visualize=False):
     bag = rosbag.Bag(ros_correction_path)
 
     pcd_msgs = []
@@ -362,7 +362,7 @@ def sample_particles(ros_correction_path, n_points=300, visualize=False):
     sample_size = round(5 * n_points)
     sampled_points = np.random.rand(sample_size, 3) * (upper - lower) + lower
 
-    selected_mesh = preprocessing.reconstruct_mesh_from_pcd(rest, algo="poisson", depth=4, visualize=visualize)
+    selected_mesh = preprocessing.reconstruct_mesh_from_pcd(rest, algo="poisson", depth=depth, visualize=visualize)
     # selected_mesh = preprocessing.reconstruct_mesh_from_pcd(cube, algo="alpha_shape", alpha=0.01, visualize=visualize)
     f = SDF(selected_mesh.vertices, selected_mesh.triangles)
     # selected_mesh = preprocessing.reconstruct_mesh_from_pcd(cube, algo="filter", visualize=visualize)
@@ -465,13 +465,16 @@ class Planner(object):
         visualize_points(state_goal_final[-1], self.n_particle, os.path.join(self.rollout_path, f'goal_particles'))
 
         if self.args.control_algo == 'predict':
-            _, selected_points = sample_particles(ros_correction_path, visualize=True)
+            depth = 8 if iter == 0 else 4
+            _, selected_points = sample_particles(ros_correction_path, depth=depth, visualize=True)
 
             # pdb.set_trace()
             # mean and std at the first frame
             if iter == 0:
+                # self.mean_p = np.array([0.437, 0.0, 0.0725])
+                self.std_p = np.array([0.017, 0.017, 0.006])
                 self.mean_p = np.mean(selected_points[:self.n_particle], axis=0)
-                self.std_p = np.std(selected_points[:self.n_particle], axis=0)
+                # self.std_p = np.std(selected_points[:self.n_particle], axis=0)
                 print(f"The first frame: {self.mean_p} +- {self.std_p}")
                 p_stats = np.concatenate((self.mean_p, self.std_p), axis=None).astype(np.float32)
                 with open(f"{self.rollout_path}/p_stats.npy", 'wb') as f:
@@ -1151,9 +1154,11 @@ def main():
     last_iter = -1
     n_iters = args.n_grips - args.predict_horizon + 1
     while not rospy.is_shutdown():
+        if iter == n_iters: break
+
         print(f"Spinning at iteration {iter}")
         ros_correction_path = "/scr/hxu/catkin_ws/src/panda_plasticine_pipeline/panda_plasticine_pipeline/dataset/"\
-            + f"ngrip_fixed_robot_1-21/21-Jan-2022-22:45:22.061191/plasticine_{iter}.bag"
+            + f"ngrip_fixed_robot_1-21/22-Jan-2022-22:25:39.940291/plasticine_{iter}.bag"
 
         if iter > last_iter and os.path.exists(ros_correction_path):
             with torch.no_grad():
@@ -1173,7 +1178,6 @@ def main():
             act_seq_pub.publish(act_seq.numpy().flatten())
 
             # pdb.set_trace()
-            if iter == n_iters: break
 
             last_iter = iter
 

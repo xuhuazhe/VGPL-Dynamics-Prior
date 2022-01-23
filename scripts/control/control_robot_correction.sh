@@ -11,7 +11,7 @@ kernprof -l control_robot_correction.py \
 	--env Gripper \
 	--data_type ngrip_fixed_robot_v4 \
 	--stage control \
-	--outf_control dump/dump_ngrip_fixed_robot_v4/files_dy_20-Jan-2022-04:37:56.857907_nHis4_aug0.05_gt0_seqlen6_emd0.9_chamfer0.1_uh0.0_clip0.0 \
+	--outf_control dump/dump_ngrip_fixed_robot_v4/files_dy_21-Jan-2022-22:33:11.729243_nHis4_aug0.05_gt0_seqlen6_emd0.9_chamfer0.1_uh0.0_clip0.0 \
 	--gripperf ../PlasticineLab/plb/envs/gripper_fixed.yml \
 	--eval_epoch 93 \
 	--eval_iter 681 \
@@ -26,7 +26,7 @@ kernprof -l control_robot_correction.py \
 	--subgoal 0 \
 	--control_sample_size 100 \
 	--control_batch_size 4 \
-	--predict_horizon 1 \
+	--predict_horizon 2 \
 	--CEM_opt_iter 3 \
 	--CEM_init_pose_sample_size 40 \
 	--CEM_gripper_rate_sample_size 4 \

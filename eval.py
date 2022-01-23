@@ -17,7 +17,7 @@ from data_utils import load_data, get_scene_info, normalize_scene_param
 from data_utils import get_env_group, prepare_input, denormalize
 from data_utils import real_sim_remap
 from models import Model
-from utils import train_plot_curves, eval_plot_curves, set_seed, Tee, count_parameters
+from utils import train_plot_curves, eval_plot_curves, eval_plot_curves_with_bar, set_seed, Tee, count_parameters
 from models import EarthMoverLoss, ChamferLoss, UpdatedHausdorffLoss
 
 import matplotlib.pyplot as plt
@@ -357,13 +357,13 @@ def evaluate(args, eval_epoch, eval_iter):
         # vid_path = os.path.join(args.dataf, 'vid', str(idx_episode).zfill(3))
         render_path = os.path.join(args.evalf, 'render', f'vid_{idx_episode}_plt.gif')
 
-        if args.vis == 'plt':
-            if 'robot' in args.data_type:
-                plt_render_robot([p_sample, p_pred], n_particle, render_path)
-            else:
-                plt_render([p_gt, p_sample, p_pred], n_particle, render_path)
-        else:
-            raise NotImplementedError
+        # if args.vis == 'plt':
+        #     if 'robot' in args.data_type:
+        #         plt_render_robot([p_sample, p_pred], n_particle, render_path)
+        #     else:
+        #         plt_render([p_gt, p_sample, p_pred], n_particle, render_path)
+        # else:
+        #     raise NotImplementedError
 
     # plot the loss curves for training and evaluating
     with open(os.path.join(args.outf, 'train.npy'), 'rb') as f:
@@ -372,7 +372,11 @@ def evaluate(args, eval_epoch, eval_iter):
         train_plot_curves(train_log['iters'], train_log['loss'], path=os.path.join(args.evalf, 'plot', 'train_loss_curves.png'))
 
     loss_list_over_episodes = np.array(loss_list_over_episodes)
-    eval_plot_curves(np.mean(loss_list_over_episodes, axis=0), path=os.path.join(args.evalf, 'plot', 'eval_loss_curves.png'))
+    loss_mean = np.mean(loss_list_over_episodes, axis=0)
+    loss_std = np.std(loss_list_over_episodes, axis=0)
+    path = os.path.join(args.evalf, 'plot', 'eval_loss_curves.pdf')
+    # eval_plot_curves(np.mean(loss_list_over_episodes, axis=0), path=os.path.join(args.evalf, 'plot', 'eval_loss_curves.png'))
+    eval_plot_curves_with_bar(loss_mean[:, :-1], loss_std[:, :-1], path=path)
 
     print(f"\nAverage emd loss at last frame: {np.mean(loss_list_over_episodes[:, -1, 1])} (+- {np.std(loss_list_over_episodes[:, -1, 1])})")
     print(f"Average chamfer loss at last frame: {np.mean(loss_list_over_episodes[:, -1, 2])} (+- {np.std(loss_list_over_episodes[:, -1, 2])})")
