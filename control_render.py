@@ -102,13 +102,21 @@ def main():
             env.render_cfg.camera_rot_4 = (0.8, 3.14)
 
         update_camera(env)
-
-        init_pose_seq = np.load(f"{control_out_dir}/init_pose_seq_{str(chosen_appendix)}.npy", allow_pickle=True)
-        act_seq = np.load(f"{control_out_dir}/act_seq_{str(chosen_appendix)}.npy", allow_pickle=True)
-        if os.path.exists(f"{control_out_dir}/tool_seq_{str(chosen_appendix)}.npy"):
-            tool_seq = np.load(f"{control_out_dir}/tool_seq_{str(chosen_appendix)}.npy", allow_pickle=True)
-        else:
-            tool_seq = np.ones([act_seq.shape[0],1,1])
+        try:
+            init_pose_seq = np.load(f"{control_out_dir}/init_pose_seq_{str(chosen_appendix)}.npy", allow_pickle=True)
+            act_seq = np.load(f"{control_out_dir}/act_seq_{str(chosen_appendix)}.npy", allow_pickle=True)
+            if os.path.exists(f"{control_out_dir}/tool_seq_{str(chosen_appendix)}.npy"):
+                tool_seq = np.load(f"{control_out_dir}/tool_seq_{str(chosen_appendix)}.npy", allow_pickle=True)
+            else:
+                tool_seq = np.ones([act_seq.shape[0],1,1])
+        except:
+            chosen_appendix = '2'
+            init_pose_seq = np.load(f"{control_out_dir}/init_pose_seq_{str(chosen_appendix)}.npy", allow_pickle=True)
+            act_seq = np.load(f"{control_out_dir}/act_seq_{str(chosen_appendix)}.npy", allow_pickle=True)
+            if os.path.exists(f"{control_out_dir}/tool_seq_{str(chosen_appendix)}.npy"):
+                tool_seq = np.load(f"{control_out_dir}/tool_seq_{str(chosen_appendix)}.npy", allow_pickle=True)
+            else:
+                tool_seq = np.ones([act_seq.shape[0], 1, 1])
 
         print(init_pose_seq.shape, act_seq.shape)
 
