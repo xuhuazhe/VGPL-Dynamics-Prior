@@ -102,13 +102,14 @@ def main():
             env.render_cfg.camera_rot_4 = (0.8, 3.14)
 
         update_camera(env)
+        small_list = 'BEFKLMNSWZ'
         try:
             init_pose_seq = np.load(f"{control_out_dir}/init_pose_seq_{str(chosen_appendix)}.npy", allow_pickle=True)
             act_seq = np.load(f"{control_out_dir}/act_seq_{str(chosen_appendix)}.npy", allow_pickle=True)
             if os.path.exists(f"{control_out_dir}/tool_seq_{str(chosen_appendix)}.npy"):
                 tool_seq = np.load(f"{control_out_dir}/tool_seq_{str(chosen_appendix)}.npy", allow_pickle=True)
             else:
-                if args.goal_shape_name in 'EFKLMNSWZ':
+                if args.goal_shape_name in small_list:
                     tool_seq = np.zeros([act_seq.shape[0], 1, 1])
                 else:
                     tool_seq = np.ones([act_seq.shape[0], 1, 1])
@@ -119,7 +120,7 @@ def main():
             if os.path.exists(f"{control_out_dir}/tool_seq_{str(2)}.npy"):
                 tool_seq = np.load(f"{control_out_dir}/tool_seq_{str(2)}.npy", allow_pickle=True)
             else:
-                if args.goal_shape_name in 'EFKLMNSWZ':
+                if args.goal_shape_name in small_list:
                     tool_seq = np.zeros([act_seq.shape[0], 1, 1])
                 else:
                     tool_seq = np.ones([act_seq.shape[0], 1, 1])
