@@ -129,6 +129,8 @@ def main():
 
         for i in range(act_seq.shape[0]):
             print(f"folder {index}, grip {i}")
+            if args.goal_shape_name == 'D' and i == 0:
+                continue
             if tool_seq[i, 0, 0] == 1:
                 env.primitives.primitives[0].r = task_params['tool_size_large']
                 env.primitives.primitives[1].r = task_params['tool_size_large']
