@@ -54,8 +54,8 @@ def main():
     all_dirs = os.listdir(parent_dir)
     control_out_list = []
     for i in range(len(all_dirs)):
-        if 'max' in sorted(all_dirs)[i]:
-            control_out_list.append(os.path.join(parent_dir, sorted(all_dirs)[i]))
+        # if 'max' in sorted(all_dirs)[i]:
+        control_out_list.append(os.path.join(parent_dir, sorted(all_dirs)[i]))
     # print(control_out_dir)
     chosen_appendix = 'opt'
     # set up the env
