@@ -102,7 +102,7 @@ def main():
             env.render_cfg.camera_rot_4 = (0.8, 3.14)
 
         update_camera(env)
-        small_list = 'BEFKLMNSWZ'
+        small_list = 'EFKLMNSWZ'
         try:
             init_pose_seq = np.load(f"{control_out_dir}/init_pose_seq_{str(chosen_appendix)}.npy", allow_pickle=True)
             act_seq = np.load(f"{control_out_dir}/act_seq_{str(chosen_appendix)}.npy", allow_pickle=True)
@@ -130,6 +130,7 @@ def main():
         for i in range(act_seq.shape[0]):
             print(f"folder {index}, grip {i}")
             if args.goal_shape_name == 'D' and i == 0:
+                import pdb; pdb.set_trace()
                 continue
             if tool_seq[i, 0, 0] == 1:
                 env.primitives.primitives[0].r = task_params['tool_size_large']
