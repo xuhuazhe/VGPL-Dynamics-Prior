@@ -131,6 +131,7 @@ def main():
             os.remove(f)
 
         print(init_pose_seq.shape, act_seq.shape)
+        import pdb; pdb.set_trace()
         if args.goal_shape_name == 'D':
             init_pose_seq = init_pose_seq[1:, :, :]
             act_seq = act_seq[1:, :, :]
