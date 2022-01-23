@@ -224,7 +224,7 @@ def random_rotate(mid_point, gripper1_pos, gripper2_pos, z_vec):
     return gripper1_pos, gripper2_pos, quat
 
 
-def get_pose(new_mid_point, rot_noise, mode='2d'):
+def get_pose(new_mid_point, rot_noise, mode):
     # if not torch.is_tensor(new_mid_point):
     #     new_mid_point = torch.tensor(new_mid_point)
     
@@ -944,7 +944,8 @@ class Planner(object):
                 
                     new_mid_point = mid_point_seq[k, :3] + p_noise
                     new_angle = angle_seq[k] + rot_noise
-                    init_pose = get_pose(new_mid_point, new_angle)
+                    mode = '3d' if '3d' in self.args.data_type else '2d'
+                    init_pose = get_pose(new_mid_point, new_angle, mode=mode)
                     init_pose_seq_sample.append(init_pose)
 
                 init_pose_seq_sample = torch.stack(init_pose_seq_sample)
@@ -1047,7 +1048,8 @@ class Planner(object):
                         mid_point_clipped_x = torch.clamp(mid_points[start_idx + i, j, 0], min=mid_point_x_bounds[0], max=mid_point_x_bounds[1])
                         mid_point_clipped_z = torch.clamp(mid_points[start_idx + i, j, 2], min=mid_point_z_bounds[0], max=mid_point_z_bounds[1])
                         mid_point_clipped = [mid_point_clipped_x, mid_points[start_idx + i, j, 1], mid_point_clipped_z]
-                        init_pose = get_pose(mid_point_clipped, angles[start_idx + i, j])
+                        mode = '3d' if '3d' in self.args.data_type else '2d'
+                        init_pose = get_pose(mid_point_clipped, angles[start_idx + i, j], mode=mode)
                         init_pose_seq_sample.append(init_pose)
 
                     # pdb.set_trace()
@@ -1100,7 +1102,8 @@ class Planner(object):
             mid_point_clipped_z = torch.clamp(mid_points[idx[-1], i, 2], min=mid_point_z_bounds[0], max=mid_point_z_bounds[1])
             mid_point_clipped = [mid_point_clipped_x, mid_points[idx[-1], i, 1], mid_point_clipped_z]
             mid_point_clipped_opt.append(mid_point_clipped)
-            init_pose = get_pose(mid_point_clipped, angles[idx[-1], i])
+            mode = '3d' if '3d' in self.args.data_type else '2d'
+            init_pose = get_pose(mid_point_clipped, angles[idx[-1], i], mode=mode)
             init_pose_seq_opt.append(init_pose)
 
         init_pose_seq_opt = torch.stack(init_pose_seq_opt)
