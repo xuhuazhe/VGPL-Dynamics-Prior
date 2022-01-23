@@ -57,7 +57,7 @@ def main():
         if 'max' in sorted(all_dirs)[i]:
             control_out_list.append(os.path.join(parent_dir, sorted(all_dirs)[i]))
     # print(control_out_dir)
-    chosen_appendix = '3'
+    chosen_appendix = 'opt'
     # set up the env
     cfg = load(args.gripperf)
     print(cfg)
