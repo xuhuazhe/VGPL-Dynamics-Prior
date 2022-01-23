@@ -114,7 +114,7 @@ def main():
                 else:
                     tool_seq = np.ones([act_seq.shape[0], 1, 1])
         except:
-            chosen_appendix = '2'
+            print('opt not found')
             init_pose_seq = np.load(f"{control_out_dir}/init_pose_seq_{str(2)}.npy", allow_pickle=True)
             act_seq = np.load(f"{control_out_dir}/act_seq_{str(2)}.npy", allow_pickle=True)
             if os.path.exists(f"{control_out_dir}/tool_seq_{str(2)}.npy"):
