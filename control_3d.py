@@ -23,6 +23,9 @@ from tqdm import tqdm, trange
 from sys import platform
 from utils import create_instance_colors, set_seed,  Tee, count_parameters
 
+from transforms3d.quaternions import *
+from transforms3d.axangles import axangle2mat
+
 use_gpu = True
 device = torch.device("cuda" if torch.cuda.is_available() and use_gpu else "cpu")
 
@@ -216,7 +219,7 @@ def random_rotate(mid_point, gripper1_pos, gripper2_pos, z_vec):
     z_mat = axangle2mat(z_vec, z_angle, is_normalized=True)
   
     all_mat = z_mat
-    quat = mat2quat(all_mat)
+    quat = torch.tensor(mat2quat(all_mat))
     
     return gripper1_pos, gripper2_pos, quat
 
@@ -249,9 +252,11 @@ def get_pose(new_mid_point, rot_noise, mode='2d'):
         prim1_tmp = torch.cat((prim1_pos, unit_quat))
         new_prim1.append(prim1_tmp)
     new_prim1 = torch.stack(new_prim1)
-    
+
+    # import pdb; pdb.set_trace()
     if mode == '3d':
-        new_prim1 = (quat2mat(quat) @ (new_prim1 - gripper1_pos).T).T + gripper1_pos
+        new_prim1_pos = (torch.tensor(quat2mat(unit_quat)) @ (new_prim1[:, :3] - gripper1_pos).T).T + gripper1_pos
+        new_prim1 = torch.cat((new_prim1_pos, new_prim1[:, 3:]), 1)
 
     new_prim2 = []
     for j in range(task_params["n_shapes_per_gripper"]):
@@ -261,7 +266,8 @@ def get_pose(new_mid_point, rot_noise, mode='2d'):
     new_prim2 = torch.stack(new_prim2)
 
     if mode == '3d':
-        new_prim2 = (quat2mat(quat) @ (new_prim2 - gripper2_pos).T).T + gripper2_pos
+        new_prim2_pos = (torch.tensor(quat2mat(unit_quat)) @ (new_prim2[:, :3] - gripper2_pos).T).T + gripper2_pos
+        new_prim2 = torch.cat((new_prim2_pos, new_prim2[:, 3:]), 1)
 
     init_pose = torch.cat((new_prim1, new_prim2), 1)
 
