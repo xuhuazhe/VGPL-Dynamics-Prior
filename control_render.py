@@ -106,7 +106,7 @@ def main():
         update_camera(env)
         small_list = 'EFMNWZ'
         try:
-            if args.goal_shape_name == 'J':
+            if args.goal_shape_name in 'VJ':
                 chosen_appendix = '3'
             elif args.goal_shape_name == 'K':
                 if 'regular' not in  control_out_dir:
