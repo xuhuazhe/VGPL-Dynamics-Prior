@@ -150,6 +150,7 @@ def main():
                 env.primitives.primitives[0].r = task_params['tool_size_large']
                 env.primitives.primitives[1].r = task_params['tool_size_large']
             else:
+                import pdb; pdb.set_trace()
                 env.primitives.primitives[0].r = task_params['tool_size_small']
                 env.primitives.primitives[1].r = task_params['tool_size_small']
             env.primitives.primitives[0].set_state(0, init_pose_seq[i, task_params["gripper_mid_pt"], :7])
