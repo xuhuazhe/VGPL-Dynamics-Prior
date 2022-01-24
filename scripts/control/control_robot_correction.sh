@@ -24,7 +24,7 @@ kernprof -l control_robot_correction.py \
 	--gt_action 0 \
 	--gt_state_goal 0 \
 	--subgoal 0 \
-	--control_sample_size 100 \
+	--control_sample_size 200 \
 	--control_batch_size 4 \
 	--predict_horizon 1 \
 	--CEM_opt_iter 3 \
