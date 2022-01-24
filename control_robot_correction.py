@@ -15,7 +15,7 @@ import rosbag
 import torch
 
 from config import gen_args
-from data_utils import load_data, get_scene_info, get_env_group, prepare_input
+from data_utils import store_data, load_data, get_scene_info, get_env_group, prepare_input
 from data_utils import real_sim_remap
 from datetime import datetime
 from matplotlib import cm
@@ -130,7 +130,7 @@ def visualize_points(all_points, n_particles, path):
 
     fig = plt.figure()
     ax = fig.add_subplot(111, projection='3d')
-    ax.view_init(45, 135)
+    ax.view_init(90, 90)
     ax.scatter(points[:, 0], points[:, 2], points[:, 1], c='b', s=20)
     ax.scatter(shapes[:, 0], shapes[:, 2], shapes[:, 1], c='r', s=20)
     
@@ -465,9 +465,9 @@ class Planner(object):
         visualize_points(state_goal_final[-1], self.n_particle, os.path.join(self.rollout_path, f'goal_particles'))
 
         if self.args.control_algo == 'predict':
-            depth = 8 if iter == 0 else 4
+            depth = 6 if iter == 0 else 4
             _, selected_points = sample_particles(ros_correction_path, depth=depth, visualize=True)
-
+            
             # pdb.set_trace()
             # mean and std at the first frame
             if iter == 0:
@@ -480,10 +480,33 @@ class Planner(object):
                 with open(f"{self.rollout_path}/p_stats.npy", 'wb') as f:
                     np.save(f, p_stats)
                 self.p_stats_pub.publish(p_stats)
+            else:
+                p_stats = np.load(f"{self.rollout_path}/p_stats.npy", allow_pickle=True)
+                self.mean_p = p_stats[:3]
+                self.std_p = p_stats[3:]
 
             selected_points = (selected_points - self.mean_p) / self.std_p
             selected_points = np.array([selected_points.T[0], selected_points.T[2], selected_points.T[1]]).T \
                 * np.array([0.06, self.args.std_p[1], 0.06]) + np.array([0.5, self.args.mean_p[1], 0.5])
+
+            # h5_path = f'T_robot.h5'
+            # floor_pos = np.array(
+            #     [[0.25, 0., 0.25], [0.25, 0., 0.5], [0.25, 0., 0.75],
+            #     [0.5, 0., 0.25], [0.5, 0., 0.5], [0.5, 0., 0.75],
+            #     [0.75, 0., 0.25], [0.75, 0., 0.5], [0.75, 0., 0.75]]
+            # )
+            # data_names = ['positions', 'shape_quats', 'scene_params']
+
+            # positions = np.concatenate([selected_points, floor_pos])
+            # shape_quats = np.zeros((1, 4), dtype=np.float32)
+            # data = [positions, shape_quats, self.scene_params]
+
+            # store_data(data_names, data, h5_path)
+                
+            # # import pdb; pdb.set_trace()
+            # goal_data = load_data(data_names, h5_path)
+            # goal_shape = torch.FloatTensor(goal_data[0]).unsqueeze(0)[:, :self.n_particle, :]
+            # visualize_points(goal_data[0], self.n_particle, f'T_robot_sampled')
 
             state_cur = expand(self.args.n_his, torch.tensor(selected_points).unsqueeze(0))
 
@@ -1158,7 +1181,7 @@ def main():
 
         print(f"Spinning at iteration {iter}")
         ros_correction_path = "/scr/hxu/catkin_ws/src/panda_plasticine_pipeline/panda_plasticine_pipeline/dataset/"\
-            + f"ngrip_fixed_robot_1-21/22-Jan-2022-23:44:14.767862/plasticine_{iter}.bag"
+            + f"ngrip_fixed_robot_1-23/23-Jan-2022-19:40:05.480016/plasticine_{iter}.bag"
 
         if iter > last_iter and os.path.exists(ros_correction_path):
             with torch.no_grad():

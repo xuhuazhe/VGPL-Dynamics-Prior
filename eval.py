@@ -102,6 +102,41 @@ def plt_render(particles_set, n_particle, render_path):
     anim.save(render_path, writer=animation.PillowWriter(fps=20))
 
 
+def plt_render_frames(particles_set, n_particle, render_path):
+    # particles_set[0] = np.concatenate((particles_set[0][:, :n_particle], particles_set[1][:, n_particle:]), axis=1)
+    n_frames = particles_set[0].shape[0]
+    rows = 3
+    cols = 1
+
+    fig, big_axes = plt.subplots(rows, 1, figsize=(15, 5))
+    row_titles = ['GT', 'Sample', 'Prediction']
+    views = [(90, 90)]
+    plot_info_all = {}
+    for i in range(rows):
+        states = particles_set[i]
+        for step in range(3): # n_frames
+            if step == 0:
+                big_axes[i].set_title(row_titles[i], fontweight='semibold')
+                big_axes[i].axis('off')
+
+                plot_info = []
+                for j in range(cols):
+                    ax = fig.add_subplot(rows, cols, i * cols + j + 1, projection='3d')
+                    ax.view_init(*views[j])
+                    points, shapes = visualize_points(ax, states[0], n_particle)
+                    plot_info.append((points, shapes))
+
+                plot_info_all[row_titles[i]] = plot_info
+            else:
+                for j in range(cols):
+                    points, shapes = plot_info_all[row_titles[i]][j]
+                    points._offsets3d = (states[step, :n_particle, 0], states[step, :n_particle, 2], states[step, :n_particle, 1])
+                    shapes._offsets3d = (states[step, n_particle:, 0], states[step, n_particle:, 2], states[step, n_particle:, 1])
+
+            plt.tight_layout()
+            plt.savefig(f'{render_path}/{str(step).zfill(3)}.pdf')
+
+
 def plt_render_robot(particles_set, n_particle, render_path):
     # particles_set[0] = np.concatenate((particles_set[0][:, :n_particle], particles_set[1][:, n_particle:]), axis=1)
     n_frames = particles_set[0].shape[0]
@@ -357,13 +392,14 @@ def evaluate(args, eval_epoch, eval_iter):
         # vid_path = os.path.join(args.dataf, 'vid', str(idx_episode).zfill(3))
         render_path = os.path.join(args.evalf, 'render', f'vid_{idx_episode}_plt.gif')
 
-        # if args.vis == 'plt':
-        #     if 'robot' in args.data_type:
-        #         plt_render_robot([p_sample, p_pred], n_particle, render_path)
-        #     else:
-        #         plt_render([p_gt, p_sample, p_pred], n_particle, render_path)
-        # else:
-        #     raise NotImplementedError
+        if args.vis == 'plt':
+            plt_render_frames([p_gt, p_sample, p_pred], n_particle, render_path=os.path.join(args.evalf, 'render'))
+            # if 'robot' in args.data_type:
+            #     plt_render_robot([p_sample, p_pred], n_particle, render_path)
+            # else:
+            #     plt_render([p_gt, p_sample, p_pred], n_particle, render_path)
+        else:
+            raise NotImplementedError
 
     # plot the loss curves for training and evaluating
     with open(os.path.join(args.outf, 'train.npy'), 'rb') as f:
