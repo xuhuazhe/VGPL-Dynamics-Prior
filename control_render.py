@@ -152,6 +152,11 @@ def main():
             init_pose_seq = init_pose_seq[:1, :, :]
             act_seq = np.zeros_like(act_seq[:1, :, :])
             tool_seq = tool_seq[:1, :, :]
+        elif args.goal_shape_name == 'T':
+            init_pose_seq = init_pose_seq[:-1, :, :]
+            act_seq = np.zeros_like(act_seq[:-1, :, :])
+            tool_seq = tool_seq[:-1, :, :]
+
         env.set_state(**state)
         for i in range(act_seq.shape[0]):
             print(f"folder {index}, grip {i}")
