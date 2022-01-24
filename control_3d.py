@@ -374,18 +374,23 @@ def sample_particles(env, cam_params, k_fps_particles, n_particles=2000):
     return shape_positions
 
 
-def add_shapes(state_seq, init_pose_seq, act_seq, k_fps_particles):
+def add_shapes(state_seq, init_pose_seq, act_seq, k_fps_particles, mode):
     updated_state_seq = []
     for i in range(act_seq.shape[0]):
         prim_pos1 = init_pose_seq[i, task_params["gripper_mid_pt"], :3].clone()
         prim_pos2 = init_pose_seq[i, task_params["gripper_mid_pt"], 7:10].clone()
+        prim_rot1 = init_pose_seq[i, task_params["gripper_mid_pt"], 3:].clone()
+        prim_rot2 = init_pose_seq[i, task_params["gripper_mid_pt"], 10:].clone()
         for j in range(act_seq.shape[1]):
             idx = i * act_seq.shape[1] + j
             prim_pos1 += 0.02 * act_seq[i, j, :3]
             prim_pos2 += 0.02 * act_seq[i, j, 6:9]
             positions = sample_data.update_position(task_params["n_shapes"], [prim_pos1, prim_pos2], pts=state_seq[idx], 
                                                     floor=task_params["floor_pos"], k_fps_particles=k_fps_particles)
-            shape_positions = sample_data.shape_aug(positions, k_fps_particles)
+            if mode == '2d':
+                shape_positions = sample_data.shape_aug(positions, k_fps_particles)
+            else:
+                shape_positions = sample_data.shape_aug_3D(positions, prim_rot1, prim_rot2, k_fps_particles)
             updated_state_seq.append(shape_positions)
     return np.stack(updated_state_seq)
 
@@ -509,7 +514,6 @@ class Planner(object):
             os.system(f"cp {os.path.join(self.rollout_path, f'init_pose_seq_{best_idx}.npy')} {os.path.join(self.rollout_path, f'init_pose_seq_opt.npy')}")
             os.system(f"cp {os.path.join(self.rollout_path, f'act_seq_{best_idx}.npy')} {os.path.join(self.rollout_path, f'act_seq_opt.npy')}")
 
-        import pdb; pdb.set_trace()
         return best_init_pose_seq.cpu(), best_act_seq.cpu(), best_model_loss.cpu(), best_sim_loss.cpu()
 
 
@@ -615,8 +619,9 @@ class Planner(object):
     def visualize_results(self, init_pose_seq, act_seq, state_goal, i):
         model_state_seq = self.model_rollout(self.initial_state, init_pose_seq.unsqueeze(0), act_seq.unsqueeze(0))
         sample_state_seq, sim_state_seq = self.sim_rollout(init_pose_seq.unsqueeze(0), act_seq.unsqueeze(0))
-        model_state_seq = add_shapes(model_state_seq[0], init_pose_seq, act_seq, self.n_particle)
-        sim_state_seq = add_shapes(sim_state_seq[0], init_pose_seq, act_seq, self.n_particle)
+        mode = '3d' if '3d' in self.args.data_type else '2d'
+        model_state_seq = add_shapes(model_state_seq[0], init_pose_seq, act_seq, self.n_particle, mode=mode)
+        sim_state_seq = add_shapes(sim_state_seq[0], init_pose_seq, act_seq, self.n_particle, mode=mode)
 
         sample_state_seq = sample_state_seq.squeeze()
         visualize_points(sample_state_seq[-1], self.n_particle, os.path.join(self.rollout_path, f'sim_particles_final_{i}'))
@@ -709,7 +714,6 @@ class Planner(object):
 
     @profile
     def sim_rollout(self, init_pose_seqs, act_seqs):
-        import pdb; pdb.set_trace()
         sample_state_seq_batch = []
         state_seq_batch = []
         for t in range(act_seqs.shape[0]):
