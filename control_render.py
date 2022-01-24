@@ -105,6 +105,8 @@ def main():
         update_camera(env)
         small_list = 'EFKLMNSWZ'
         try:
+            if args.goal_shape_name == 'J':
+                chosen_appendix='3'
             init_pose_seq = np.load(f"{control_out_dir}/init_pose_seq_{str(chosen_appendix)}.npy", allow_pickle=True)
             act_seq = np.load(f"{control_out_dir}/act_seq_{str(chosen_appendix)}.npy", allow_pickle=True)
             if os.path.exists(f"{control_out_dir}/tool_seq_{str(chosen_appendix)}.npy"):
