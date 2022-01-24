@@ -103,7 +103,7 @@ def main():
             env.render_cfg.camera_rot_4 = (0.8, 3.14)
 
         update_camera(env)
-        small_list = 'EFLMNSWZ'
+        small_list = 'EFKLMNSWZ'
         try:
             if args.goal_shape_name == 'J':
                 chosen_appendix='3'
@@ -150,7 +150,6 @@ def main():
                 env.primitives.primitives[0].r = task_params['tool_size_large']
                 env.primitives.primitives[1].r = task_params['tool_size_large']
             else:
-                import pdb; pdb.set_trace()
                 env.primitives.primitives[0].r = task_params['tool_size_small']
                 env.primitives.primitives[1].r = task_params['tool_size_small']
             env.primitives.primitives[0].set_state(0, init_pose_seq[i, task_params["gripper_mid_pt"], :7])
