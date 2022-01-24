@@ -113,26 +113,26 @@ def plt_render_frames_rm(particles_set, n_particle, render_path):
     views = [(90, 90)]
     plot_info_all = {}
     for i in range(rows):
-        states = particles_set[i]
+        states = particles_set[0]
+        big_axes[i].set_title(row_titles[i], fontweight='semibold')
+        big_axes[i].axis('off')
+
+        plot_info = []
+        for j in range(cols):
+            ax = fig.add_subplot(rows, cols, i * cols + j + 1, projection='3d')
+            ax.axis('off')
+            ax.view_init(*views[j])
+            points, shapes = visualize_points(ax, states[0], n_particle)
+            plot_info.append((points, shapes))
+
+        plot_info_all[row_titles[i]] = plot_info
+
+    for i in range(rows):
         for step in range(n_frames): # n_frames
-            if step == 0:
-                big_axes[i].set_title(row_titles[i], fontweight='semibold')
-                big_axes[i].axis('off')
-
-                plot_info = []
-                for j in range(cols):
-                    ax = fig.add_subplot(rows, cols, i * cols + j + 1, projection='3d')
-                    ax.axis('off')
-                    ax.view_init(*views[j])
-                    points, shapes = visualize_points(ax, states[0], n_particle)
-                    plot_info.append((points, shapes))
-
-                plot_info_all[row_titles[i]] = plot_info
-            else:
-                for j in range(cols):
-                    points, shapes = plot_info_all[row_titles[i]][j]
-                    points._offsets3d = (states[step, :n_particle, 0], states[step, :n_particle, 2], states[step, :n_particle, 1])
-                    shapes._offsets3d = (states[step, n_particle+9:, 0], states[step, n_particle+9:, 2], states[step, n_particle+9:, 1])
+            for j in range(cols):
+                points, shapes = plot_info_all[row_titles[i]][j]
+                points._offsets3d = (states[step, :n_particle, 0], states[step, :n_particle, 2], states[step, :n_particle, 1])
+                shapes._offsets3d = (states[step, n_particle+9:, 0], states[step, n_particle+9:, 2], states[step, n_particle+9:, 1])
 
             plt.tight_layout()
             plt.savefig(f'{render_path}/{str(step).zfill(3)}.pdf')
