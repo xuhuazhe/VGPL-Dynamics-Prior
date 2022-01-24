@@ -113,6 +113,8 @@ def main():
                     chosen_appendix = '2'
             elif args.goal_shape_name == 'N':
                 chosen_appendix = '2'
+            elif args.goal_shape_name == 'W':
+                chosen_appendix = '0'
 
             init_pose_seq = np.load(f"{control_out_dir}/init_pose_seq_{str(chosen_appendix)}.npy", allow_pickle=True)
             act_seq = np.load(f"{control_out_dir}/act_seq_{str(chosen_appendix)}.npy", allow_pickle=True)
