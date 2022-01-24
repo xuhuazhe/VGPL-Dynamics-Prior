@@ -111,6 +111,8 @@ def main():
             elif args.goal_shape_name == 'K':
                 if 'regular' not in  control_out_dir:
                     chosen_appendix = '2'
+            elif args.goal_shape_name == 'N':
+                chosen_appendix = '2'
 
             init_pose_seq = np.load(f"{control_out_dir}/init_pose_seq_{str(chosen_appendix)}.npy", allow_pickle=True)
             act_seq = np.load(f"{control_out_dir}/act_seq_{str(chosen_appendix)}.npy", allow_pickle=True)
