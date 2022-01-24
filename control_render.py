@@ -103,7 +103,7 @@ def main():
             env.render_cfg.camera_rot_4 = (0.8, 3.14)
 
         update_camera(env)
-        small_list = 'EFKLMNSWZ'
+        small_list = 'EFLMNSWZ'
         try:
             if args.goal_shape_name == 'J':
                 chosen_appendix='3'
