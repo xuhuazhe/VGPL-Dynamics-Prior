@@ -148,7 +148,7 @@ def main():
             init_pose_seq = init_pose_seq[1:, :, :]
             act_seq = act_seq[1:, :, :]
             tool_seq = tool_seq[1:, :, :]
-        elif args.goal_shape_name == '0':
+        elif args.goal_shape_name == 'O':
             init_pose_seq = init_pose_seq[:1, :, :]
             act_seq = np.zeros_like(act_seq[:1, :, :])
             tool_seq = tool_seq[:1, :, :]
