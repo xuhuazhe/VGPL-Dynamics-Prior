@@ -58,7 +58,7 @@ def main():
         # if 'max' in sorted(all_dirs)[i]:
         control_out_list.append(os.path.join(parent_dir, sorted(all_dirs)[i]))
     # print(control_out_dir)
-    chosen_appendix = 'opt'
+
     # set up the env
     cfg = load(args.gripperf)
     print(cfg)
@@ -68,6 +68,7 @@ def main():
     state = env.get_state()
 
     for index, control_out_dir in enumerate(control_out_list):
+        chosen_appendix = 'opt'
         env.set_state(**state)
         taichi_env = env
 
@@ -103,16 +104,21 @@ def main():
             env.render_cfg.camera_rot_4 = (0.8, 3.14)
 
         update_camera(env)
-        small_list = 'EFKLMNSWZ'
+        small_list = 'EFLMNSWZ'
         try:
             if args.goal_shape_name == 'J':
-                chosen_appendix='3'
+                chosen_appendix = '3'
+            elif args.goal_shape_name == 'K':
+                if 'regular' not in  control_out_dir:
+                    chosen_appendix = '2'
+
             init_pose_seq = np.load(f"{control_out_dir}/init_pose_seq_{str(chosen_appendix)}.npy", allow_pickle=True)
             act_seq = np.load(f"{control_out_dir}/act_seq_{str(chosen_appendix)}.npy", allow_pickle=True)
             if os.path.exists(f"{control_out_dir}/tool_seq_{str(chosen_appendix)}.npy"):
                 tool_seq = np.load(f"{control_out_dir}/tool_seq_{str(chosen_appendix)}.npy", allow_pickle=True)
             else:
-                if args.goal_shape_name in small_list:
+                if args.goal_shape_name in small_list and \
+                        not (args.goal_shape_name == 'K' and 'regular' not in  control_out_dir):
                     tool_seq = np.zeros([act_seq.shape[0], 1, 1])
                 else:
                     tool_seq = np.ones([act_seq.shape[0], 1, 1])
