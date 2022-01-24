@@ -148,9 +148,14 @@ def main():
             init_pose_seq = init_pose_seq[1:, :, :]
             act_seq = act_seq[1:, :, :]
             tool_seq = tool_seq[1:, :, :]
+        elif args.goal_shape_name == '0':
+            init_pose_seq = init_pose_seq[:1, :, :]
+            act_seq = np.zeros_like(act_seq[:1, :, :])
+            tool_seq = tool_seq[:1, :, :]
         env.set_state(**state)
         for i in range(act_seq.shape[0]):
             print(f"folder {index}, grip {i}")
+
             # if args.goal_shape_name == 'D' and i == 0:
             #     import pdb; pdb.set_trace()
             #     continue
