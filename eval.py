@@ -33,9 +33,9 @@ device = torch.device("cuda" if torch.cuda.is_available() and use_gpu else "cpu"
 
 def visualize_points(ax, all_points, n_particles):
     points = ax.scatter(all_points[:n_particles, 0], all_points[:n_particles, 2], all_points[:n_particles, 1], c='b', s=10)
-    shapes = ax.scatter(all_points[n_particles:, 0], all_points[n_particles:, 2], all_points[n_particles:, 1], c='r', s=10)
+    shapes = ax.scatter(all_points[n_particles+9:, 0], all_points[n_particles+9:, 2], all_points[n_particles+9:, 1], c='r', s=20)
 
-    ax.invert_yaxis()
+    # ax.invert_yaxis()
 
     # mid_point = [0.5, 0.5, 0.1]
     # r = 0.25
@@ -102,19 +102,19 @@ def plt_render(particles_set, n_particle, render_path):
     anim.save(render_path, writer=animation.PillowWriter(fps=20))
 
 
-def plt_render_frames(particles_set, n_particle, render_path):
+def plt_render_frames_rm(particles_set, n_particle, render_path):
     # particles_set[0] = np.concatenate((particles_set[0][:, :n_particle], particles_set[1][:, n_particle:]), axis=1)
     n_frames = particles_set[0].shape[0]
     rows = 3
     cols = 1
 
-    fig, big_axes = plt.subplots(rows, 1, figsize=(15, 5))
+    fig, big_axes = plt.subplots(rows, 1, figsize=(3, 9))
     row_titles = ['GT', 'Sample', 'Prediction']
     views = [(90, 90)]
     plot_info_all = {}
     for i in range(rows):
         states = particles_set[i]
-        for step in range(3): # n_frames
+        for step in range(n_frames): # n_frames
             if step == 0:
                 big_axes[i].set_title(row_titles[i], fontweight='semibold')
                 big_axes[i].axis('off')
@@ -122,6 +122,7 @@ def plt_render_frames(particles_set, n_particle, render_path):
                 plot_info = []
                 for j in range(cols):
                     ax = fig.add_subplot(rows, cols, i * cols + j + 1, projection='3d')
+                    ax.axis('off')
                     ax.view_init(*views[j])
                     points, shapes = visualize_points(ax, states[0], n_particle)
                     plot_info.append((points, shapes))
@@ -131,7 +132,7 @@ def plt_render_frames(particles_set, n_particle, render_path):
                 for j in range(cols):
                     points, shapes = plot_info_all[row_titles[i]][j]
                     points._offsets3d = (states[step, :n_particle, 0], states[step, :n_particle, 2], states[step, :n_particle, 1])
-                    shapes._offsets3d = (states[step, n_particle:, 0], states[step, n_particle:, 2], states[step, n_particle:, 1])
+                    shapes._offsets3d = (states[step, n_particle+9:, 0], states[step, n_particle+9:, 2], states[step, n_particle+9:, 1])
 
             plt.tight_layout()
             plt.savefig(f'{render_path}/{str(step).zfill(3)}.pdf')
@@ -393,7 +394,7 @@ def evaluate(args, eval_epoch, eval_iter):
         render_path = os.path.join(args.evalf, 'render', f'vid_{idx_episode}_plt.gif')
 
         if args.vis == 'plt':
-            plt_render_frames([p_gt, p_sample, p_pred], n_particle, render_path=os.path.join(args.evalf, 'render'))
+            plt_render_frames_rm([p_gt, p_sample, p_pred], n_particle, render_path=os.path.join(args.evalf, 'render'))
             # if 'robot' in args.data_type:
             #     plt_render_robot([p_sample, p_pred], n_particle, render_path)
             # else:
