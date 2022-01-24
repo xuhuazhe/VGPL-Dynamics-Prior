@@ -509,6 +509,7 @@ class Planner(object):
             os.system(f"cp {os.path.join(self.rollout_path, f'init_pose_seq_{best_idx}.npy')} {os.path.join(self.rollout_path, f'init_pose_seq_opt.npy')}")
             os.system(f"cp {os.path.join(self.rollout_path, f'act_seq_{best_idx}.npy')} {os.path.join(self.rollout_path, f'act_seq_opt.npy')}")
 
+        import pdb; pdb.set_trace()
         return best_init_pose_seq.cpu(), best_act_seq.cpu(), best_model_loss.cpu(), best_sim_loss.cpu()
 
 
@@ -708,6 +709,7 @@ class Planner(object):
 
     @profile
     def sim_rollout(self, init_pose_seqs, act_seqs):
+        import pdb; pdb.set_trace()
         sample_state_seq_batch = []
         state_seq_batch = []
         for t in range(act_seqs.shape[0]):
