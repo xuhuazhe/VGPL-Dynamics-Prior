@@ -379,7 +379,7 @@ def add_shapes(state_seq, init_pose_seq, act_seq, k_fps_particles, mode):
     for i in range(act_seq.shape[0]):
         prim_pos1 = init_pose_seq[i, task_params["gripper_mid_pt"], :3].clone()
         prim_pos2 = init_pose_seq[i, task_params["gripper_mid_pt"], 7:10].clone()
-        prim_rot1 = init_pose_seq[i, task_params["gripper_mid_pt"], 3:].clone()
+        prim_rot1 = init_pose_seq[i, task_params["gripper_mid_pt"], 3:7].clone()
         prim_rot2 = init_pose_seq[i, task_params["gripper_mid_pt"], 10:].clone()
         for j in range(act_seq.shape[1]):
             idx = i * act_seq.shape[1] + j

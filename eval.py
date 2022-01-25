@@ -113,7 +113,7 @@ def plt_render_frames_rm(particles_set, n_particle, render_path):
     views = [(90, 90)]
     plot_info_all = {}
     for i in range(rows):
-        states = particles_set[0]
+        states = particles_set[i]
         big_axes[i].set_title(row_titles[i], fontweight='semibold')
         big_axes[i].axis('off')
 
@@ -127,15 +127,16 @@ def plt_render_frames_rm(particles_set, n_particle, render_path):
 
         plot_info_all[row_titles[i]] = plot_info
 
-    for i in range(rows):
-        for step in range(n_frames): # n_frames
+    for step in range(n_frames): # n_frames
+        for i in range(rows):
+            states = particles_set[i]
             for j in range(cols):
                 points, shapes = plot_info_all[row_titles[i]][j]
                 points._offsets3d = (states[step, :n_particle, 0], states[step, :n_particle, 2], states[step, :n_particle, 1])
                 shapes._offsets3d = (states[step, n_particle+9:, 0], states[step, n_particle+9:, 2], states[step, n_particle+9:, 1])
 
-            plt.tight_layout()
-            plt.savefig(f'{render_path}/{str(step).zfill(3)}.pdf')
+        plt.tight_layout()
+        plt.savefig(f'{render_path}/{str(step).zfill(3)}.pdf')
 
 
 def plt_render_robot(particles_set, n_particle, render_path):
