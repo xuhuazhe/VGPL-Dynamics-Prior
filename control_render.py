@@ -116,12 +116,19 @@ def main():
                 chosen_appendix = '2'
             elif args.goal_shape_name == 'W':
                 chosen_appendix = '0'
+            elif args.goal_shape_name == 'D' and 'tool' in control_out_dir:
+                chosen_appendix = '3'
+            elif args.goal_shape_name == 'E' and 'tool' in control_out_dir:
+                chosen_appendix = '3'
+            elif args.goal_shape_name == 'N' and 'tool' in control_out_dir:
+                chosen_appendix = '3'
+
 
             init_pose_seq = np.load(f"{control_out_dir}/init_pose_seq_{str(chosen_appendix)}.npy", allow_pickle=True)
             act_seq = np.load(f"{control_out_dir}/act_seq_{str(chosen_appendix)}.npy", allow_pickle=True)
             if os.path.exists(f"{control_out_dir}/tool_seq_{str(chosen_appendix)}.npy"):
                 tool_seq = np.load(f"{control_out_dir}/tool_seq_{str(chosen_appendix)}.npy", allow_pickle=True)
-                import pdb; pdb.set_trace()
+                tool_seq = np.concatenate([tool_seq, tool_seq[-1:, :, :]], axis=0)
             else:
                 if args.goal_shape_name in small_list and \
                         not (args.goal_shape_name == 'K' and 'regular' not in  control_out_dir):
@@ -152,7 +159,11 @@ def main():
             init_pose_seq = init_pose_seq[1:, :, :]
             act_seq = act_seq[1:, :, :]
             tool_seq = tool_seq[1:, :, :]
-        elif args.goal_shape_name == 'O':
+        elif args.goal_shape_name == 'E' and 'tool' in control_out_dir:
+            init_pose_seq = init_pose_seq[:-2, :, :]
+            act_seq = act_seq[:-2, :, :]
+            tool_seq = tool_seq[:-2, :, :]
+        elif args.goal_shape_name == 'O' and 'tool' not in control_out_dir:
             init_pose_seq = init_pose_seq[:1, :, :]
             act_seq = np.zeros_like(act_seq[:1, :, :])
             tool_seq = tool_seq[:1, :, :]
