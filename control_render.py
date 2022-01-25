@@ -120,6 +120,8 @@ def main():
                 chosen_appendix = '3'
             elif args.goal_shape_name == 'E' and 'tool' in control_out_dir:
                 chosen_appendix = '3'
+            elif args.goal_shape_name == 'N' and 'tool' in control_out_dir:
+                chosen_appendix = '3'
 
 
             init_pose_seq = np.load(f"{control_out_dir}/init_pose_seq_{str(chosen_appendix)}.npy", allow_pickle=True)
