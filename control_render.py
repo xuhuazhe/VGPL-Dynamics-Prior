@@ -163,7 +163,7 @@ def main():
             init_pose_seq = init_pose_seq[:-2, :, :]
             act_seq = act_seq[:-2, :, :]
             tool_seq = tool_seq[:-2, :, :]
-        elif args.goal_shape_name == 'O':
+        elif args.goal_shape_name == 'O' and 'tool' not in control_out_dir:
             init_pose_seq = init_pose_seq[:1, :, :]
             act_seq = np.zeros_like(act_seq[:1, :, :])
             tool_seq = tool_seq[:1, :, :]
