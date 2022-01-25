@@ -124,6 +124,7 @@ def main():
             if os.path.exists(f"{control_out_dir}/tool_seq_{str(chosen_appendix)}.npy"):
                 tool_seq = np.load(f"{control_out_dir}/tool_seq_{str(chosen_appendix)}.npy", allow_pickle=True)
                 tool_seq = np.concatenate([tool_seq, tool_seq[-1:, :, :]], axis=0)
+                import pdb; pdb.set_trace()
             else:
                 if args.goal_shape_name in small_list and \
                         not (args.goal_shape_name == 'K' and 'regular' not in  control_out_dir):
