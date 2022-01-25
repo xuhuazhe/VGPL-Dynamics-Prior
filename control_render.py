@@ -56,7 +56,8 @@ def main():
     control_out_list = []
     for i in range(len(all_dirs)):
         # if 'max' in sorted(all_dirs)[i]:
-        control_out_list.append(os.path.join(parent_dir, sorted(all_dirs)[i]))
+        if 'tool' in sorted(all_dirs)[i]:
+            control_out_list.append(os.path.join(parent_dir, sorted(all_dirs)[i]))
     # print(control_out_dir)
 
     # set up the env
@@ -104,18 +105,23 @@ def main():
             env.render_cfg.camera_rot_4 = (0.8, 3.14)
 
         update_camera(env)
-        small_list = 'EFMNSWZ'
+        small_list = 'EFMNZ'
         try:
-            if args.goal_shape_name == 'J':
+            if args.goal_shape_name in 'VJ':
                 chosen_appendix = '3'
             elif args.goal_shape_name == 'K':
                 if 'regular' not in  control_out_dir:
                     chosen_appendix = '2'
+            elif args.goal_shape_name == 'N':
+                chosen_appendix = '2'
+            elif args.goal_shape_name == 'W':
+                chosen_appendix = '0'
 
             init_pose_seq = np.load(f"{control_out_dir}/init_pose_seq_{str(chosen_appendix)}.npy", allow_pickle=True)
             act_seq = np.load(f"{control_out_dir}/act_seq_{str(chosen_appendix)}.npy", allow_pickle=True)
             if os.path.exists(f"{control_out_dir}/tool_seq_{str(chosen_appendix)}.npy"):
                 tool_seq = np.load(f"{control_out_dir}/tool_seq_{str(chosen_appendix)}.npy", allow_pickle=True)
+                import pdb; pdb.set_trace()
             else:
                 if args.goal_shape_name in small_list and \
                         not (args.goal_shape_name == 'K' and 'regular' not in  control_out_dir):
@@ -146,9 +152,19 @@ def main():
             init_pose_seq = init_pose_seq[1:, :, :]
             act_seq = act_seq[1:, :, :]
             tool_seq = tool_seq[1:, :, :]
+        elif args.goal_shape_name == 'O':
+            init_pose_seq = init_pose_seq[:1, :, :]
+            act_seq = np.zeros_like(act_seq[:1, :, :])
+            tool_seq = tool_seq[:1, :, :]
+        elif args.goal_shape_name == 'T':
+            init_pose_seq = init_pose_seq[:-1, :, :]
+            act_seq = act_seq[:-1, :, :]
+            tool_seq = tool_seq[:-1, :, :]
+
         env.set_state(**state)
         for i in range(act_seq.shape[0]):
             print(f"folder {index}, grip {i}")
+
             # if args.goal_shape_name == 'D' and i == 0:
             #     import pdb; pdb.set_trace()
             #     continue
