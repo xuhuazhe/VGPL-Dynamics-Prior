@@ -56,7 +56,8 @@ def main():
     control_out_list = []
     for i in range(len(all_dirs)):
         # if 'max' in sorted(all_dirs)[i]:
-        control_out_list.append(os.path.join(parent_dir, sorted(all_dirs)[i]))
+        if 'tool' in sorted(all_dirs)[i]:
+            control_out_list.append(os.path.join(parent_dir, sorted(all_dirs)[i]))
     # print(control_out_dir)
 
     # set up the env
