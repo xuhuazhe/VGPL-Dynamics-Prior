@@ -315,7 +315,7 @@ def get_action_seq(rot_noise, gripper_rate):
 
 
 def get_params_from_pose(init_pose_seq):
-    # import pdb; pdb.set_trace()
+    import pdb; pdb.set_trace()
     if not torch.is_tensor(init_pose_seq):
         init_pose_seq = torch.tensor(init_pose_seq)
         
@@ -324,8 +324,9 @@ def get_params_from_pose(init_pose_seq):
     angle_seq = torch.atan2(init_pose_seq[:, task_params["gripper_mid_pt"], 2] - mid_point_seq[:, 2], \
         init_pose_seq[:, task_params["gripper_mid_pt"], 0] - mid_point_seq[:, 0])
 
-    z_angle_seq = torch.atan2(init_pose_seq[:, task_params["gripper_mid_pt"], 1] - init_pose_seq[:, 0, 1], \
-        init_pose_seq[:, task_params["gripper_mid_pt"], 0] - init_pose_seq[:, 0, 0])
+    a = init_pose_seq[:, 0, :3] - init_pose_seq[:, -1, :3]
+    b = torch.tensor([[0.0, 1.0, 0.0]]).expand(init_pose_seq.shape[0], -1)
+    z_angle_seq = torch.acos((a * b).sum(dim=1) / (a.pow(2).sum(dim=1).pow(0.5) * b.pow(2).sum(dim=1).pow(0.5)))
 
     pi = torch.full(angle_seq.shape, math.pi)
     angle_seq_new = pi - angle_seq
@@ -425,7 +426,7 @@ class Planner(object):
 
         if args.debug:
             self.batch_size = 1
-            self.sample_size = 8
+            self.sample_size = 4
             self.CEM_init_pose_sample_size = 8
             self.CEM_gripper_rate_sample_size = 4
 
@@ -663,6 +664,7 @@ class Planner(object):
                 new_mid_point = task_params["mid_point"][:3] + p_noise
                 rot_noise = np.random.uniform(0, np.pi)
                 z_angle = np.random.uniform(0, np.pi)
+                print(new_mid_point, rot_noise, z_angle)
                 mode = '3d' if '3d' in self.args.data_type else '2d'
                 init_pose = get_pose(new_mid_point, rot_noise, z_angle, mode=mode)
                 # print(init_pose.shape)
