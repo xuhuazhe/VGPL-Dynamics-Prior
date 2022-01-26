@@ -315,7 +315,7 @@ def get_action_seq(rot_noise, gripper_rate):
 
 
 def get_params_from_pose(init_pose_seq):
-    import pdb; pdb.set_trace()
+    # import pdb; pdb.set_trace()
     if not torch.is_tensor(init_pose_seq):
         init_pose_seq = torch.tensor(init_pose_seq)
         
@@ -330,8 +330,9 @@ def get_params_from_pose(init_pose_seq):
 
     pi = torch.full(angle_seq.shape, math.pi)
     angle_seq_new = pi - angle_seq
+    z_angle_seq_new = pi - z_angle_seq
     
-    return mid_point_seq, angle_seq_new, z_angle_seq
+    return mid_point_seq, angle_seq_new, z_angle_seq_new
 
 
 def get_action_seq_from_pose(init_pose_seq, gripper_rates):
