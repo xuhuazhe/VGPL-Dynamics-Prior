@@ -213,14 +213,14 @@ def expand(batch_size, info):
     return info
 
 
-def random_rotate(mid_point, gripper1_pos, gripper2_pos, z_vec, z_angle):
+def random_rotate(mid_point, z_vec, z_angle):
     mid_point = mid_point[:3]
     z_mat = axangle2mat(z_vec, z_angle, is_normalized=True)
   
     all_mat = z_mat
     quat = torch.tensor(mat2quat(all_mat))
     
-    return gripper1_pos, gripper2_pos, quat
+    return quat
 
 
 def get_pose(new_mid_point, rot_noise, z_angle, mode):
@@ -230,45 +230,45 @@ def get_pose(new_mid_point, rot_noise, z_angle, mode):
     if not torch.is_tensor(rot_noise):
         rot_noise = torch.tensor(rot_noise)
 
-    x1 = new_mid_point[0] - task_params["sample_radius"] * torch.cos(rot_noise)
-    y1 = new_mid_point[2] + task_params["sample_radius"] * torch.sin(rot_noise)
-    x2 = new_mid_point[0] + task_params["sample_radius"] * torch.cos(rot_noise)
-    y2 = new_mid_point[2] - task_params["sample_radius"] * torch.sin(rot_noise)
-
-    unit_quat = torch.tensor([1.0, 0.0, 0.0, 0.0])
-
-    gripper1_pos = torch.tensor([x1, new_mid_point[1], y1])
-    gripper2_pos = torch.tensor([x2, new_mid_point[1], y2])
-
-    if mode == '3d':
-        z_vec = torch.tensor([torch.cos(rot_noise), 0, torch.sin(rot_noise)])
-        gripper1_pos, gripper2_pos, unit_quat = random_rotate(new_mid_point, gripper1_pos, gripper2_pos, z_vec, z_angle)
-
-    # import pdb; pdb.set_trace()
-    new_prim1 = []
-    for j in range(task_params["n_shapes_per_gripper"]):
-        prim1_pos = torch.stack([x1, torch.tensor(new_mid_point[1].item() + 0.018 * (j-5)), y1])
-        prim1_tmp = torch.cat((prim1_pos, unit_quat))
-        new_prim1.append(prim1_tmp)
-    new_prim1 = torch.stack(new_prim1)
-
-    # import pdb; pdb.set_trace()
-    if mode == '3d':
-        new_prim1_pos = (torch.tensor(quat2mat(unit_quat)) @ (new_prim1[:, :3] - gripper1_pos).T).T + gripper1_pos
-        new_prim1 = torch.cat((new_prim1_pos, new_prim1[:, 3:]), 1)
-
-    new_prim2 = []
-    for j in range(task_params["n_shapes_per_gripper"]):
-        prim2_pos = torch.stack([x2, torch.tensor(new_mid_point[1].item() + 0.018 * (j-5)), y2])
-        prim2_tmp = torch.cat((prim2_pos, unit_quat))
-        new_prim2.append(prim2_tmp)
-    new_prim2 = torch.stack(new_prim2)
-
-    if mode == '3d':
-        new_prim2_pos = (torch.tensor(quat2mat(unit_quat)) @ (new_prim2[:, :3] - gripper2_pos).T).T + gripper2_pos
-        new_prim2 = torch.cat((new_prim2_pos, new_prim2[:, 3:]), 1)
-
-    init_pose = torch.cat((new_prim1, new_prim2), 1)
+        x1 = new_mid_point[0] - task_params["sample_radius"] * torch.cos(rot_noise)
+        y1 = new_mid_point[2] + task_params["sample_radius"] * torch.sin(rot_noise)
+        x2 = new_mid_point[0] + task_params["sample_radius"] * torch.cos(rot_noise)
+        y2 = new_mid_point[2] - task_params["sample_radius"] * torch.sin(rot_noise)
+        
+        unit_quat = torch.tensor([1.0, 0.0, 0.0, 0.0])
+        
+        gripper1_pos = torch.tensor([x1, new_mid_point[1], y1])
+        gripper2_pos = torch.tensor([x2, new_mid_point[1], y2])
+        
+        if mode == '3d':
+            z_vec = torch.tensor([torch.cos(rot_noise), 0, torch.sin(rot_noise)])
+            gripper1_pos, gripper2_pos, unit_quat = random_rotate(new_mid_point, gripper1_pos, gripper2_pos, z_vec, z_angle)
+        
+        # import pdb; pdb.set_trace()
+        new_prim1 = []
+        for j in range(task_params["n_shapes_per_gripper"]):
+            prim1_pos = torch.stack([x1, torch.tensor(new_mid_point[1].item() + 0.018 * (j-5)), y1])
+            prim1_tmp = torch.cat((prim1_pos, unit_quat))
+            new_prim1.append(prim1_tmp)
+        new_prim1 = torch.stack(new_prim1)
+        
+        # import pdb; pdb.set_trace()
+        if mode == '3d':
+            new_prim1_pos = (torch.tensor(quat2mat(unit_quat)) @ (new_prim1[:, :3] - gripper1_pos).T).T + gripper1_pos
+            new_prim1 = torch.cat((new_prim1_pos, new_prim1[:, 3:]), 1)
+        
+        new_prim2 = []
+        for j in range(task_params["n_shapes_per_gripper"]):
+            prim2_pos = torch.stack([x2, torch.tensor(new_mid_point[1].item() + 0.018 * (j-5)), y2])
+            prim2_tmp = torch.cat((prim2_pos, unit_quat))
+            new_prim2.append(prim2_tmp)
+        new_prim2 = torch.stack(new_prim2)
+        
+        if mode == '3d':
+            new_prim2_pos = (torch.tensor(quat2mat(unit_quat)) @ (new_prim2[:, :3] - gripper2_pos).T).T + gripper2_pos
+            new_prim2 = torch.cat((new_prim2_pos, new_prim2[:, 3:]), 1)
+        
+        init_pose = torch.cat((new_prim1, new_prim2), 1)
 
     return init_pose
 
@@ -324,13 +324,15 @@ def get_params_from_pose(init_pose_seq):
     angle_seq = torch.atan2(init_pose_seq[:, task_params["gripper_mid_pt"], 2] - mid_point_seq[:, 2], \
         init_pose_seq[:, task_params["gripper_mid_pt"], 0] - mid_point_seq[:, 0])
 
-    z_angle_seq = torch.atan2(init_pose_seq[:, task_params["gripper_mid_pt"], 1] - init_pose_seq[:, 0, 1], \
-        init_pose_seq[:, task_params["gripper_mid_pt"], 0] - init_pose_seq[:, 0, 0])
+    a = init_pose_seq[:, 0, :3] - init_pose_seq[:, -1, :3]
+    b = torch.tensor([[0.0, 1.0, 0.0]]).expand(init_pose_seq.shape[0], -1)
+    z_angle_seq = torch.acos((a * b).sum(dim=1) / (a.pow(2).sum(dim=1).pow(0.5) * b.pow(2).sum(dim=1).pow(0.5)))
 
     pi = torch.full(angle_seq.shape, math.pi)
     angle_seq_new = pi - angle_seq
+    z_angle_seq_new = pi - z_angle_seq
     
-    return mid_point_seq, angle_seq_new, z_angle_seq
+    return mid_point_seq, angle_seq_new, z_angle_seq_new
 
 
 def get_action_seq_from_pose(init_pose_seq, gripper_rates):
@@ -425,7 +427,7 @@ class Planner(object):
 
         if args.debug:
             self.batch_size = 1
-            self.sample_size = 8
+            self.sample_size = 4
             self.CEM_init_pose_sample_size = 8
             self.CEM_gripper_rate_sample_size = 4
 
@@ -663,6 +665,7 @@ class Planner(object):
                 new_mid_point = task_params["mid_point"][:3] + p_noise
                 rot_noise = np.random.uniform(0, np.pi)
                 z_angle = np.random.uniform(0, np.pi)
+                print(new_mid_point, rot_noise, z_angle)
                 mode = '3d' if '3d' in self.args.data_type else '2d'
                 init_pose = get_pose(new_mid_point, rot_noise, z_angle, mode=mode)
                 # print(init_pose.shape)
@@ -1013,6 +1016,7 @@ class Planner(object):
             best_z_angle_seqs.append(best_z_angle_seq)
             best_gripper_rate_seqs.append(best_gripper_rate_seq)
         
+        pdb.set_trace()
         best_mid_point_seqs = torch.stack(best_mid_point_seqs)
         best_angle_seqs = torch.stack(best_angle_seqs)
         best_z_angle_seqs = torch.stack(best_z_angle_seqs)
