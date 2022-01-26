@@ -242,7 +242,7 @@ def get_pose(new_mid_point, rot_noise, z_angle, mode):
         
         if mode == '3d':
             z_vec = torch.tensor([torch.cos(rot_noise), 0, torch.sin(rot_noise)])
-            gripper1_pos, gripper2_pos, unit_quat = random_rotate(new_mid_point, gripper1_pos, gripper2_pos, z_vec, z_angle)
+            unit_quat = random_rotate(new_mid_point, z_vec, z_angle)
         
         # import pdb; pdb.set_trace()
         new_prim1 = []
@@ -1016,7 +1016,7 @@ class Planner(object):
             best_z_angle_seqs.append(best_z_angle_seq)
             best_gripper_rate_seqs.append(best_gripper_rate_seq)
         
-        pdb.set_trace()
+        # pdb.set_trace()
         best_mid_point_seqs = torch.stack(best_mid_point_seqs)
         best_angle_seqs = torch.stack(best_angle_seqs)
         best_z_angle_seqs = torch.stack(best_z_angle_seqs)
