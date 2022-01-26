@@ -56,8 +56,8 @@ def main():
     control_out_list = []
     for i in range(len(all_dirs)):
         # if 'max' in sorted(all_dirs)[i]:
-        if 'tool' in sorted(all_dirs)[i]:
-            control_out_list.append(os.path.join(parent_dir, sorted(all_dirs)[i]))
+        # if 'tool' in sorted(all_dirs)[i]:
+        control_out_list.append(os.path.join(parent_dir, sorted(all_dirs)[i]))
     # print(control_out_dir)
 
     # set up the env
@@ -121,6 +121,10 @@ def main():
             elif args.goal_shape_name == 'E' and 'tool' in control_out_dir:
                 chosen_appendix = '3'
             elif args.goal_shape_name == 'N' and 'tool' in control_out_dir:
+                chosen_appendix = '3'
+            elif args.goal_shape_name == 'heart':
+                chosen_appendix = '3'
+            elif args.goal_shape_name == 'flower':
                 chosen_appendix = '3'
 
 
