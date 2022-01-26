@@ -6,7 +6,6 @@ import matplotlib.animation as animation
 import numpy as np
 import open3d as o3d
 import os
-from numpy.lib.function_base import append
 import pandas as pd
 import pdb
 # import taichi as ti
@@ -41,14 +40,14 @@ task_params = {
     "mid_point": np.array([0.5, 0.14, 0.5, 0, 0, 0]),
     "sample_radius": 0.4,
     "len_per_grip": 30,
-    "len_per_grip_back": 10,
+    "len_per_grip_back": 0,
     "floor_pos": np.array([0.5, 0, 0.5]),
     "n_shapes": 3, 
     "n_shapes_floor": 9,
     "n_shapes_per_gripper": 11,
     "gripper_mid_pt": int((11 - 1) / 2),
-    "gripper_gap_limits": np.array([0.14, 0.06]), # ((0.4 * 2 - (0.23)) / (2 * 30), (0.4 * 2 - 0.15) / (2 * 30)),
-    "p_noise_scale": 0.05,
+    "gripper_gap_limits": np.array([0.3, 0.06]), # ((0.4 * 2 - (0.23)) / (2 * 30), (0.4 * 2 - 0.15) / (2 * 30)),
+    "p_noise_scale": 0.06,
     "p_noise_bound": 0.08,
     "loss_weights": [0.9, 0.1, 0.0, 0.0],
     "tool_size": 0.03
@@ -465,7 +464,7 @@ class Planner(object):
         visualize_points(state_goal_final[-1], self.n_particle, os.path.join(self.rollout_path, f'goal_particles'))
 
         if self.args.control_algo == 'predict':
-            depth = 6 if iter == 0 else 4
+            depth = 8 if iter == 0 else 8
             _, selected_points = sample_particles(ros_correction_path, depth=depth, visualize=True)
             
             # pdb.set_trace()
@@ -489,7 +488,7 @@ class Planner(object):
             selected_points = np.array([selected_points.T[0], selected_points.T[2], selected_points.T[1]]).T \
                 * np.array([0.06, self.args.std_p[1], 0.06]) + np.array([0.5, self.args.mean_p[1], 0.5])
 
-            # h5_path = f'T_robot.h5'
+            # h5_path = f'R_robot.h5'
             # floor_pos = np.array(
             #     [[0.25, 0., 0.25], [0.25, 0., 0.5], [0.25, 0., 0.75],
             #     [0.5, 0., 0.25], [0.5, 0., 0.5], [0.5, 0., 0.75],
@@ -506,7 +505,7 @@ class Planner(object):
             # # import pdb; pdb.set_trace()
             # goal_data = load_data(data_names, h5_path)
             # goal_shape = torch.FloatTensor(goal_data[0]).unsqueeze(0)[:, :self.n_particle, :]
-            # visualize_points(goal_data[0], self.n_particle, f'T_robot_sampled')
+            # visualize_points(goal_data[0], self.n_particle, f'R_robot')
 
             state_cur = expand(self.args.n_his, torch.tensor(selected_points).unsqueeze(0))
 
@@ -612,38 +611,71 @@ class Planner(object):
 
 
     def sample_action_params(self, n_grips):
-        # np.random.seed(0)
+        if n_grips > 1:
+            raise ValueError
+
         init_pose_seqs = []
         act_seqs = []
-        n_sampled = 0
-        while n_sampled < self.sample_size:
-            init_pose_seq = []
-            act_seq = []
-            for i in range(n_grips):
-                p_noise_x = task_params["p_noise_scale"] * (np.random.rand() * 2 - 1)
-                p_noise_z = task_params["p_noise_scale"] * (np.random.rand() * 2 - 1)
-                p_noise = np.clip(np.array([p_noise_x, 0, p_noise_z]), a_min=-0.1, a_max=0.1)
-                new_mid_point = task_params["mid_point"][:3] + p_noise
-                rot_noise = np.random.uniform(0, np.pi)
-
+        n_p = (3, 3)
+        n_r = 4
+        n_g = 3
+        init_pose_seq = []
+        act_seq = []
+        for p in range(n_p[0] * n_p[1]):
+            p_noise_x = task_params["p_noise_scale"] * (p // n_p[0] - 1)
+            p_noise_z = task_params["p_noise_scale"] * (p % n_p[1] - 1)
+            p_noise = np.array([p_noise_x, 0, p_noise_z])
+            new_mid_point = task_params["mid_point"][:3] + p_noise
+            for r in range(n_r):
+                rot_noise = r / n_r * np.pi
                 init_pose = get_pose(new_mid_point, rot_noise)
                 # print(init_pose.shape)
-                init_pose_seq.append(init_pose)
 
-                gripper_rate = np.random.uniform(*task_params["gripper_rate_limits"])
-                actions = get_action_seq(rot_noise, gripper_rate)
-                # print(actions.shape)
-                act_seq.append(actions)
+                for g in range(n_g):
+                    gripper_rate = task_params["gripper_rate_limits"][1] - (g / n_g) * (task_params["gripper_rate_limits"][1] - task_params["gripper_rate_limits"][0])
+                    actions = get_action_seq(rot_noise, gripper_rate)
+                    # print(actions.shape)
+                    # print(new_mid_point, rot_noise, gripper_rate)
 
-            init_pose_seq = torch.stack(init_pose_seq)
-            init_pose_seqs.append(init_pose_seq)
+                    init_pose_seq.append(init_pose)
+                    act_seq.append(actions)
+        
+        init_pose_seq = torch.stack(init_pose_seq)
+        init_pose_seqs = init_pose_seq.unsqueeze(1)
+        act_seq = torch.stack(act_seq)
+        act_seqs = act_seq.unsqueeze(1)
 
-            act_seq = torch.stack(act_seq)
-            act_seqs.append(act_seq)
+        return init_pose_seqs, act_seqs
 
-            n_sampled += 1
+        # n_sampled = 0
+        # while n_sampled < self.sample_size:
+        #     init_pose_seq = []
+        #     act_seq = []
+        #     for i in range(n_grips):
+        #         p_noise_x = task_params["p_noise_scale"] * (np.random.rand() * 2 - 1)
+        #         p_noise_z = task_params["p_noise_scale"] * (np.random.rand() * 2 - 1)
+        #         p_noise = np.clip(np.array([p_noise_x, 0, p_noise_z]), a_min=-0.1, a_max=0.1)
+        #         new_mid_point = task_params["mid_point"][:3] + p_noise
+        #         rot_noise = np.random.uniform(0, np.pi)
 
-        return torch.stack(init_pose_seqs), torch.stack(act_seqs)
+        #         init_pose = get_pose(new_mid_point, rot_noise)
+        #         # print(init_pose.shape)
+        #         init_pose_seq.append(init_pose)
+
+        #         gripper_rate = np.random.uniform(*task_params["gripper_rate_limits"])
+        #         actions = get_action_seq(rot_noise, gripper_rate)
+        #         # print(actions.shape)
+        #         act_seq.append(actions)
+
+        #     init_pose_seq = torch.stack(init_pose_seq)
+        #     init_pose_seqs.append(init_pose_seq)
+
+        #     act_seq = torch.stack(act_seq)
+        #     act_seqs.append(act_seq)
+
+        #     n_sampled += 1
+
+        # return torch.stack(init_pose_seqs), torch.stack(act_seqs)
 
 
     def rollout(self, init_pose_seqs_pool, act_seqs_pool, state_cur, state_goal):
@@ -1075,6 +1107,7 @@ def main():
         (task_params['sample_radius'] * 2 - (task_params['gripper_gap_limits'][0] + 2 * task_params['tool_size'])) / (2 * task_params['len_per_grip']),
         (task_params['sample_radius'] * 2 - (task_params['gripper_gap_limits'][1] + 2 * task_params['tool_size'])) / (2 * task_params['len_per_grip'])
     ]
+    print(task_params["gripper_rate_limits"])
 
     if len(args.outf_control) > 0:
         args.outf = args.outf_control
@@ -1181,7 +1214,7 @@ def main():
 
         print(f"Spinning at iteration {iter}")
         ros_correction_path = "/scr/hxu/catkin_ws/src/panda_plasticine_pipeline/panda_plasticine_pipeline/dataset/"\
-            + f"ngrip_fixed_robot_1-23/23-Jan-2022-19:40:05.480016/plasticine_{iter}.bag"
+            + f"ngrip_fixed_robot_1-25/25-Jan-2022-23:37:28.610647/plasticine_{iter}.bag"
 
         if iter > last_iter and os.path.exists(ros_correction_path):
             with torch.no_grad():
@@ -1197,8 +1230,8 @@ def main():
             with open(f"{control_out_dir}/act_seq_{iter}.npy", 'wb') as f:
                 np.save(f, act_seq)
 
-            init_pose_seq_pub.publish(init_pose_seq.numpy().flatten())
-            act_seq_pub.publish(act_seq.numpy().flatten())
+            init_pose_seq_pub.publish(init_pose_seq.numpy().flatten().astype(np.float32))
+            act_seq_pub.publish(act_seq.numpy().flatten().astype(np.float32))
 
             # pdb.set_trace()
 

@@ -63,7 +63,7 @@ if __name__ == "__main__":
         image_names = ['wang']
     elif prefix in ['shapes/alphabet_black', 'shapes/alphabet_bold', 'shapes/alphabet_regular']:
         # image_names = list(ascii_uppercase)
-        image_names = ['S']
+        image_names = ['B']
     else:
         raise NotImplementedError
     shape_size = (1.0 * 0.25, 0.15, 1.0 * 0.25)
