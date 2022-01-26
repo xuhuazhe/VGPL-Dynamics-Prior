@@ -230,45 +230,45 @@ def get_pose(new_mid_point, rot_noise, z_angle, mode):
     if not torch.is_tensor(rot_noise):
         rot_noise = torch.tensor(rot_noise)
 
-        x1 = new_mid_point[0] - task_params["sample_radius"] * torch.cos(rot_noise)
-        y1 = new_mid_point[2] + task_params["sample_radius"] * torch.sin(rot_noise)
-        x2 = new_mid_point[0] + task_params["sample_radius"] * torch.cos(rot_noise)
-        y2 = new_mid_point[2] - task_params["sample_radius"] * torch.sin(rot_noise)
-        
-        unit_quat = torch.tensor([1.0, 0.0, 0.0, 0.0])
-        
-        gripper1_pos = torch.tensor([x1, new_mid_point[1], y1])
-        gripper2_pos = torch.tensor([x2, new_mid_point[1], y2])
-        
-        if mode == '3d':
-            z_vec = torch.tensor([torch.cos(rot_noise), 0, torch.sin(rot_noise)])
-            unit_quat = random_rotate(new_mid_point, z_vec, z_angle)
-        
-        # import pdb; pdb.set_trace()
-        new_prim1 = []
-        for j in range(task_params["n_shapes_per_gripper"]):
-            prim1_pos = torch.stack([x1, torch.tensor(new_mid_point[1].item() + 0.018 * (j-5)), y1])
-            prim1_tmp = torch.cat((prim1_pos, unit_quat))
-            new_prim1.append(prim1_tmp)
-        new_prim1 = torch.stack(new_prim1)
-        
-        # import pdb; pdb.set_trace()
-        if mode == '3d':
-            new_prim1_pos = (torch.tensor(quat2mat(unit_quat)) @ (new_prim1[:, :3] - gripper1_pos).T).T + gripper1_pos
-            new_prim1 = torch.cat((new_prim1_pos, new_prim1[:, 3:]), 1)
-        
-        new_prim2 = []
-        for j in range(task_params["n_shapes_per_gripper"]):
-            prim2_pos = torch.stack([x2, torch.tensor(new_mid_point[1].item() + 0.018 * (j-5)), y2])
-            prim2_tmp = torch.cat((prim2_pos, unit_quat))
-            new_prim2.append(prim2_tmp)
-        new_prim2 = torch.stack(new_prim2)
-        
-        if mode == '3d':
-            new_prim2_pos = (torch.tensor(quat2mat(unit_quat)) @ (new_prim2[:, :3] - gripper2_pos).T).T + gripper2_pos
-            new_prim2 = torch.cat((new_prim2_pos, new_prim2[:, 3:]), 1)
-        
-        init_pose = torch.cat((new_prim1, new_prim2), 1)
+    x1 = new_mid_point[0] - task_params["sample_radius"] * torch.cos(rot_noise)
+    y1 = new_mid_point[2] + task_params["sample_radius"] * torch.sin(rot_noise)
+    x2 = new_mid_point[0] + task_params["sample_radius"] * torch.cos(rot_noise)
+    y2 = new_mid_point[2] - task_params["sample_radius"] * torch.sin(rot_noise)
+    
+    unit_quat = torch.tensor([1.0, 0.0, 0.0, 0.0])
+    
+    gripper1_pos = torch.tensor([x1, new_mid_point[1], y1])
+    gripper2_pos = torch.tensor([x2, new_mid_point[1], y2])
+    
+    if mode == '3d':
+        z_vec = torch.tensor([torch.cos(rot_noise), 0, torch.sin(rot_noise)])
+        unit_quat = random_rotate(new_mid_point, z_vec, z_angle)
+    
+    # import pdb; pdb.set_trace()
+    new_prim1 = []
+    for j in range(task_params["n_shapes_per_gripper"]):
+        prim1_pos = torch.stack([x1, torch.tensor(new_mid_point[1].item() + 0.018 * (j-5)), y1])
+        prim1_tmp = torch.cat((prim1_pos, unit_quat))
+        new_prim1.append(prim1_tmp)
+    new_prim1 = torch.stack(new_prim1)
+    
+    # import pdb; pdb.set_trace()
+    if mode == '3d':
+        new_prim1_pos = (torch.tensor(quat2mat(unit_quat)) @ (new_prim1[:, :3] - gripper1_pos).T).T + gripper1_pos
+        new_prim1 = torch.cat((new_prim1_pos, new_prim1[:, 3:]), 1)
+    
+    new_prim2 = []
+    for j in range(task_params["n_shapes_per_gripper"]):
+        prim2_pos = torch.stack([x2, torch.tensor(new_mid_point[1].item() + 0.018 * (j-5)), y2])
+        prim2_tmp = torch.cat((prim2_pos, unit_quat))
+        new_prim2.append(prim2_tmp)
+    new_prim2 = torch.stack(new_prim2)
+    
+    if mode == '3d':
+        new_prim2_pos = (torch.tensor(quat2mat(unit_quat)) @ (new_prim2[:, :3] - gripper2_pos).T).T + gripper2_pos
+        new_prim2 = torch.cat((new_prim2_pos, new_prim2[:, 3:]), 1)
+    
+    init_pose = torch.cat((new_prim1, new_prim2), 1)
 
     return init_pose
 
