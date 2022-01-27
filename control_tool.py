@@ -673,7 +673,8 @@ class Planner(object):
         emd_loss = torch.neg(self.evaluate_traj(sample_state_seq[:, :self.n_particle].unsqueeze(0), state_goal, 'emd'))
         chamfer_loss = torch.neg(self.evaluate_traj(sample_state_seq[:, :self.n_particle].unsqueeze(0), state_goal, 'chamfer'))
         print(f"EMD: {emd_loss}\nChamfer: {chamfer_loss}")
-        import pdb; pdb.set_trace()
+        with open(f'loss_{i}.npy', 'wb') as f:
+            np.save(f, np.array([emd_loss.item(), chamfer_loss.item()]))
         return loss_sim
 
     def get_state_goal(self, i):
@@ -1278,7 +1279,7 @@ def main():
     if args.gt_action:
         test_name = f'sim_{args.use_sim}+gt_action_{args.gt_action}+{args.reward_type}'
     else:
-        test_name = f'tool_sim_{args.use_sim}+{args.shape_type}+algo_{args.control_algo}+{args.n_grips}_grips+{args.opt_algo}+{args.reward_type}+correction_{args.correction}+debug_{args.debug}'
+        test_name = f'toolza_sim_{args.use_sim}+{args.shape_type}+algo_{args.control_algo}+{args.n_grips}_grips+{args.opt_algo}+{args.reward_type}+correction_{args.correction}+debug_{args.debug}'
         # test_name = f'sim_{args.use_sim}+algo_{args.control_algo}+{args.n_grips}_grips+{args.opt_algo}+{args.reward_type}+correction_{args.correction}+debug_{args.debug}'
 
     if len(args.goal_shape_name) > 0 and args.goal_shape_name != 'none':
