@@ -771,12 +771,12 @@ class Planner(object):
             for i in range(act_seqs.shape[1]):
                 if tool_seqs[0, i, 0, 0].item() == 1:
                     size = 'large'
-                    self.taichi_env.primitives.primitives[0].r = task_params['tool_size_large']
-                    self.taichi_env.primitives.primitives[1].r = task_params['tool_size_large']
+                    self.taichi_env.primitives.primitives[0].r[None] = task_params['tool_size_large']
+                    self.taichi_env.primitives.primitives[1].r[None] = task_params['tool_size_large']
                 elif tool_seqs[0, i, 0, 0].item() == 0:
                     size = 'small'
-                    self.taichi_env.primitives.primitives[0].r = task_params['tool_size_small']
-                    self.taichi_env.primitives.primitives[1].r = task_params['tool_size_small']
+                    self.taichi_env.primitives.primitives[0].r[None] = task_params['tool_size_small']
+                    self.taichi_env.primitives.primitives[1].r[None] = task_params['tool_size_small']
                 self.taichi_env.primitives.primitives[0].set_state(0,
                                                                    init_pose_seqs[t, i, task_params["gripper_mid_pt"],
                                                                    :7])
