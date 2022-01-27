@@ -184,11 +184,11 @@ def main():
             #     continue
             import pdb; pdb.set_trace()
             if tool_seq[i, 0, 0] == 1:
-                env.primitives.primitives[0].r = task_params['tool_size_large']
-                env.primitives.primitives[1].r = task_params['tool_size_large']
+                env.primitives.primitives[0].r[None] = task_params['tool_size_large']
+                env.primitives.primitives[1].r[None] = task_params['tool_size_large']
             else:
-                env.primitives.primitives[0].r = task_params['tool_size_small']
-                env.primitives.primitives[1].r = task_params['tool_size_small']
+                env.primitives.primitives[0].r[None] = task_params['tool_size_small']
+                env.primitives.primitives[1].r[None] = task_params['tool_size_small']
             env.primitives.primitives[0].set_state(0, init_pose_seq[i, task_params["gripper_mid_pt"], :7])
             env.primitives.primitives[1].set_state(0, init_pose_seq[i, task_params["gripper_mid_pt"], 7:])
             for j in range(act_seq.shape[1]):
