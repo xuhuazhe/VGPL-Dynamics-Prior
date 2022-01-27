@@ -1344,8 +1344,8 @@ def main():
         update_camera(env)
 
         # update the tool size
-        env.primitives.primitives[0].r = task_params['tool_size_large']
-        env.primitives.primitives[1].r = task_params['tool_size_large']
+        env.primitives.primitives[0].r[None] = task_params['tool_size_large']
+        env.primitives.primitives[1].r[None] = task_params['tool_size_large']
 
     # load model
     model_large = load_models(args)
