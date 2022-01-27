@@ -182,7 +182,6 @@ def main():
             # if args.goal_shape_name == 'D' and i == 0:
             #     import pdb; pdb.set_trace()
             #     continue
-            import pdb; pdb.set_trace()
             if tool_seq[i, 0, 0] == 1:
                 env.primitives.primitives[0].r[None] = task_params['tool_size_large']
                 env.primitives.primitives[1].r[None] = task_params['tool_size_large']
