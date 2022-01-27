@@ -670,7 +670,11 @@ class Planner(object):
                    os.path.join(self.rollout_path, f'anim_{i}.gif'))
 
         loss_sim = torch.neg(self.evaluate_traj(sample_state_seq[:, :self.n_particle].unsqueeze(0), state_goal, reward_type))
-
+        emd_loss = torch.neg(self.evaluate_traj(sample_state_seq[:, :self.n_particle].unsqueeze(0), state_goal, 'emd'))
+        chamfer_loss = torch.neg(self.evaluate_traj(sample_state_seq[:, :self.n_particle].unsqueeze(0), state_goal, 'chamfer'))
+        print(f"EMD: {emd_loss}\nChamfer: {chamfer_loss}")
+        with open(f'loss_{i}.npy', 'wb') as f:
+            np.save(f, np.array([emd_loss.item(), chamfer_loss.item()]))
         return loss_sim
 
     def get_state_goal(self, i):
@@ -771,12 +775,12 @@ class Planner(object):
             for i in range(act_seqs.shape[1]):
                 if tool_seqs[0, i, 0, 0].item() == 1:
                     size = 'large'
-                    self.taichi_env.primitives.primitives[0].r = task_params['tool_size_large']
-                    self.taichi_env.primitives.primitives[1].r = task_params['tool_size_large']
+                    self.taichi_env.primitives.primitives[0].r[None] = task_params['tool_size_large']
+                    self.taichi_env.primitives.primitives[1].r[None] = task_params['tool_size_large']
                 elif tool_seqs[0, i, 0, 0].item() == 0:
                     size = 'small'
-                    self.taichi_env.primitives.primitives[0].r = task_params['tool_size_small']
-                    self.taichi_env.primitives.primitives[1].r = task_params['tool_size_small']
+                    self.taichi_env.primitives.primitives[0].r[None] = task_params['tool_size_small']
+                    self.taichi_env.primitives.primitives[1].r[None] = task_params['tool_size_small']
                 self.taichi_env.primitives.primitives[0].set_state(0,
                                                                    init_pose_seqs[t, i, task_params["gripper_mid_pt"],
                                                                    :7])
@@ -1275,7 +1279,7 @@ def main():
     if args.gt_action:
         test_name = f'sim_{args.use_sim}+gt_action_{args.gt_action}+{args.reward_type}'
     else:
-        test_name = f'tool_sim_{args.use_sim}+{args.shape_type}+algo_{args.control_algo}+{args.n_grips}_grips+{args.opt_algo}+{args.reward_type}+correction_{args.correction}+debug_{args.debug}'
+        test_name = f'toolza_sim_{args.use_sim}+{args.shape_type}+algo_{args.control_algo}+{args.n_grips}_grips+{args.opt_algo}+{args.reward_type}+correction_{args.correction}+debug_{args.debug}'
         # test_name = f'sim_{args.use_sim}+algo_{args.control_algo}+{args.n_grips}_grips+{args.opt_algo}+{args.reward_type}+correction_{args.correction}+debug_{args.debug}'
 
     if len(args.goal_shape_name) > 0 and args.goal_shape_name != 'none':
@@ -1344,8 +1348,8 @@ def main():
         update_camera(env)
 
         # update the tool size
-        env.primitives.primitives[0].r = task_params['tool_size_large']
-        env.primitives.primitives[1].r = task_params['tool_size_large']
+        env.primitives.primitives[0].r[None] = task_params['tool_size_large']
+        env.primitives.primitives[1].r[None] = task_params['tool_size_large']
 
     # load model
     model_large = load_models(args)

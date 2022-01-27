@@ -56,8 +56,8 @@ def main():
     control_out_list = []
     for i in range(len(all_dirs)):
         # if 'max' in sorted(all_dirs)[i]:
-        # if 'tool' in sorted(all_dirs)[i]:
-        control_out_list.append(os.path.join(parent_dir, sorted(all_dirs)[i]))
+        if 'selected_tool' in sorted(all_dirs)[i]:
+            control_out_list.append(os.path.join(parent_dir, sorted(all_dirs)[i]))
     # print(control_out_dir)
 
     # set up the env
@@ -175,7 +175,6 @@ def main():
             init_pose_seq = init_pose_seq[:-1, :, :]
             act_seq = act_seq[:-1, :, :]
             tool_seq = tool_seq[:-1, :, :]
-
         env.set_state(**state)
         for i in range(act_seq.shape[0]):
             print(f"folder {index}, grip {i}")
@@ -184,11 +183,11 @@ def main():
             #     import pdb; pdb.set_trace()
             #     continue
             if tool_seq[i, 0, 0] == 1:
-                env.primitives.primitives[0].r = task_params['tool_size_large']
-                env.primitives.primitives[1].r = task_params['tool_size_large']
+                env.primitives.primitives[0].r[None] = task_params['tool_size_large']
+                env.primitives.primitives[1].r[None] = task_params['tool_size_large']
             else:
-                env.primitives.primitives[0].r = task_params['tool_size_small']
-                env.primitives.primitives[1].r = task_params['tool_size_small']
+                env.primitives.primitives[0].r[None] = task_params['tool_size_small']
+                env.primitives.primitives[1].r[None] = task_params['tool_size_small']
             env.primitives.primitives[0].set_state(0, init_pose_seq[i, task_params["gripper_mid_pt"], :7])
             env.primitives.primitives[1].set_state(0, init_pose_seq[i, task_params["gripper_mid_pt"], 7:])
             for j in range(act_seq.shape[1]):
