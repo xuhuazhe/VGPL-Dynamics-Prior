@@ -1,0 +1,65 @@
+model_kp #params: 443560
+Spinning at iteration 0
+The first frame: [ 0.42995297 -0.00474963  0.074079  ] +- [0.017 0.017 0.006]
+sampling: max: -0.0211, mean: -0.0224, std: 0.0008
+Selected top reward seqs: tensor([-0.0214, -0.0214, -0.0214, -0.0214, -0.0213, -0.0212, -0.0211, -0.0211,
+        -0.0211, -0.0211])
+Batch 0/10:
+reward seqs after 2 iterations: tensor([-0.0211], grad_fn=<CatBackward>)
+Batch 1/10:
+reward seqs after 8 iterations: tensor([-0.0214], grad_fn=<CatBackward>)
+Batch 2/10:
+reward seqs after 1 iterations: tensor([-0.0214], grad_fn=<CatBackward>)
+Batch 3/10:
+reward seqs after 2 iterations: tensor([-0.0211], grad_fn=<CatBackward>)
+Batch 4/10:
+reward seqs after 39 iterations: tensor([-0.0212], grad_fn=<CatBackward>)
+Batch 5/10:
+reward seqs after 2 iterations: tensor([-0.0211], grad_fn=<CatBackward>)
+Batch 6/10:
+reward seqs after 1 iterations: tensor([-0.0211], grad_fn=<CatBackward>)
+Batch 7/10:
+reward seqs after 1 iterations: tensor([-0.0211], grad_fn=<CatBackward>)
+Batch 8/10:
+reward seqs after 1 iterations: tensor([-0.0211], grad_fn=<CatBackward>)
+Batch 9/10:
+reward seqs after 1 iterations: tensor([-0.0211], grad_fn=<CatBackward>)
+Loss: 0.02106458693742752
+Optimal set of params:
+mid_point: tensor([[0.4400, 0.1400, 0.5600]])
+angle: tensor([2.3562], grad_fn=<SelectBackward>)
+gripper_rate: tensor([0.0087], dtype=torch.float64, grad_fn=<ClampBackward1>)
+Optimal init pose seq: tensor([[0.7228, 0.1400, 0.8428, 1.0000, 0.0000, 0.0000, 0.0000]],
+       grad_fn=<SliceBackward>)
+=============== Iteration 0 -> model_loss: tensor([0.0211]) ===============
+torch.Size([1, 11, 14]) torch.Size([1, 30, 12])
+Best init pose: tensor([[0.7228, 0.1400, 0.8428, 1.0000, 0.0000, 0.0000, 0.0000]])
+Best model loss: tensor([0.0211])
+Spinning at iteration 0
+Spinning at iteration 0
+Spinning at iteration 0
+Spinning at iteration 0
+Spinning at iteration 0
+Spinning at iteration 0
+Spinning at iteration 0
+Spinning at iteration 0
+Spinning at iteration 0
+Spinning at iteration 0
+Spinning at iteration 0
+Spinning at iteration 0
+Spinning at iteration 0
+Spinning at iteration 0
+Spinning at iteration 0
+Spinning at iteration 0
+Spinning at iteration 0
+Spinning at iteration 0
+Spinning at iteration 0
+Spinning at iteration 0
+Spinning at iteration 0
+Spinning at iteration 0
+Spinning at iteration 0
+Spinning at iteration 0
+Spinning at iteration 0
+Spinning at iteration 0
+Spinning at iteration 0
+Spinning at iteration 1

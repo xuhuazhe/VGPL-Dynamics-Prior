@@ -230,45 +230,45 @@ def get_pose(new_mid_point, rot_noise, z_angle, mode):
     if not torch.is_tensor(rot_noise):
         rot_noise = torch.tensor(rot_noise)
 
-        x1 = new_mid_point[0] - task_params["sample_radius"] * torch.cos(rot_noise)
-        y1 = new_mid_point[2] + task_params["sample_radius"] * torch.sin(rot_noise)
-        x2 = new_mid_point[0] + task_params["sample_radius"] * torch.cos(rot_noise)
-        y2 = new_mid_point[2] - task_params["sample_radius"] * torch.sin(rot_noise)
-        
-        unit_quat = torch.tensor([1.0, 0.0, 0.0, 0.0])
-        
-        gripper1_pos = torch.tensor([x1, new_mid_point[1], y1])
-        gripper2_pos = torch.tensor([x2, new_mid_point[1], y2])
-        
-        if mode == '3d':
-            z_vec = torch.tensor([torch.cos(rot_noise), 0, torch.sin(rot_noise)])
-            gripper1_pos, gripper2_pos, unit_quat = random_rotate(new_mid_point, gripper1_pos, gripper2_pos, z_vec, z_angle)
-        
-        # import pdb; pdb.set_trace()
-        new_prim1 = []
-        for j in range(task_params["n_shapes_per_gripper"]):
-            prim1_pos = torch.stack([x1, torch.tensor(new_mid_point[1].item() + 0.018 * (j-5)), y1])
-            prim1_tmp = torch.cat((prim1_pos, unit_quat))
-            new_prim1.append(prim1_tmp)
-        new_prim1 = torch.stack(new_prim1)
-        
-        # import pdb; pdb.set_trace()
-        if mode == '3d':
-            new_prim1_pos = (torch.tensor(quat2mat(unit_quat)) @ (new_prim1[:, :3] - gripper1_pos).T).T + gripper1_pos
-            new_prim1 = torch.cat((new_prim1_pos, new_prim1[:, 3:]), 1)
-        
-        new_prim2 = []
-        for j in range(task_params["n_shapes_per_gripper"]):
-            prim2_pos = torch.stack([x2, torch.tensor(new_mid_point[1].item() + 0.018 * (j-5)), y2])
-            prim2_tmp = torch.cat((prim2_pos, unit_quat))
-            new_prim2.append(prim2_tmp)
-        new_prim2 = torch.stack(new_prim2)
-        
-        if mode == '3d':
-            new_prim2_pos = (torch.tensor(quat2mat(unit_quat)) @ (new_prim2[:, :3] - gripper2_pos).T).T + gripper2_pos
-            new_prim2 = torch.cat((new_prim2_pos, new_prim2[:, 3:]), 1)
-        
-        init_pose = torch.cat((new_prim1, new_prim2), 1)
+    x1 = new_mid_point[0] - task_params["sample_radius"] * torch.cos(rot_noise)
+    y1 = new_mid_point[2] + task_params["sample_radius"] * torch.sin(rot_noise)
+    x2 = new_mid_point[0] + task_params["sample_radius"] * torch.cos(rot_noise)
+    y2 = new_mid_point[2] - task_params["sample_radius"] * torch.sin(rot_noise)
+    
+    unit_quat = torch.tensor([1.0, 0.0, 0.0, 0.0])
+    
+    gripper1_pos = torch.tensor([x1, new_mid_point[1], y1])
+    gripper2_pos = torch.tensor([x2, new_mid_point[1], y2])
+    
+    if mode == '3d':
+        z_vec = torch.tensor([torch.cos(rot_noise), 0, torch.sin(rot_noise)])
+        unit_quat = random_rotate(new_mid_point, z_vec, z_angle)
+    
+    # import pdb; pdb.set_trace()
+    new_prim1 = []
+    for j in range(task_params["n_shapes_per_gripper"]):
+        prim1_pos = torch.stack([x1, torch.tensor(new_mid_point[1].item() + 0.018 * (j-5)), y1])
+        prim1_tmp = torch.cat((prim1_pos, unit_quat))
+        new_prim1.append(prim1_tmp)
+    new_prim1 = torch.stack(new_prim1)
+    
+    # import pdb; pdb.set_trace()
+    if mode == '3d':
+        new_prim1_pos = (torch.tensor(quat2mat(unit_quat)) @ (new_prim1[:, :3] - gripper1_pos).T).T + gripper1_pos
+        new_prim1 = torch.cat((new_prim1_pos, new_prim1[:, 3:]), 1)
+    
+    new_prim2 = []
+    for j in range(task_params["n_shapes_per_gripper"]):
+        prim2_pos = torch.stack([x2, torch.tensor(new_mid_point[1].item() + 0.018 * (j-5)), y2])
+        prim2_tmp = torch.cat((prim2_pos, unit_quat))
+        new_prim2.append(prim2_tmp)
+    new_prim2 = torch.stack(new_prim2)
+    
+    if mode == '3d':
+        new_prim2_pos = (torch.tensor(quat2mat(unit_quat)) @ (new_prim2[:, :3] - gripper2_pos).T).T + gripper2_pos
+        new_prim2 = torch.cat((new_prim2_pos, new_prim2[:, 3:]), 1)
+    
+    init_pose = torch.cat((new_prim1, new_prim2), 1)
 
     return init_pose
 
@@ -578,15 +578,15 @@ class Planner(object):
                 init_pose_seq_opt, act_seq_opt, loss_opt, state_seq_opt = self.optimize_action_max(
                     init_pose_seqs_pool, act_seqs_pool, reward_seqs, model_state_seqs)
             
-            # elif self.args.opt_algo == 'CEM':
-            #     for j in range(self.args.CEM_opt_iter):
-            #         self.CEM_opt_iter_cur = j
-            #         if j == self.args.CEM_opt_iter - 1:
-            #             init_pose_seq_opt, act_seq_opt, loss_opt, state_seq_opt = self.optimize_action_max(
-            #                 init_pose_seqs_pool, act_seqs_pool, reward_seqs, model_state_seqs)
-            #         else:
-            #             init_pose_seqs_pool, act_seqs_pool = self.optimize_action_CEM(init_pose_seqs_pool, act_seqs_pool, reward_seqs)
-            #             reward_seqs, model_state_seqs = self.rollout(init_pose_seqs_pool, act_seqs_pool, state_cur, state_goal)
+            elif self.args.opt_algo == 'CEM':
+                for j in range(self.args.CEM_opt_iter):
+                    self.CEM_opt_iter_cur = j
+                    if j == self.args.CEM_opt_iter - 1:
+                        init_pose_seq_opt, act_seq_opt, loss_opt, state_seq_opt = self.optimize_action_max(
+                            init_pose_seqs_pool, act_seqs_pool, reward_seqs, model_state_seqs)
+                    else:
+                        init_pose_seqs_pool, act_seqs_pool = self.optimize_action_CEM(init_pose_seqs_pool, act_seqs_pool, reward_seqs)
+                        reward_seqs, model_state_seqs = self.rollout(init_pose_seqs_pool, act_seqs_pool, state_cur, state_goal)
             
             elif self.args.opt_algo == "GD":
                 with torch.set_grad_enabled(True):
@@ -902,91 +902,92 @@ class Planner(object):
         return init_pose_seqs[idx[-1]], act_seqs[idx[-1]], loss_opt, state_seqs[idx[-1]]
 
 
-    # def optimize_action_CEM(    # Cross Entropy Method (CEM)
-    #     self,
-    #     init_pose_seqs,
-    #     act_seqs,
-    #     reward_seqs,    # [n_sample]
-    #     best_k_ratio=0.1
-    # ):
-    #     best_k = max(4, int(init_pose_seqs.shape[0] * best_k_ratio))
-    #     idx = torch.argsort(reward_seqs)
-    #     print(f"Selected top reward seqs: {reward_seqs[idx[-best_k:]]}")
-    #     # print(f"Selected top init pose seqs: {init_pose_seqs[idx[-best_k:], :, task_params["gripper_mid_pt"], :7]}")
+    def optimize_action_CEM(    # Cross Entropy Method (CEM)
+        self,
+        init_pose_seqs,
+        act_seqs,
+        reward_seqs,    # [n_sample]
+        best_k_ratio=0.1
+    ):
+        best_k = max(4, int(init_pose_seqs.shape[0] * best_k_ratio))
+        idx = torch.argsort(reward_seqs)
+        print(f"Selected top reward seqs: {reward_seqs[idx[-best_k:]]}")
+        # print(f"Selected top init pose seqs: {init_pose_seqs[idx[-best_k:], :, task_params["gripper_mid_pt"], :7]}")
 
-    #     visualize_sampled_init_pos(init_pose_seqs, reward_seqs, idx, \
-    #         os.path.join(self.rollout_path, f'plot_cem_s{self.grip_cur}_o{self.CEM_opt_iter_cur}'))
+        visualize_sampled_init_pos(init_pose_seqs, reward_seqs, idx, \
+            os.path.join(self.rollout_path, f'plot_cem_s{self.grip_cur}_o{self.CEM_opt_iter_cur}'))
 
-    #     # pdb.set_trace()
-    #     init_pose_seqs_pool = []
-    #     act_seqs_pool = []
-    #     for i in range(best_k, 0, -1):
-    #         init_pose_seq = init_pose_seqs[idx[-i]]
-    #         mid_point_seq, angle_seq, z_angle_seq = get_params_from_pose(init_pose_seq)
-    #         act_seq = act_seqs[idx[-i]]
-    #         # gripper_rate_seq = get_gripper_rate_from_action_seq(act_seq)
-    #         # print(f"Selected init pose seq: {init_pose_seq[:, task_params["gripper_mid_pt"], :7]}")
-    #         init_pose_seqs_pool.append(init_pose_seq)
-    #         act_seqs_pool.append(act_seq)
+        # pdb.set_trace()
+        init_pose_seqs_pool = []
+        act_seqs_pool = []
+        for i in range(best_k, 0, -1):
+            init_pose_seq = init_pose_seqs[idx[-i]]
+            mid_point_seq, angle_seq, z_angle_seq = get_params_from_pose(init_pose_seq)
+            act_seq = act_seqs[idx[-i]]
+            # gripper_rate_seq = get_gripper_rate_from_action_seq(act_seq)
+            # print(f"Selected init pose seq: {init_pose_seq[:, task_params["gripper_mid_pt"], :7]}")
+            init_pose_seqs_pool.append(init_pose_seq)
+            act_seqs_pool.append(act_seq)
 
-    #         for k in range(self.CEM_gripper_rate_sample_size - 1):
-    #             # gripper_rate_noise = torch.clamp(torch.tensor(np.random.randn(init_pose_seq.shape[0])*0.02), max=0.05, min=-0.05)
-    #             # gripper_rate_sample = gripper_rate_seq + gripper_rate_noise
-    #             gripper_rate_sample = []
-    #             for s in range(init_pose_seq.shape[0]):
-    #                 gripper_rate_sample.append(np.random.uniform(*task_params["gripper_rate_limits"]))
-    #             gripper_rate_sample = torch.tensor(gripper_rate_sample)
-    #             # print(f"{i} gripper_rate_sample: {gripper_rate_sample}")
-    #             act_seq_sample = get_action_seq_from_pose(init_pose_seq, gripper_rate_sample)
+            for k in range(self.CEM_gripper_rate_sample_size - 1):
+                # gripper_rate_noise = torch.clamp(torch.tensor(np.random.randn(init_pose_seq.shape[0])*0.02), max=0.05, min=-0.05)
+                # gripper_rate_sample = gripper_rate_seq + gripper_rate_noise
+                gripper_rate_sample = []
+                for s in range(init_pose_seq.shape[0]):
+                    gripper_rate_sample.append(np.random.uniform(*task_params["gripper_rate_limits"]))
+                gripper_rate_sample = torch.tensor(gripper_rate_sample)
+                # print(f"{i} gripper_rate_sample: {gripper_rate_sample}")
+                act_seq_sample = get_action_seq_from_pose(init_pose_seq, gripper_rate_sample)
 
-    #             init_pose_seqs_pool.append(init_pose_seq)
-    #             act_seqs_pool.append(act_seq_sample)
+                init_pose_seqs_pool.append(init_pose_seq)
+                act_seqs_pool.append(act_seq_sample)
 
-    #         if i > 1:
-    #             n_init_pose_samples = self.CEM_init_pose_sample_size // (2**i)
-    #         else:
-    #             n_init_pose_samples = self.CEM_init_pose_sample_size - len(init_pose_seqs_pool) // (self.CEM_gripper_rate_sample_size) + 1
+            if i > 1:
+                n_init_pose_samples = self.CEM_init_pose_sample_size // (2**i)
+            else:
+                n_init_pose_samples = self.CEM_init_pose_sample_size - len(init_pose_seqs_pool) // (self.CEM_gripper_rate_sample_size) + 1
             
-    #         j = 1
-    #         while j < n_init_pose_samples:
-    #             init_pose_seq_sample = []
-    #             for k in range(init_pose_seq.shape[0]):
-    #                 p_noise = torch.clamp(torch.tensor([0, 0, np.random.randn()*0.03]), min=-0.1, max=0.1)
-    #                 rot_noise = torch.clamp(torch.tensor(np.random.randn()*math.pi/36), min=-0.1, max=0.1)
-    #                 # This is a bug for CEM!!!
-    #                 z_angle = 0.0
+            j = 1
+            while j < n_init_pose_samples:
+                init_pose_seq_sample = []
+                for k in range(init_pose_seq.shape[0]):
+                    p_noise = torch.clamp(torch.tensor([0, 0, np.random.randn()*0.03]), min=-0.1, max=0.1)
+                    rot_noise = torch.clamp(torch.tensor(np.random.randn()*math.pi/36), min=-0.1, max=0.1)
+                    # This is a bug for CEM!!!
+                    z_angle_noise =  torch.clamp(torch.tensor(np.random.randn()*math.pi/36), min=-0.1, max=0.1)
                 
-    #                 new_mid_point = mid_point_seq[k, :3] + p_noise
-    #                 new_angle = angle_seq[k] + rot_noise
-    #                 mode = '3d' if '3d' in self.args.data_type else '2d'
-    #                 init_pose = get_pose(new_mid_point, new_angle, z_angle, mode=mode)
-    #                 init_pose_seq_sample.append(init_pose)
+                    new_mid_point = mid_point_seq[k, :3] + p_noise
+                    new_angle = angle_seq[k] + rot_noise
+                    new_z_angle = z_angle_seq[k] + z_angle_noise
+                    mode = '3d' if '3d' in self.args.data_type else '2d'
+                    init_pose = get_pose(new_mid_point, new_angle, new_z_angle, mode=mode)
+                    init_pose_seq_sample.append(init_pose)
 
-    #             init_pose_seq_sample = torch.stack(init_pose_seq_sample)
-    #             # print(f"Selected init pose seq: {init_pose_seq_sample[:, task_params["gripper_mid_pt"], :7]}")
+                init_pose_seq_sample = torch.stack(init_pose_seq_sample)
+                # print(f"Selected init pose seq: {init_pose_seq_sample[:, task_params["gripper_mid_pt"], :7]}")
 
-    #             # pdb.set_trace()
-    #             for k in range(self.CEM_gripper_rate_sample_size):
-    #                 # gripper_rate_noise = torch.tensor(np.random.randn(init_pose_seq.shape[0])*0.01).to(device)
-    #                 # gripper_rate_sample = torch.clamp(gripper_rate_seq + gripper_rate_noise, max=task_params["gripper_rate_limits"][1], min=task_params["gripper_rate_limits"][0])
-    #                 gripper_rate_sample = []
-    #                 for s in range(init_pose_seq.shape[0]):
-    #                     gripper_rate_sample.append(np.random.uniform(*task_params["gripper_rate_limits"]))
-    #                 gripper_rate_sample = torch.tensor(gripper_rate_sample)
-    #                 # print(f"gripper_rate_sample: {gripper_rate_sample}")
-    #                 act_seq_sample = get_action_seq_from_pose(init_pose_seq_sample, gripper_rate_sample)
+                # pdb.set_trace()
+                for k in range(self.CEM_gripper_rate_sample_size):
+                    # gripper_rate_noise = torch.tensor(np.random.randn(init_pose_seq.shape[0])*0.01).to(device)
+                    # gripper_rate_sample = torch.clamp(gripper_rate_seq + gripper_rate_noise, max=task_params["gripper_rate_limits"][1], min=task_params["gripper_rate_limits"][0])
+                    gripper_rate_sample = []
+                    for s in range(init_pose_seq.shape[0]):
+                        gripper_rate_sample.append(np.random.uniform(*task_params["gripper_rate_limits"]))
+                    gripper_rate_sample = torch.tensor(gripper_rate_sample)
+                    # print(f"gripper_rate_sample: {gripper_rate_sample}")
+                    act_seq_sample = get_action_seq_from_pose(init_pose_seq_sample, gripper_rate_sample)
 
-    #                 init_pose_seqs_pool.append(init_pose_seq_sample)
-    #                 act_seqs_pool.append(act_seq_sample)
+                    init_pose_seqs_pool.append(init_pose_seq_sample)
+                    act_seqs_pool.append(act_seq_sample)
 
-    #             j += 1
+                j += 1
 
-    #     # pdb.set_trace()
-    #     init_pose_seqs_pool = torch.stack(init_pose_seqs_pool)
-    #     act_seqs_pool = torch.stack(act_seqs_pool)
-    #     print(f"Init pose seq pool shape: {init_pose_seqs_pool.shape}; Act seq pool shape: {act_seqs_pool.shape}")
+        # pdb.set_trace()
+        init_pose_seqs_pool = torch.stack(init_pose_seqs_pool)
+        act_seqs_pool = torch.stack(act_seqs_pool)
+        print(f"Init pose seq pool shape: {init_pose_seqs_pool.shape}; Act seq pool shape: {act_seqs_pool.shape}")
 
-    #     return init_pose_seqs_pool, act_seqs_pool
+        return init_pose_seqs_pool, act_seqs_pool
 
 
     def optimize_action_GD(
@@ -1016,7 +1017,7 @@ class Planner(object):
             best_z_angle_seqs.append(best_z_angle_seq)
             best_gripper_rate_seqs.append(best_gripper_rate_seq)
         
-        pdb.set_trace()
+        # pdb.set_trace()
         best_mid_point_seqs = torch.stack(best_mid_point_seqs)
         best_angle_seqs = torch.stack(best_angle_seqs)
         best_z_angle_seqs = torch.stack(best_z_angle_seqs)
@@ -1376,11 +1377,11 @@ def main():
     print(f"Best init pose: {init_pose_seq[:, task_params['gripper_mid_pt'], :7]}")
     print(f"Best model loss: {loss_seq}; Best sim loss: {loss_sim_seq}")
 
-    # with open(f"{control_out_dir}/init_pose_seq_opt.npy", 'wb') as f:
-    #     np.save(f, init_pose_seq)
+    with open(f"{control_out_dir}/init_pose_seq_opt.npy", 'wb') as f:
+        np.save(f, init_pose_seq)
 
-    # with open(f"{control_out_dir}/act_seq_opt.npy", 'wb') as f:
-    #     np.save(f, act_seq)
+    with open(f"{control_out_dir}/act_seq_opt.npy", 'wb') as f:
+        np.save(f, act_seq)
 
 
 if __name__ == '__main__':

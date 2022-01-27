@@ -221,7 +221,7 @@ def gen_args():
         if 'small' in args.data_type:
             args.gripper_extra_neighbor_radius = 0.0
         elif 'robot' in args.data_type:
-            args.gripper_extra_neighbor_radius = 0.005
+            args.gripper_extra_neighbor_radius = 0.015
         else:
             args.gripper_extra_neighbor_radius = 0.015
 
