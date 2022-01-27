@@ -673,6 +673,7 @@ class Planner(object):
         emd_loss = torch.neg(self.evaluate_traj(sample_state_seq[:, :self.n_particle].unsqueeze(0), state_goal, 'emd'))
         chamfer_loss = torch.neg(self.evaluate_traj(sample_state_seq[:, :self.n_particle].unsqueeze(0), state_goal, 'chamfer'))
         print(f"EMD: {emd_loss}\nChamfer: {chamfer_loss}")
+        import pdb; pdb.set_trace()
         return loss_sim
 
     def get_state_goal(self, i):
