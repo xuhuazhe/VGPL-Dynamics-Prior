@@ -670,7 +670,9 @@ class Planner(object):
                    os.path.join(self.rollout_path, f'anim_{i}.gif'))
 
         loss_sim = torch.neg(self.evaluate_traj(sample_state_seq[:, :self.n_particle].unsqueeze(0), state_goal, reward_type))
-
+        emd_loss = torch.neg(self.evaluate_traj(sample_state_seq[:, :self.n_particle].unsqueeze(0), state_goal, 'emd'))
+        chamfer_loss = torch.neg(self.evaluate_traj(sample_state_seq[:, :self.n_particle].unsqueeze(0), state_goal, 'chamfer'))
+        print(f"EMD: {emd_loss}\nChamfer: {chamfer_loss}")
         return loss_sim
 
     def get_state_goal(self, i):
