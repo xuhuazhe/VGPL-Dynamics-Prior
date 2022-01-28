@@ -56,14 +56,14 @@ if __name__ == "__main__":
 
     update = True
     debug = False
-    prefix = 'shapes/alphabet_regular'
-    suffix = '_robot'
+    prefix = 'shapes/simple'
+    suffix = ''
     if prefix == 'shapes/simple':
         # 'fish', 'clover', 'heart', 'flower', 'mushroom', 'octagon', 'hat', 'wang', 'butterfly'
-        image_names = ['wang']
+        image_names = ['heart']
     elif prefix in ['shapes/alphabet_black', 'shapes/alphabet_bold', 'shapes/alphabet_regular']:
         # image_names = list(ascii_uppercase)
-        image_names = ['B']
+        image_names = ['C', 'E', 'Z', 'Y']
     else:
         raise NotImplementedError
     shape_size = (1.0 * 0.25, 0.15, 1.0 * 0.25)
@@ -134,6 +134,7 @@ if __name__ == "__main__":
             sampled_points = fps(sampled_points, K=n_particle, partial=False)
             # sampled_points.paint_uniform_color([0,0,0])
         
+            sampled_points[:, 2] = np.ones((sampled_points.shape[0])) - sampled_points[:, 2]
             # sampled_pcd_fps = o3d.geometry.PointCloud()
             # sampled_pcd_fps.points = o3d.utility.Vector3dVector(sampled_points)
             # o3d.visualization.draw_geometries([sampled_pcd_fps])

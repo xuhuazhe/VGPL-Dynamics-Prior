@@ -86,11 +86,11 @@ def plt_render_frames(particles_set, target_shape, n_particle, render_path):
 
         plot_info_all[row_titles[i]] = plot_info
 
-    frame_list = [n_frames-1]
-    # for g in range(n_frames // (task_params['len_per_grip'] + task_params['len_per_grip_back'])):
-    #     frame_list.append(g * (task_params['len_per_grip'] + task_params['len_per_grip_back']) + 12)
-    #     frame_list.append(g * (task_params['len_per_grip'] + task_params['len_per_grip_back']) + 15)
-    #     frame_list.append(g * (task_params['len_per_grip'] + task_params['len_per_grip_back']) + task_params['len_per_grip'] - 1)
+    frame_list = [n_frames - 1]
+    for g in range(n_frames // (task_params['len_per_grip'] + task_params['len_per_grip_back'])):
+        frame_list.append(g * (task_params['len_per_grip'] + task_params['len_per_grip_back']) + 12)
+        frame_list.append(g * (task_params['len_per_grip'] + task_params['len_per_grip_back']) + 15)
+        frame_list.append(g * (task_params['len_per_grip'] + task_params['len_per_grip_back']) + task_params['len_per_grip'] - 1)
 
     for step in frame_list: # range(n_frames):
         for i in range(rows):
@@ -176,8 +176,8 @@ def main():
         #     shape_type = 'simple'
         # else:
         #     shape_type = "alphabet"
-        shape_dir = os.path.join(os.getcwd(), 'shapes', args.shape_type, args.goal_shape_name)
-        goal_frame_name = f'{args.goal_shape_name}.h5'
+        shape_dir = os.path.join(os.getcwd(), 'shapes', args.shape_type, 'X')
+        goal_frame_name = f'X.h5'
         # if args.shape_aug:
         #     goal_frame_name = 'shape_' + goal_frame_name
         goal_frame_path = os.path.join(shape_dir, goal_frame_name)
@@ -292,11 +292,11 @@ def main():
         #     import pdb; pdb.set_trace()
         #     continue
         if tool_seq[i, 0, 0] == 1:
-            env.primitives.primitives[0].r = task_params['tool_size_large']
-            env.primitives.primitives[1].r = task_params['tool_size_large']
+            env.primitives.primitives[0].r[None] = task_params['tool_size_large']
+            env.primitives.primitives[1].r[None] = task_params['tool_size_large']
         else:
-            env.primitives.primitives[0].r = task_params['tool_size_small']
-            env.primitives.primitives[1].r = task_params['tool_size_small']
+            env.primitives.primitives[0].r[None] = task_params['tool_size_small']
+            env.primitives.primitives[1].r[None] = task_params['tool_size_small']
         env.primitives.primitives[0].set_state(0, init_pose_seq[i, task_params["gripper_mid_pt"], :7])
         env.primitives.primitives[1].set_state(0, init_pose_seq[i, task_params["gripper_mid_pt"], 7:])
         for j in range(act_seq.shape[1]):
