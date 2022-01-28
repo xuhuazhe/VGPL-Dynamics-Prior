@@ -12,3 +12,4 @@ dump_*/
 data/*
 *.lprof
 interactive
+gether_results.py

@@ -54,6 +54,7 @@ def main():
     parent_dir = os.path.join(args.outf, 'sim_control_final', shape_goal_dir)
     all_dirs = os.listdir(parent_dir)
     control_out_list = []
+    import pdb; pdb.set_trace()
     for i in range(len(all_dirs)):
         # if 'max' in sorted(all_dirs)[i]:
         # if 'selected_tool' in sorted(all_dirs)[i]:
