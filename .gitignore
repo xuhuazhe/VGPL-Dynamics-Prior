@@ -11,3 +11,4 @@ dump_*/
 *.swo
 data/*
 *.lprof
+interactive
