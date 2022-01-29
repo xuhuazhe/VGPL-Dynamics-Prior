@@ -104,12 +104,13 @@ def plt_render(particles_set, n_particle, render_path):
 
 def plt_render_frames_rm(particles_set, n_particle, render_path):
     # particles_set[0] = np.concatenate((particles_set[0][:, :n_particle], particles_set[1][:, n_particle:]), axis=1)
+    # pdb.set_trace()
     n_frames = particles_set[0].shape[0]
-    rows = 3
+    rows = 2
     cols = 1
 
     fig, big_axes = plt.subplots(rows, 1, figsize=(3, 9))
-    row_titles = ['GT', 'Sample', 'Prediction']
+    row_titles = ['Sample', 'Prediction']
     views = [(90, 90)]
     plot_info_all = {}
     for i in range(rows):
@@ -395,7 +396,7 @@ def evaluate(args, eval_epoch, eval_iter):
         render_path = os.path.join(args.evalf, 'render', f'vid_{idx_episode}_plt.gif')
 
         if args.vis == 'plt':
-            plt_render_frames_rm([p_gt, p_sample, p_pred], n_particle, render_path=os.path.join(args.evalf, 'render'))
+            plt_render_frames_rm([p_sample, p_pred], n_particle, render_path=os.path.join(args.evalf, 'render'))
             # if 'robot' in args.data_type:
             #     plt_render_robot([p_sample, p_pred], n_particle, render_path)
             # else:

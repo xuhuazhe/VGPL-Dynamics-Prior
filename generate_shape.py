@@ -31,7 +31,7 @@ def visualize_points(all_points, n_particles, path):
     fig = plt.figure()
     ax = fig.add_subplot(111, projection='3d')
     ax.view_init(90, 90)
-    ax.scatter(points[:, 0], points[:, 2], points[:, 1], c='b', s=20)
+    ax.scatter(points[:, 0], points[:, 2], points[:, 1], c='c', s=20)
     ax.scatter(shapes[:, 0], shapes[:, 2], shapes[:, 1], c='r', s=20)
     
     extents = np.array([getattr(ax, 'get_{}lim'.format(dim))() for dim in 'xyz'])
@@ -56,14 +56,14 @@ if __name__ == "__main__":
 
     update = True
     debug = False
-    prefix = 'shapes/simple'
+    prefix = 'shapes/alphabet_bold'
     suffix = ''
     if prefix == 'shapes/simple':
         # 'fish', 'clover', 'heart', 'flower', 'mushroom', 'octagon', 'hat', 'wang', 'butterfly'
         image_names = ['heart']
     elif prefix in ['shapes/alphabet_black', 'shapes/alphabet_bold', 'shapes/alphabet_regular']:
         # image_names = list(ascii_uppercase)
-        image_names = ['C', 'E', 'Z', 'Y']
+        image_names = ['H', 'E', 'L', 'O', 'R', 'S']
     else:
         raise NotImplementedError
     shape_size = (1.0 * 0.25, 0.15, 1.0 * 0.25)
@@ -139,7 +139,7 @@ if __name__ == "__main__":
             # sampled_pcd_fps.points = o3d.utility.Vector3dVector(sampled_points)
             # o3d.visualization.draw_geometries([sampled_pcd_fps])
         
-            positions = np.concatenate([sampled_points, floor_pos])
+            positions = sampled_points
             shape_quats = np.zeros((1, 4), dtype=np.float32)
             data = [positions, shape_quats, scene_params]
         
@@ -148,4 +148,4 @@ if __name__ == "__main__":
         # import pdb; pdb.set_trace()
         goal_data = load_data(data_names, h5_path)
         goal_shape = torch.FloatTensor(goal_data[0]).unsqueeze(0)[:, :n_particle, :]
-        visualize_points(goal_data[0], n_particle, f'{prefix}/{n}/{n}{suffix}_sampled')
+        visualize_points(goal_data[0], n_particle, f'{prefix}/{n}/{n}{suffix}_sampled_cyan')
