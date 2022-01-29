@@ -30,6 +30,7 @@ def visualize_points(all_points, n_particles, path):
 
     fig = plt.figure()
     ax = fig.add_subplot(111, projection='3d')
+    ax.axis('off')
     ax.view_init(90, 90)
     ax.scatter(points[:, 0], points[:, 2], points[:, 1], c='c', s=20)
     ax.scatter(shapes[:, 0], shapes[:, 2], shapes[:, 1], c='r', s=20)
