@@ -4,12 +4,11 @@
 __pycache__/
 debug/
 files/
-data*/
-dump_*/
 
 *.swp
 *.swo
 data/*
+dump/*
 *.lprof
 interactive
 gether_results.py
