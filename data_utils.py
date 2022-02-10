@@ -3,6 +3,7 @@ import os
 import cv2
 import time
 
+import glob
 import h5py
 import matplotlib.pyplot as plt
 from mpl_toolkits.mplot3d import axes3d, Axes3D
@@ -17,6 +18,9 @@ from torch.utils.data import Dataset
 from utils import rand_int, rand_float
 from sklearn.cluster import KMeans
 
+from collections import defaultdict
+from itertools import product
+import open3d as o3d
 
 ### from DPI
 
@@ -377,11 +381,9 @@ def find_relations_neighbor(pos, query_idx, anchor_idx, radius, order, var=False
     point_tree = spatial.cKDTree(pos[anchor_idx])
     neighbors = point_tree.query_ball_point(pos[query_idx], radius, p=order)
 
-    # '''
     # for i in range(len(neighbors)):
-    #     import pdb; pdb.set_trace()
+    #     # import pdb; pdb.set_trace()
     #     visualize_neighbors(pos[anchor_idx], pos[query_idx], i, neighbors[i])
-    # '''
 
     relations = []
     for i in range(len(neighbors)):
@@ -469,7 +471,7 @@ def get_env_group(args, n_particles, scene_params, use_gpu=False):
     elif args.env == 'Gripper':
         norm_g = normalize_scene_param(scene_params, 1, args.physics_param_range)
         physics_param[:] = torch.FloatTensor(norm_g).view(B, 1)
-        p_rigid[:] = 0
+        p_rigid[:] = args.p_rigid
         for i in range(args.n_instance):
             p_instance[:, :, i] = 1
 
@@ -525,6 +527,7 @@ def prepare_input(positions, n_particle, n_shape, args, var=False, stdreg=0):
 
     ##### add env specific graph components
     rels = []
+    rels2 = []
     if args.env == 'Pinch':
         attr[n_particle, 1] = 1
         attr[n_particle+1, 2] = 1
@@ -557,52 +560,95 @@ def prepare_input(positions, n_particle, n_shape, args, var=False, stdreg=0):
             cluster_onehot[np.arange(cluster_label.size), cluster_label] = 1
 
     elif args.env == 'Gripper':
-        attr[n_particle, 1] = 1
-        attr[n_particle + 1, 2] = 1
-        attr[n_particle + 2, 2] = 1
-        pos = positions.data.cpu().numpy() if var else positions
+        if args.shape_aug:
+            attr[n_particle: n_particle + 9, 1] = 1
+            attr[n_particle + 9:, 2] = 1
+            pos = positions.data.cpu().numpy() if var else positions
+            # floor to points
+            for ind in range(9):
+                dis = pos[:n_particle, 1] - pos[n_particle+ind, 1]
+                #np.linalg.norm(pos[:n_particle] - pos[n_particle + ind], 2, axis=1)
+                nodes = np.nonzero(dis < args.neighbor_radius)[0]
+                # print(nodes)
+                # if ind == 8:
+                #     import pdb; pdb.set_trace()
+                #     visualize_neighbors(pos, pos, 0, nodes)
+                floor = np.ones(nodes.shape[0], dtype=np.int) * (n_particle + ind)
+                rels += [np.stack([nodes, floor], axis=1)]
+                rels2 += [np.stack([nodes, floor], axis=1)]
+            for ind in range(22):
+                # to primitive
+                disp1 = np.sqrt(np.sum((pos[:n_particle] - pos[n_particle + 9 + ind]) ** 2, 1))
+                nodes1 = np.nonzero(disp1 < (args.neighbor_radius + args.gripper_extra_neighbor_radius))[0]
+                # detect how many grippers touching
+                nodes2 = np.nonzero(disp1 < args.neighbor_radius)[0]
+                # print('visualize prim1 neighbors')
+                # print(nodes1)
+                # if ind == 15:
+                    # import pdb; pdb.set_trace()
+                # visualize_neighbors(pos, pos, 0, nodes1)
+                prim1 = np.ones(nodes1.shape[0], dtype=np.int) * (n_particle + 9 + ind)
+                rels += [np.stack([nodes1, prim1], axis=1)]
+                prim2 = np.ones(nodes2.shape[0], dtype=np.int) * (n_particle + 9 + ind)
+                rels2 += [np.stack([nodes2, prim2], axis=1)]
 
-        # floor to points
-        dis = pos[:n_particle, 1] - pos[n_particle, 1]
-        nodes = np.nonzero(dis < args.neighbor_radius)[0]
-        # print('visualize floor neighbors')
-        # visualize_neighbors(pos, pos, 0, nodes)
-        # print(np.sort(dis)[:10])
+                # disp2 = np.sqrt(np.sum((pos[:n_particle, [0, 2]] - pos[n_particle + 2, [0, 2]]) ** 2, 1))
+                # disp2 = np.sqrt(np.sum((pos[:n_particle] - pos[n_particle + 2]) ** 2, 1))
+                # np.sqrt(np.sum((pos[:n_particle, :] - pos[n_particle+1, :])**2, axis=1))
+                # nodes2 = np.nonzero(disp2 < (args.neighbor_radius + args.gripper_extra_neighbor_radius))[0]
+                # print('visualize prim neighbors')
+                # visualize_neighbors(pos, pos, 0, nodes)
+                # print(np.sort(dis)[:10])
+                # prim2 = np.ones(nodes2.shape[0], dtype=np.int) * (n_particle + 2)
+                # rels += [np.stack([nodes2, prim2], axis=1)]
+            # import pdb; pdb.set_trace()
+        else:
+            attr[n_particle, 1] = 1
+            attr[n_particle + 1, 2] = 1
+            attr[n_particle + 2, 2] = 1
+            pos = positions.data.cpu().numpy() if var else positions
 
-        floor = np.ones(nodes.shape[0], dtype=np.int) * n_particle
-        rels += [np.stack([nodes, floor], axis=1)]
+            # floor to points
+            dis = pos[:n_particle, 1] - pos[n_particle, 1]
+            nodes = np.nonzero(dis < args.neighbor_radius)[0]
+            # print('visualize floor neighbors')
+            # visualize_neighbors(pos, pos, 0, nodes)
+            # print(np.sort(dis)[:10])
 
-        # to primitive
-        disp1 = np.sqrt(np.sum((pos[:n_particle, [0,2]] - pos[n_particle + 1, [0,2]]) ** 2, 1))
-        # np.sqrt(np.sum((pos[:n_particle] - pos[n_particle + 1]) ** 2,1))
-        # np.sqrt(np.sum((pos[:n_particle, :] - pos[n_particle+1, :])**2, axis=1))
-        nodes1 = np.nonzero(disp1 < (args.neighbor_radius + 0.015))[0]
-        # print('visualize prim1 neighbors')
+            floor = np.ones(nodes.shape[0], dtype=np.int) * n_particle
+            rels += [np.stack([nodes, floor], axis=1)]
 
-        # print(args.neighbor_radius); import pdb; pdb.set_trace()
-        # visualize_neighbors(pos, pos, 0, nodes1)
-        # print(np.sort(dis)[:10])
-        # print(np.sort(dis)[:10])
-        prim1 = np.ones(nodes1.shape[0], dtype=np.int) * (n_particle + 1)
-        rels += [np.stack([nodes1, prim1], axis=1)]
+            # to primitive
+            disp1 = np.sqrt(np.sum((pos[:n_particle, [0,2]] - pos[n_particle + 1, [0,2]]) ** 2, 1))
+            # np.sqrt(np.sum((pos[:n_particle] - pos[n_particle + 1]) ** 2,1))
+            # np.sqrt(np.sum((pos[:n_particle, :] - pos[n_particle+1, :])**2, axis=1))
+            nodes1 = np.nonzero(disp1 < (args.neighbor_radius + args.gripper_extra_neighbor_radius))[0]
+            # print('visualize prim1 neighbors')
 
-        disp2 = np.sqrt(np.sum((pos[:n_particle, [0,2]] - pos[n_particle + 2, [0,2]]) ** 2, 1))
-        # disp2 = np.sqrt(np.sum((pos[:n_particle] - pos[n_particle + 2]) ** 2, 1))
-        # np.sqrt(np.sum((pos[:n_particle, :] - pos[n_particle+1, :])**2, axis=1))
-        nodes2 = np.nonzero(disp2 < (args.neighbor_radius + 0.015))[0]
-        # print('visualize prim neighbors')
-        # visualize_neighbors(pos, pos, 0, nodes)
-        # print(np.sort(dis)[:10])
-        prim2 = np.ones(nodes2.shape[0], dtype=np.int) * (n_particle + 2)
-        rels += [np.stack([nodes2, prim2], axis=1)]
+            # print(args.neighbor_radius); import pdb; pdb.set_trace()
+            # visualize_neighbors(pos, pos, 0, nodes1)
+            # print(np.sort(dis)[:10])
+            # print(np.sort(dis)[:10])
+            prim1 = np.ones(nodes1.shape[0], dtype=np.int) * (n_particle + 1)
+            rels += [np.stack([nodes1, prim1], axis=1)]
+
+            disp2 = np.sqrt(np.sum((pos[:n_particle, [0,2]] - pos[n_particle + 2, [0,2]]) ** 2, 1))
+            # disp2 = np.sqrt(np.sum((pos[:n_particle] - pos[n_particle + 2]) ** 2, 1))
+            # np.sqrt(np.sum((pos[:n_particle, :] - pos[n_particle+1, :])**2, axis=1))
+            nodes2 = np.nonzero(disp2 < (args.neighbor_radius + args.gripper_extra_neighbor_radius))[0]
+            # print('visualize prim neighbors')
+            # visualize_neighbors(pos, pos, 0, nodes)
+            # print(np.sort(dis)[:10])
+            prim2 = np.ones(nodes2.shape[0], dtype=np.int) * (n_particle + 2)
+            rels += [np.stack([nodes2, prim2], axis=1)]
 
 
-        """Start to do K-Means"""
-        if stdreg:
-            kmeans = KMeans(n_clusters=10, random_state=0).fit(pos[:n_particle])
-            cluster_label = kmeans.labels_
-            cluster_onehot = np.zeros((cluster_label.size, cluster_label.max() + 1))
-            cluster_onehot[np.arange(cluster_label.size), cluster_label] = 1
+            """Start to do K-Means"""
+            if stdreg:
+                kmeans = KMeans(n_clusters=10, random_state=0).fit(pos[:n_particle])
+                cluster_label = kmeans.labels_
+                cluster_onehot = np.zeros((cluster_label.size, cluster_label.max() + 1))
+                cluster_onehot[np.arange(cluster_label.size), cluster_label] = 1
 
 
     elif args.env == 'RigidFall':
@@ -645,10 +691,14 @@ def prepare_input(positions, n_particle, n_shape, args, var=False, stdreg=0):
         anchors = np.arange(n_particle)
 
     rels += find_relations_neighbor(pos, queries, anchors, args.neighbor_radius, 2, var)
+    rels2 += find_relations_neighbor(pos, queries, anchors, args.neighbor_radius, 2, var)
     # rels += find_k_relations_neighbor(args.neighbor_k, pos, queries, anchors, args.neighbor_radius, 2, var)
 
     if len(rels) > 0:
         rels = np.concatenate(rels, 0)
+
+    if len(rels2) > 0:
+        rels2 = np.concatenate(rels2, 0)
 
     if verbose:
         print("Relations neighbor", rels.shape)
@@ -658,6 +708,9 @@ def prepare_input(positions, n_particle, n_shape, args, var=False, stdreg=0):
     Rs = torch.zeros(n_rel, n_particle + n_shape)
     Rr[np.arange(n_rel), rels[:, 0]] = 1
     Rs[np.arange(n_rel), rels[:, 1]] = 1
+
+    Rn = torch.zeros(rels2.shape[0], n_particle + n_shape)
+    Rn[np.arange(rels2.shape[0]), rels2[:, 1]] = 1
 
     if verbose:
         print("Object attr:", np.sum(attr, axis=0))
@@ -693,7 +746,38 @@ def prepare_input(positions, n_particle, n_shape, args, var=False, stdreg=0):
     # attr: (n_p + n_s) x attr_dim
     # particle (unnormalized): (n_p + n_s) x state_dim
     # Rr, Rs: n_rel x (n_p + n_s)
-    return attr, particle, Rr, Rs, cluster_onehot
+    return attr, particle, Rr, Rs, Rn, cluster_onehot
+
+
+def real_sim_remap(args, data, n_particle):
+    points = data[0]
+    # print(np.mean(points[:n_particle], axis=0), np.std(points[:n_particle], axis=0))
+    points = (points - np.mean(points[:n_particle], axis=0)) / np.std(points[:n_particle], axis=0)
+    points = np.array([points.T[0], points.T[2], points.T[1]]).T * np.array([0.06, args.std_p[1], 0.06]) \
+        + np.array([0.5, args.mean_p[1], 0.5])
+
+    n_shapes_floor = 9
+    n_shapes_per_gripper = 11
+    prim1 = points[n_particle + n_shapes_floor + 2] # + n_shapes_per_gripper // 2
+    prim2 = points[n_particle + n_shapes_floor + n_shapes_per_gripper + 2]
+    new_floor = np.array([[0.25, 0., 0.25], [0.25, 0., 0.5], [0.25, 0., 0.75],
+                        [0.5, 0., 0.25], [0.5, 0., 0.5], [0.5, 0., 0.75],
+                        [0.75, 0., 0.25], [0.75, 0., 0.5], [0.75, 0., 0.75]])
+    new_prim1 = []
+    for j in range(11):
+        prim1_tmp = np.array([prim1[0], prim1[1] + 0.018 * (j - 5), prim1[2]])
+        new_prim1.append(prim1_tmp)
+    new_prim1 = np.stack(new_prim1)
+
+    new_prim2 = []
+    for j in range(11):
+        prim2_tmp = np.array([prim2[0], prim2[1] + 0.018 * (j - 5), prim2[2]])
+        new_prim2.append(prim2_tmp)
+
+    new_prim2 = np.stack(new_prim2)
+    new_state = np.concatenate([points[:n_particle], new_floor, new_prim1, new_prim2])
+
+    return new_state
 
 
 class PhysicsFleXDataset(Dataset):
@@ -704,6 +788,15 @@ class PhysicsFleXDataset(Dataset):
         self.data_dir = os.path.join(self.args.dataf, phase)
         self.vision_dir = self.data_dir + '_vision'
         self.stat_path = os.path.join(self.args.dataf, 'stat.h5')
+
+        self.n_frame_list = []
+        vid_list = sorted(glob.glob(os.path.join(self.data_dir, '*')))
+        # print(vid_list)
+        for vid_idx in range(len(vid_list)):
+            frame_list = sorted(glob.glob(os.path.join(vid_list[vid_idx], 'shape_*.h5')))
+            gt_frame_list = sorted(glob.glob(os.path.join(vid_list[vid_idx], 'shape_gt_*.h5')))
+            self.n_frame_list.append(len(frame_list) - len(gt_frame_list))
+        print(f"# frames list: {self.n_frame_list}")
 
         if args.gen_data:
             os.system('mkdir -p ' + self.data_dir)
@@ -788,25 +881,43 @@ class PhysicsFleXDataset(Dataset):
         """
         args = self.args
 
-        offset = args.time_step - args.sequence_length + 1
-        idx_rollout = idx // offset
-        st_idx = idx % offset
+        idx_curr = idx
+        idx_rollout = 0
+        offset = self.n_frame_list[idx_rollout] - args.sequence_length + 1
+        while idx_curr >= offset:
+            idx_curr -= offset
+            idx_rollout = (idx_rollout + 1) % len(self.n_frame_list)
+            offset = self.n_frame_list[idx_rollout] - args.sequence_length + 1
+        
+        # offset = args.time_step - args.sequence_length + 1
+        # idx_rollout = idx // offset
+        # st_idx = idx % offset
+        st_idx = idx_curr
         ed_idx = st_idx + args.sequence_length
 
         if args.stage in ['dy']:
             # load ground truth data
-            attrs, particles, Rrs, Rss, cluster_onehots= [], [], [], [], []
+            attrs, particles, Rrs, Rss, Rns, cluster_onehots= [], [], [], [], [], []
+            # sdf_list = []
             max_n_rel = 0
             for t in range(st_idx, ed_idx):
                 # load data
                 if self.args.env == 'Pinch' or self.args.env == 'Gripper':
+                    frame_name = str(t) + '.h5'
+
                     if self.args.gt_particles:
-                        data_path = os.path.join(self.data_dir, str(idx_rollout).zfill(3), 'gt_' + str(t) + '.h5')
-                    else:
-                        data_path = os.path.join(self.data_dir, str(idx_rollout).zfill(3), str(t) + '.h5')
+                        frame_name = 'gt_' + frame_name
+                    if self.args.shape_aug:
+                        frame_name = 'shape_' + frame_name
+                        # data_path = os.path.join(self.data_dir, str(idx_rollout).zfill(3), 'gt_' + frame_name)
+                    # else:
+                    #     pass
+                        # data_path = os.path.join(self.data_dir, str(idx_rollout).zfill(3), str(t) + '.h5')
+                    data_path = os.path.join(self.data_dir, str(idx_rollout).zfill(3), frame_name)
                 else:
                     data_path = os.path.join(self.data_dir, str(idx_rollout), str(t) + '.h5')
                 data = load_data(self.data_names, data_path)
+                # sdf_data = load_data(['sdf'], os.path.join(self.data_dir, str(idx_rollout).zfill(3), 'sdf_' + str(t) + '.h5')), 
 
                 # load scene param
                 if t == st_idx:
@@ -815,13 +926,23 @@ class PhysicsFleXDataset(Dataset):
                 # attr: (n_p + n_s) x attr_dim
                 # particle (unnormalized): (n_p + n_s) x state_dim
                 # Rr, Rs: n_rel x (n_p + n_s)
-                attr, particle, Rr, Rs, cluster_onehot = prepare_input(data[0], n_particle, n_shape, self.args, stdreg=self.args.stdreg)
+                if 'robot' in args.data_type:
+                    new_state = real_sim_remap(args, data, n_particle)
+                else:
+                    new_state = data[0]
+
+                attr, particle, Rr, Rs, Rn, cluster_onehot = prepare_input(new_state, n_particle, n_shape, self.args, stdreg=self.args.stdreg)
                 max_n_rel = max(max_n_rel, Rr.size(0))
 
                 attrs.append(attr)
                 particles.append(particle.numpy())
                 Rrs.append(Rr)
                 Rss.append(Rs)
+                Rns.append(Rn)
+                # sdf_data = np.array(sdf_data).squeeze()
+                # print(np.array(sdf_data.shape)
+                # sdf_list.append(sdf_data)
+
                 if cluster_onehot is not None:
                     cluster_onehots.append(cluster_onehot)
 
@@ -888,24 +1009,170 @@ class PhysicsFleXDataset(Dataset):
         # attr: (n_p + n_s) x attr_dim
         # particles (unnormalized): seq_length x (n_p + n_s) x state_dim
         # scene_params: param_dim
+        # sdf_list: seq_length x 64 x 64 x 64
         attr = torch.FloatTensor(attrs[0])
         particles = torch.FloatTensor(np.stack(particles))
         scene_params = torch.FloatTensor(scene_params)
+        # sdf_list = torch.FloatTensor(np.stack(sdf_list))
 
         # pad the relation set
         # Rr, Rs: seq_length x n_rel x (n_p + n_s)
         if args.stage in ['dy']:
             for i in range(len(Rrs)):
-                Rr, Rs = Rrs[i], Rss[i]
+                Rr, Rs, Rn = Rrs[i], Rss[i], Rns[i]
                 Rr = torch.cat([Rr, torch.zeros(max_n_rel - Rr.size(0), n_particle + n_shape)], 0)
                 Rs = torch.cat([Rs, torch.zeros(max_n_rel - Rs.size(0), n_particle + n_shape)], 0)
-                Rrs[i], Rss[i] = Rr, Rs
+                Rn = torch.cat([Rn, torch.zeros(max_n_rel - Rn.size(0), n_particle + n_shape)], 0)
+                Rrs[i], Rss[i], Rns[i] = Rr, Rs, Rn
             Rr = torch.FloatTensor(np.stack(Rrs))
             Rs = torch.FloatTensor(np.stack(Rss))
+            Rn = torch.FloatTensor(np.stack(Rns))
             if cluster_onehots:
                 cluster_onehot = torch.FloatTensor(np.stack(cluster_onehots))
             else:
                 cluster_onehot = None
         if args.stage in ['dy']:
-            return attr, particles, n_particle, n_shape, scene_params, Rr, Rs, cluster_onehot
+            return attr, particles, n_particle, n_shape, scene_params, Rr, Rs, Rn, cluster_onehot
 
+
+def p2g(x, size=64, p_mass=1.):
+    if x.dim() == 2:
+        x = x[None, :]
+    batch = x.shape[0]
+    grid_m = torch.zeros(batch, size * size * size, dtype=x.dtype, device=x.device)
+    inv_dx = size
+    # base = (self.x[f, p] * self.inv_dx - 0.5).cast(int)
+    # fx = self.x[f, p] * self.inv_dx - base.cast(self.dtype)
+    fx = x * inv_dx
+    base = (x * inv_dx - 0.5).long()
+    fx = fx - base.float()
+    w = [0.5 * (1.5 - fx) ** 2, 0.75 - (fx - 1) ** 2, 0.5 * (fx - 0.5) ** 2]
+    #for offset in ti.static(ti.grouped(self.stencil_range())):
+    #    weight = ti.cast(1.0, self.dtype)
+    #    for d in ti.static(range(self.dim)):
+    #        weight *= w[offset[d]][d]
+    #    self.grid_m[base + offset] += weight * self.p_mass
+    for i in range(3):
+        for j in range(3):
+            for k in range(3):
+                weight = w[i][..., 0] * w[j][..., 1] * w[k][..., 2] * p_mass
+                target = (base + torch.tensor(np.array([i, j, k]), dtype=torch.long, device='cuda:0')).clamp(0, size-1)
+                idx = (target[..., 0] * size + target[..., 1]) * size + target[..., 2]
+                grid_m.scatter_add_(1, idx, weight)
+    grid_m = (grid_m > 0.0001).float()
+    return grid_m.reshape(batch, size, size, size)
+
+
+def compute_sdf(density, eps=1e-4, inf=1e10):
+    if density.dim() == 3:
+        density = density[None, :, :]
+    dx = 1./density.shape[1]
+    with torch.no_grad():
+        nearest_points = torch.stack(torch.meshgrid(
+            torch.arange(density.shape[1]),
+            torch.arange(density.shape[2]),
+            torch.arange(density.shape[3]),
+        ), axis=-1)[None, :].to(density.device).expand(density.shape[0], -1, -1, -1, -1) * dx
+        mesh_points = nearest_points.clone()
+
+        is_object = (density <= eps) * inf
+        sdf = is_object.clone()
+
+        for i in range(density.shape[1] * 2): # np.sqrt(1^2+1^2+1^2)
+            for x, y, z in product(range(3), range(3), range(3)):
+                if x + y + z == 0: continue
+                def get_slice(a):
+                    if a == 0: return slice(None), slice(None)
+                    if a == 1: return slice(0, -1), slice(1, None)
+                    return slice(1, None), slice(0, -1)
+                f1, t1 = get_slice(x)
+                f2, t2 = get_slice(y)
+                f3, t3 = get_slice(z)
+                fr = (slice(None), f1, f2, f3)
+                to = (slice(None), t1, t2, t3)
+                dist = ((mesh_points[to] - nearest_points[fr])**2).sum(axis=-1)**0.5
+                dist += (sdf[fr] >= inf) * inf
+                sdf_to = sdf[to]
+                mask = (dist < sdf_to).float()
+                sdf[to] = mask * dist + (1-mask) * sdf_to
+                mask = mask[..., None]
+                nearest_points[to] = (1-mask) * nearest_points[to] + mask * nearest_points[fr]
+        return sdf
+
+def p2v(xyz):
+    # fig = plt.figure()
+    # ax = fig.add_subplot(111, projection='3d')
+    # for i in range(xyz.shape[0]):
+    pcd = o3d.geometry.PointCloud()
+    # import pdb; pdb.set_trace()
+    # print(xyz.shape)
+    pcd.points = o3d.utility.Vector3dVector(xyz.cpu().numpy())
+    voxel_grid = o3d.geometry.VoxelGrid.create_from_point_cloud(pcd, voxel_size=0.04)
+    # o3d.visualization.draw_geometries([voxel_grid])
+    # data = voxel_grid.create_dense(origin=[0,0,0], color=[0,0,0], voxel_size=0.03, width=1, height=1, depth=1)
+    my_voxel = np.zeros((32, 32, 32))
+    for j, d in enumerate(voxel_grid.get_voxels()):
+        # print(j)
+        my_voxel[d.grid_index[0], d.grid_index[1], d.grid_index[2]] = 1
+        # z, x, y = my_voxel.nonzero()
+        # ax.scatter(x, y, z, c=z, alpha=1)
+        # plt.show()
+    return torch.from_numpy(my_voxel).cuda()
+
+
+def alpha_shape_3D(pos, alpha):
+    """
+    Compute the alpha shape (concave hull) of a set of 3D points.
+    Parameters:
+        pos - np.array of shape [B, M, D] points.
+        alpha - alpha value.
+    return
+        outer surface vertex indices, edge indices, and triangle indices
+    """
+    tetra = spatial.Delaunay(pos)
+    # Find radius of the circumsphere.
+    # By definition, radius of the sphere fitting inside the tetrahedral needs 
+    # to be smaller than alpha value
+    # http://mathworld.wolfram.com/Circumsphere.html
+    tetrapos = np.take(pos,tetra.vertices,axis=0)
+    normsq = np.sum(tetrapos**2,axis=2)[:,:,None]
+    ones = np.ones((tetrapos.shape[0],tetrapos.shape[1],1))
+    a = np.linalg.det(np.concatenate((tetrapos,ones),axis=2))
+    Dx = np.linalg.det(np.concatenate((normsq,tetrapos[:,:,[1,2]],ones),axis=2))
+    Dy = -np.linalg.det(np.concatenate((normsq,tetrapos[:,:,[0,2]],ones),axis=2))
+    Dz = np.linalg.det(np.concatenate((normsq,tetrapos[:,:,[0,1]],ones),axis=2))
+    c = np.linalg.det(np.concatenate((normsq,tetrapos),axis=2))
+    r = np.sqrt(Dx**2+Dy**2+Dz**2-4*a*c)/(2*np.abs(a))
+    
+    # Find tetrahedrals
+    tetras = tetra.vertices[r<alpha,:]
+    # triangles
+    TriComb = np.array([(0, 1, 2), (0, 1, 3), (0, 2, 3), (1, 2, 3)])
+    Triangles = tetras[:,TriComb].reshape(-1,3)
+    Triangles = np.sort(Triangles,axis=1)
+    # Remove triangles that occurs twice, because they are within shapes
+    TrianglesDict = defaultdict(int)
+    for tri in Triangles: 
+        TrianglesDict[tuple(tri)] += 1
+    Triangles = np.array([tri for tri in TrianglesDict if TrianglesDict[tri] ==1])
+    # edges
+    EdgeComb = np.array([(0, 1), (0, 2), (1, 2)])
+    Edges = Triangles[:,EdgeComb].reshape(-1,2)
+    Edges = np.sort(Edges,axis=1)
+    Edges = np.unique(Edges,axis=0)
+
+    Vertices = np.unique(Edges)
+
+    return Vertices
+
+
+def farthest_point_sampling(points, K_ratio=0.5):
+    K = int(K_ratio * points.shape[0])
+    fp_idx = np.zeros(K, dtype=np.int)
+    fp_idx[0] = np.random.randint(points.shape[0])
+    distances = ((points[fp_idx[0]] - points)**2).sum(axis=1)
+    for i in range(1, K):
+        fp_idx[i] = np.argmax(distances)
+        d = ((points[fp_idx[i]] - points)**2).sum(axis=1)
+        distances = np.minimum(distances, d)
+    return fp_idx

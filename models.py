@@ -1,11 +1,13 @@
 import numpy as np
+import open3d as o3d
+import pdb
 
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
 from torch.autograd import Variable
 
-from data_utils import prepare_input
+from data_utils import p2g, compute_sdf, p2v, alpha_shape_3D
 import scipy
 from scipy import optimize
 
@@ -141,7 +143,8 @@ class DynamicsPredictor(nn.Module):
         # rot: (B * n_instance) x 3 x 3
         return rot
 
-    def forward(self, inputs, stat, verbose=0):
+    # @profile
+    def forward(self, inputs, stat, verbose=0, j=0):
         args = self.args
         verbose = args.verbose_model
         mean_p, std_p, mean_d, std_d = stat
@@ -155,7 +158,7 @@ class DynamicsPredictor(nn.Module):
         #   p_instance: B x n_particle x n_instance
         #   physics_param: B x n_particle
         # cluster: num_of_particles (N) x num_of_clusters (k)
-        attrs, state, Rr_cur, Rs_cur, memory, group, cluster = inputs
+        attrs, state, Rr_cur, Rs_cur, Rn_cur, memory, group, cluster = inputs
         p_rigid, p_instance, physics_param = group
         # Rr_cur_t, Rs_cur_t: B x N x n_rel
         Rr_cur_t = Rr_cur.transpose(1, 2).contiguous()
@@ -335,12 +338,44 @@ class DynamicsPredictor(nn.Module):
         #         this_std = torch.std(this_cluster_mo, dim=0)
         #         total_std.append(this_std)
         # total_std = torch.stack(total_std)
-        # import pdb; pdb.set_trace()
+        # pdb.set_trace()
         # merge rigid and non-rigid motion
         # rigid_motion      (B x n_instance x n_p x state_dim)
         # non_rigid_motion  (B x n_p x state_dim)
-        pred_motion = (1. - p_rigid_per_particle) * non_rigid_motion
-        pred_motion += torch.sum(p_rigid[:, :, None, None] * p_instance.transpose(1, 2)[:, :, :, None] * rigid_motion, 1)
+        # pdb.set_trace()
+        n_gripper_touch = torch.zeros(B)
+        if self.use_gpu:
+            n_gripper_touch = n_gripper_touch.cuda()
+
+        if self.args.stage == 'dy':
+            neighbors = Rs_cur
+        elif self.args.stage == 'control':
+            neighbors = Rn_cur
+        else:
+            raise NotImplementedError
+
+        n_gripper_touch[torch.count_nonzero(neighbors[:, :, 310:321], dim=(1, 2)) > 0] += 1
+        n_gripper_touch[torch.count_nonzero(neighbors[:, :, 321:], dim=(1, 2)) > 0] += 1
+        
+        do_stationary = n_gripper_touch == 0
+        do_rigid = n_gripper_touch == 1
+        do_non_rigid = n_gripper_touch == 2
+        # print(n_gripper_touch)
+
+        pred_motion = torch.zeros(B, n_p, state_dim)
+        if self.use_gpu:
+            pred_motion = pred_motion.cuda()
+        
+        stationary_motion = (pred_motion - mean_d) / std_d
+        
+        # pdb.set_trace()
+        if 'fixed' in self.args.data_type:
+            pred_motion = non_rigid_motion
+            pred_motion[do_stationary] = stationary_motion[do_stationary]
+        else:
+            pred_motion[do_stationary] = stationary_motion[do_stationary]
+            pred_motion[do_non_rigid] = non_rigid_motion[do_non_rigid]
+            pred_motion[do_rigid] = torch.sum(p_instance.transpose(1, 2)[:, :, :, None] * rigid_motion, 1)[do_rigid]
 
         pred_pos = state[:, -1, :n_p] + torch.clamp(pred_motion * std_d + mean_d, max=0.025, min=-0.025)
         # print(pred_motion * std_d + mean_d)
@@ -389,12 +424,12 @@ class Model(nn.Module):
             mem = mem.cuda()
         return mem
 
-    def predict_dynamics(self, inputs):
+    def predict_dynamics(self, inputs, j=0):
         """
         return:
         ret - predicted position of all particles, shape (n_particles, 3)
         """
-        ret = self.dynamics_predictor(inputs, self.stat, self.args.verbose_model)
+        ret = self.dynamics_predictor(inputs, self.stat, self.args.verbose_model, j=j)
         return ret
 
 
@@ -430,6 +465,7 @@ class UpdatedHausdorffLoss(torch.nn.Module):
         x = x[:, :, None, :].repeat(1, 1, y.size(1), 1) # x: [B, N, M, D]
         y = y[:, None, :, :].repeat(1, x.size(1), 1, 1) # y: [B, N, M, D]
         dis = torch.norm(torch.add(x, -y), 2, dim=3)    # dis: [B, N, M]
+        # print(dis.shape)
         dis_xy = torch.max(torch.min(dis, dim=2)[0])   # dis_xy: mean over N
         dis_yx = torch.max(torch.min(dis, dim=1)[0])   # dis_yx: mean over M
 
@@ -448,9 +484,9 @@ class ClipLoss(torch.nn.Module):
         x = x[:, :, None, :].repeat(1, 1, y.size(1), 1)  # x: [B, N, M, D]
         y = y[:, None, :, :].repeat(1, x.size(1), 1, 1)  # y: [B, N, M, D]
         dis = torch.norm(torch.add(x, -y), 2, dim=3)  # dis: [B, N, M]
+        dxy = torch.topk(dis, k=2, dim=2, largest=False)[0][:, :, 1]  # dxy [B, M, 1]
 
-        dxy = torch.min(torch.topk(dis, k=2, dim=2, largest=False)[0][:, :, 1])  # dxy [B, M, 1]
-        return dxy
+        return torch.min(dxy)
 
     def __call__(self, array1, array2):
         return self.clip_loss(array1, array2)
@@ -494,13 +530,16 @@ class EarthMoverLoss(torch.nn.Module):
             try:
                 ind1, ind2 = scipy.optimize.linear_sum_assignment(cost_matrix, maximize=False)
             except:
-                import pdb; pdb.set_trace()
+                # pdb.set_trace()
+                print("Error in linear sum assignment!")
             x_list.append(x[i, ind1])
             y_list.append(y[i, ind2])
             # x[i] = x[i, ind1]
             # y[i] = y[i, ind2]
         new_x = torch.stack(x_list)
         new_y = torch.stack(y_list)
+        # print(f"EMD new_x shape: {new_x.shape}")
+        # print(f"MAX: {torch.max(torch.norm(torch.add(new_x, -new_y), 2, dim=2))}")
         emd = torch.mean(torch.norm(torch.add(new_x, -new_y), 2, dim=2))
         return emd
 
@@ -510,12 +549,61 @@ class EarthMoverLoss(torch.nn.Module):
         return self.em_distance(pred, label)
 
 
+class L1ShapeLoss(torch.nn.Module):
+    def __init__(self):
+        super(L1ShapeLoss, self).__init__()
+
+    def __call__(self, x, y):
+        c1 = 0.0001
+        # grid1 = p2g(x)
+        # grid2 = p2g(y)
+        grid1 = p2v(x)
+        grid2 = p2v(y)
+        l1 = torch.abs(grid1 - grid2).sum()
+        # print(f"L1: {l1.shape}")
+        return c1 * l1
+
+
+class AlphaShapeLoss(torch.nn.Module):
+    def __init__(self):
+        super(AlphaShapeLoss, self).__init__()
+
+    def __call__(self, x_batch, y_batch, alpha):
+        emd_list = []
+        for i in range(x_batch.shape[0]):
+            x = x_batch[i]
+            y = y_batch[i]
+            ind_x = alpha_shape_3D(x.detach().cpu().numpy(), alpha)
+            ind_y = alpha_shape_3D(y.detach().cpu().numpy(), alpha)
+            v1 = x[ind_x]
+            v2 = y[ind_y]
+            
+            # print(ind_x.shape)
+            # pcd1 = o3d.geometry.PointCloud()
+            # pcd1.points = o3d.utility.Vector3dVector(x.detach().cpu().numpy())
+            # colors1 = np.tile([0.0, 1.0, 0.0], (x.shape[0], 1))
+            # colors1[ind_x] = np.array([0.0, 0.0, 0.0])
+            # pcd1.colors = o3d.utility.Vector3dVector(colors1)
+            # o3d.visualization.draw_geometries([pcd1])
+
+            # emd
+            v1_ = v1[:, None, :].repeat(1, v2.size(0), 1)  # x: [N, M, D]
+            v2_ = v2[None, :, :].repeat(v1.size(0), 1, 1)  # y: [N, M, D]
+            dis = torch.norm(torch.add(v1_, -v2_), 2, dim=2)  # dis: [N, M]
+
+            try:
+                ind1, ind2 = scipy.optimize.linear_sum_assignment(dis.detach().cpu().numpy(), maximize=False)
+            except:
+                print("Error in linear sum assignment!")
+            
+            emd = torch.mean(torch.norm(torch.add(v1[ind1], -v2[ind2]), 2, dim=1))
+            emd_list.append(emd)
+
+        return torch.mean(torch.stack(emd_list))
+
 
 if __name__ == "__main__":
     x = torch.tensor(np.array([[[1.,2.,3.],[4.,5.,6.]]]), requires_grad=True)
     y = torch.tensor(np.array([[[4.1, 5.1, 6.1], [1.1, 2.1, 3.1]]]), requires_grad=True)
     emdLoss = EarthMoverLoss()
     emd = emdLoss(x, y)
-
-
-

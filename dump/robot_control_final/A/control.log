@@ -1,0 +1,281 @@
+model_kp #params: 443560
+Spinning at iteration 0
+The first frame: [ 0.43040484 -0.00659274  0.0746847 ] +- [0.017 0.017 0.006]
+sampling: max: -0.0313, mean: -0.0342, std: 0.0013
+Selected top reward seqs: tensor([-0.0325, -0.0324, -0.0323, -0.0323, -0.0322, -0.0320, -0.0320, -0.0319,
+        -0.0318, -0.0313])
+Batch 0/10:
+reward seqs after 4 iterations: tensor([-0.0318], grad_fn=<CatBackward>)
+Batch 1/10:
+reward seqs after 6 iterations: tensor([-0.0316], grad_fn=<CatBackward>)
+Batch 2/10:
+reward seqs after 8 iterations: tensor([-0.0314], grad_fn=<CatBackward>)
+Batch 3/10:
+reward seqs after 10 iterations: tensor([-0.0316], grad_fn=<CatBackward>)
+Batch 4/10:
+reward seqs after 13 iterations: tensor([-0.0314], grad_fn=<CatBackward>)
+Batch 5/10:
+reward seqs after 13 iterations: tensor([-0.0313], grad_fn=<CatBackward>)
+Batch 6/10:
+reward seqs after 9 iterations: tensor([-0.0316], grad_fn=<CatBackward>)
+Batch 7/10:
+reward seqs after 4 iterations: tensor([-0.0310], grad_fn=<CatBackward>)
+Batch 8/10:
+reward seqs after 8 iterations: tensor([-0.0307], grad_fn=<CatBackward>)
+Batch 9/10:
+reward seqs after 18 iterations: tensor([-0.0311], grad_fn=<CatBackward>)
+Loss: 0.030675843358039856
+Optimal set of params:
+mid_point: tensor([[0.5381, 0.1400, 0.4826]])
+angle: tensor([2.1483], grad_fn=<SelectBackward>)
+gripper_rate: tensor([0.0113], grad_fn=<ClampBackward1>)
+Optimal init pose seq: tensor([[0.7565, 0.1400, 0.8177, 1.0000, 0.0000, 0.0000, 0.0000]],
+       grad_fn=<SliceBackward>)
+=============== Iteration 0 -> model_loss: tensor([0.0307]) ===============
+torch.Size([1, 11, 14]) torch.Size([1, 40, 12])
+Best init pose: tensor([[0.7565, 0.1400, 0.8177, 1.0000, 0.0000, 0.0000, 0.0000]])
+Best model loss: tensor([0.0307])
+Spinning at iteration 0
+Spinning at iteration 0
+Spinning at iteration 0
+Spinning at iteration 0
+Spinning at iteration 0
+Spinning at iteration 0
+Spinning at iteration 0
+Spinning at iteration 0
+Spinning at iteration 0
+Spinning at iteration 0
+Spinning at iteration 0
+Spinning at iteration 0
+Spinning at iteration 0
+Spinning at iteration 0
+Spinning at iteration 0
+Spinning at iteration 0
+Spinning at iteration 0
+Spinning at iteration 0
+Spinning at iteration 0
+Spinning at iteration 0
+Spinning at iteration 0
+Spinning at iteration 1
+sampling: max: -0.0307, mean: -0.0331, std: 0.0014
+Selected top reward seqs: tensor([-0.0313, -0.0312, -0.0312, -0.0311, -0.0311, -0.0309, -0.0309, -0.0308,
+        -0.0308, -0.0307])
+Batch 0/10:
+reward seqs after 8 iterations: tensor([-0.0300], grad_fn=<CatBackward>)
+Batch 1/10:
+reward seqs after 6 iterations: tensor([-0.0307], grad_fn=<CatBackward>)
+Batch 2/10:
+reward seqs after 28 iterations: tensor([-0.0306], grad_fn=<CatBackward>)
+Batch 3/10:
+reward seqs after 22 iterations: tensor([-0.0306], grad_fn=<CatBackward>)
+Batch 4/10:
+reward seqs after 13 iterations: tensor([-0.0302], grad_fn=<CatBackward>)
+Batch 5/10:
+reward seqs after 12 iterations: tensor([-0.0305], grad_fn=<CatBackward>)
+Batch 6/10:
+reward seqs after 11 iterations: tensor([-0.0306], grad_fn=<CatBackward>)
+Batch 7/10:
+reward seqs after 25 iterations: tensor([-0.0305], grad_fn=<CatBackward>)
+Batch 8/10:
+reward seqs after 15 iterations: tensor([-0.0305], grad_fn=<CatBackward>)
+Batch 9/10:
+reward seqs after 12 iterations: tensor([-0.0302], grad_fn=<CatBackward>)
+Loss: 0.030022291466593742
+Optimal set of params:
+mid_point: tensor([[0.4582, 0.1400, 0.4503]])
+angle: tensor([1.3591], grad_fn=<SelectBackward>)
+gripper_rate: tensor([0.0107], grad_fn=<ClampBackward1>)
+Optimal init pose seq: tensor([[0.3742, 0.1400, 0.8413, 1.0000, 0.0000, 0.0000, 0.0000]],
+       grad_fn=<SliceBackward>)
+=============== Iteration 1 -> model_loss: tensor([0.0300]) ===============
+torch.Size([1, 11, 14]) torch.Size([1, 40, 12])
+Best init pose: tensor([[0.3742, 0.1400, 0.8413, 1.0000, 0.0000, 0.0000, 0.0000]])
+Best model loss: tensor([0.0300])
+Spinning at iteration 1
+Spinning at iteration 1
+Spinning at iteration 1
+Spinning at iteration 1
+Spinning at iteration 1
+Spinning at iteration 1
+Spinning at iteration 1
+Spinning at iteration 1
+Spinning at iteration 1
+Spinning at iteration 1
+Spinning at iteration 1
+Spinning at iteration 1
+Spinning at iteration 1
+Spinning at iteration 1
+Spinning at iteration 1
+Spinning at iteration 1
+Spinning at iteration 1
+Spinning at iteration 1
+Spinning at iteration 1
+Spinning at iteration 1
+Spinning at iteration 1
+Spinning at iteration 2
+sampling: max: -0.0428, mean: -0.0458, std: 0.0017
+Selected top reward seqs: tensor([-0.0440, -0.0439, -0.0438, -0.0435, -0.0435, -0.0434, -0.0432, -0.0432,
+        -0.0428, -0.0428])
+Batch 0/10:
+reward seqs after 11 iterations: tensor([-0.0408], grad_fn=<CatBackward>)
+Batch 1/10:
+reward seqs after 8 iterations: tensor([-0.0417], grad_fn=<CatBackward>)
+Batch 2/10:
+reward seqs after 2 iterations: tensor([-0.0421], grad_fn=<CatBackward>)
+Batch 3/10:
+reward seqs after 12 iterations: tensor([-0.0412], grad_fn=<CatBackward>)
+Batch 4/10:
+reward seqs after 12 iterations: tensor([-0.0409], grad_fn=<CatBackward>)
+Batch 5/10:
+reward seqs after 6 iterations: tensor([-0.0411], grad_fn=<CatBackward>)
+Batch 6/10:
+reward seqs after 15 iterations: tensor([-0.0419], grad_fn=<CatBackward>)
+Batch 7/10:
+reward seqs after 8 iterations: tensor([-0.0395], grad_fn=<CatBackward>)
+Batch 8/10:
+reward seqs after 11 iterations: tensor([-0.0390], grad_fn=<CatBackward>)
+Batch 9/10:
+reward seqs after 30 iterations: tensor([-0.0399], grad_fn=<CatBackward>)
+Loss: 0.038970157504081726
+Optimal set of params:
+mid_point: tensor([[0.4669, 0.1400, 0.5072]])
+angle: tensor([1.1660], grad_fn=<SelectBackward>)
+gripper_rate: tensor([0.0113], grad_fn=<ClampBackward1>)
+Optimal init pose seq: tensor([[0.3094, 0.1400, 0.8749, 1.0000, 0.0000, 0.0000, 0.0000]],
+       grad_fn=<SliceBackward>)
+=============== Iteration 2 -> model_loss: tensor([0.0390]) ===============
+torch.Size([1, 11, 14]) torch.Size([1, 40, 12])
+Best init pose: tensor([[0.3094, 0.1400, 0.8749, 1.0000, 0.0000, 0.0000, 0.0000]])
+Best model loss: tensor([0.0390])
+Spinning at iteration 2
+Spinning at iteration 2
+Spinning at iteration 2
+Spinning at iteration 2
+Spinning at iteration 2
+Spinning at iteration 2
+Spinning at iteration 2
+Spinning at iteration 2
+Spinning at iteration 2
+Spinning at iteration 2
+Spinning at iteration 2
+Spinning at iteration 2
+Spinning at iteration 2
+Spinning at iteration 2
+Spinning at iteration 2
+Spinning at iteration 2
+Spinning at iteration 2
+Spinning at iteration 2
+Spinning at iteration 2
+Spinning at iteration 2
+Spinning at iteration 3
+sampling: max: -0.0352, mean: -0.0385, std: 0.0017
+Selected top reward seqs: tensor([-0.0365, -0.0364, -0.0362, -0.0362, -0.0362, -0.0360, -0.0359, -0.0359,
+        -0.0355, -0.0352])
+Batch 0/10:
+reward seqs after 10 iterations: tensor([-0.0351], grad_fn=<CatBackward>)
+Batch 1/10:
+reward seqs after 28 iterations: tensor([-0.0351], grad_fn=<CatBackward>)
+Batch 2/10:
+reward seqs after 10 iterations: tensor([-0.0350], grad_fn=<CatBackward>)
+Batch 3/10:
+reward seqs after 3 iterations: tensor([-0.0352], grad_fn=<CatBackward>)
+Batch 4/10:
+reward seqs after 12 iterations: tensor([-0.0349], grad_fn=<CatBackward>)
+Batch 5/10:
+reward seqs after 26 iterations: tensor([-0.0352], grad_fn=<CatBackward>)
+Batch 6/10:
+reward seqs after 11 iterations: tensor([-0.0353], grad_fn=<CatBackward>)
+Batch 7/10:
+reward seqs after 10 iterations: tensor([-0.0342], grad_fn=<CatBackward>)
+Batch 8/10:
+reward seqs after 12 iterations: tensor([-0.0351], grad_fn=<CatBackward>)
+Batch 9/10:
+reward seqs after 10 iterations: tensor([-0.0350], grad_fn=<CatBackward>)
+Loss: 0.034228984266519547
+Optimal set of params:
+mid_point: tensor([[0.4983, 0.1400, 0.5079]])
+angle: tensor([2.8676], grad_fn=<SelectBackward>)
+gripper_rate: tensor([0.0113], grad_fn=<ClampBackward1>)
+Optimal init pose seq: tensor([[0.8834, 0.1400, 0.6161, 1.0000, 0.0000, 0.0000, 0.0000]],
+       grad_fn=<SliceBackward>)
+=============== Iteration 3 -> model_loss: tensor([0.0342]) ===============
+torch.Size([1, 11, 14]) torch.Size([1, 40, 12])
+Best init pose: tensor([[0.8834, 0.1400, 0.6161, 1.0000, 0.0000, 0.0000, 0.0000]])
+Best model loss: tensor([0.0342])
+Spinning at iteration 3
+Spinning at iteration 3
+Spinning at iteration 3
+Spinning at iteration 3
+Spinning at iteration 3
+Spinning at iteration 3
+Spinning at iteration 3
+Spinning at iteration 3
+Spinning at iteration 3
+Spinning at iteration 3
+Spinning at iteration 3
+Spinning at iteration 3
+Spinning at iteration 3
+Spinning at iteration 3
+Spinning at iteration 3
+Spinning at iteration 3
+Spinning at iteration 3
+Spinning at iteration 3
+Spinning at iteration 3
+Spinning at iteration 3
+Spinning at iteration 4
+sampling: max: -0.0333, mean: -0.0360, std: 0.0013
+Selected top reward seqs: tensor([-0.0345, -0.0345, -0.0345, -0.0345, -0.0345, -0.0344, -0.0340, -0.0335,
+        -0.0335, -0.0333])
+Batch 0/10:
+reward seqs after 12 iterations: tensor([-0.0334], grad_fn=<CatBackward>)
+Batch 1/10:
+reward seqs after 11 iterations: tensor([-0.0335], grad_fn=<CatBackward>)
+Batch 2/10:
+reward seqs after 7 iterations: tensor([-0.0333], grad_fn=<CatBackward>)
+Batch 3/10:
+reward seqs after 10 iterations: tensor([-0.0329], grad_fn=<CatBackward>)
+Batch 4/10:
+reward seqs after 24 iterations: tensor([-0.0332], grad_fn=<CatBackward>)
+Batch 5/10:
+reward seqs after 10 iterations: tensor([-0.0334], grad_fn=<CatBackward>)
+Batch 6/10:
+reward seqs after 11 iterations: tensor([-0.0327], grad_fn=<CatBackward>)
+Batch 7/10:
+reward seqs after 10 iterations: tensor([-0.0332], grad_fn=<CatBackward>)
+Batch 8/10:
+reward seqs after 14 iterations: tensor([-0.0332], grad_fn=<CatBackward>)
+Batch 9/10:
+reward seqs after 8 iterations: tensor([-0.0319], grad_fn=<CatBackward>)
+Loss: 0.03192947804927826
+Optimal set of params:
+mid_point: tensor([[0.5276, 0.1400, 0.5484]])
+angle: tensor([1.9777], grad_fn=<SelectBackward>)
+gripper_rate: tensor([0.0113], grad_fn=<ClampBackward1>)
+Optimal init pose seq: tensor([[0.6859, 0.1400, 0.9157, 1.0000, 0.0000, 0.0000, 0.0000]],
+       grad_fn=<SliceBackward>)
+=============== Iteration 4 -> model_loss: tensor([0.0319]) ===============
+torch.Size([1, 11, 14]) torch.Size([1, 40, 12])
+Best init pose: tensor([[0.6859, 0.1400, 0.9157, 1.0000, 0.0000, 0.0000, 0.0000]])
+Best model loss: tensor([0.0319])
+Spinning at iteration 4
+Spinning at iteration 4
+Spinning at iteration 4
+Spinning at iteration 4
+Spinning at iteration 4
+Spinning at iteration 4
+Spinning at iteration 4
+Spinning at iteration 4
+Spinning at iteration 4
+Spinning at iteration 4
+Spinning at iteration 4
+Spinning at iteration 4
+Spinning at iteration 4
+Spinning at iteration 4
+Spinning at iteration 4
+Spinning at iteration 4
+Spinning at iteration 4
+Spinning at iteration 4
+Spinning at iteration 4
+Spinning at iteration 4
+Spinning at iteration 4
+Spinning at iteration 5

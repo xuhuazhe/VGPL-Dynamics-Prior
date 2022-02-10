@@ -21,33 +21,31 @@ parser.add_argument('--nf_pos', type=int, default=150)
 parser.add_argument('--nf_memory', type=int, default=150)
 parser.add_argument('--mem_nlayer', type=int, default=2)
 parser.add_argument('--nf_effect', type=int, default=150)
-parser.add_argument('--losstype', type=str, default='l1')
+
 parser.add_argument('--stdreg', type=int, default=0)
 parser.add_argument('--stdreg_weight', type=float, default=0.0)
 parser.add_argument('--matched_motion', type=int, default=0)
 parser.add_argument('--matched_motion_weight', type=float, default=0.0)
-parser.add_argument('--uh_weight', type=float, default=0.0)
-parser.add_argument('--clip_weight', type=float, default=0.0)
 
-
-parser.add_argument('--outf', default='files')
-parser.add_argument('--evalf', default='eval')
-parser.add_argument('--dataf', default='data')
-parser.add_argument('--data_type', type=str, default='none')
-parser.add_argument('--gt_particles', type=int, default=0)
-
+parser.add_argument('--valid', type=int, default=0)
 parser.add_argument('--eval', type=int, default=0)
 parser.add_argument('--verbose_data', type=int, default=0)
 parser.add_argument('--verbose_model', type=int, default=0)
 parser.add_argument('--eps', type=float, default=1e-6)
 
+# file paths
+parser.add_argument('--outf', default='files')
+parser.add_argument('--outf_eval', default='')
+parser.add_argument('--outf_control', default='')
+parser.add_argument('--outf_new', default='')
+parser.add_argument('--evalf', default='eval')
+parser.add_argument('--dataf', default='data')
+parser.add_argument('--gripperf', default='../PlasticineLab/plb/envs/gripper_fixed.yml')
+
 # for ablation study
 parser.add_argument('--neighbor_radius', type=float, default=-1)
+parser.add_argument('--gripper_extra_neighbor_radius', type=float, default=-1)
 parser.add_argument('--neighbor_k', type=float, default=-1)
-
-# use a flexible number of frames for each training iteration
-parser.add_argument('--n_his', type=int, default=4)
-parser.add_argument('--sequence_length', type=int, default=0)
 
 # shape state:
 # [x, y, z, x_last, y_last, z_last, quat(4), quat_last(4)]
@@ -73,6 +71,21 @@ parser.add_argument('--vis_height', type=int, default=120)
 '''
 train
 '''
+parser.add_argument('--data_type', type=str, default='none')
+parser.add_argument('--gt_particles', type=int, default=0)
+parser.add_argument('--shape_aug', type=int, default=0)
+
+parser.add_argument('--loss_type', type=str, default='l1')
+parser.add_argument('--uh_weight', type=float, default=0.0)
+parser.add_argument('--clip_weight', type=float, default=0.0)
+parser.add_argument('--emd_weight', type=float, default=0.0)
+parser.add_argument('--chamfer_weight', type=float, default=0.0)
+parser.add_argument('--p_rigid', type=float, default=1.)
+parser.add_argument('--alpha', type=float, default=0.05)
+
+# use a flexible number of frames for each training iteration
+parser.add_argument('--n_his', type=int, default=4)
+parser.add_argument('--sequence_length', type=int, default=0)
 
 parser.add_argument('--n_rollout', type=int, default=0)
 parser.add_argument('--train_valid_ratio', type=float, default=0.9)
@@ -80,7 +93,7 @@ parser.add_argument('--num_workers', type=int, default=10)
 parser.add_argument('--log_per_iter', type=int, default=50)
 parser.add_argument('--ckp_per_iter', type=int, default=1000)
 
-parser.add_argument('--n_epoch', type=int, default=1000)
+parser.add_argument('--n_epoch', type=int, default=100) # 100 FOR TEST, *1000* 
 parser.add_argument('--beta1', type=float, default=0.9)
 parser.add_argument('--lr', type=float, default=0.0001)
 parser.add_argument('--optimizer', default='Adam', help='Adam|SGD')
@@ -105,11 +118,49 @@ eval
 '''
 parser.add_argument('--eval_epoch', type=int, default=-1, help='pretrained model')
 parser.add_argument('--eval_iter', type=int, default=-1, help='pretrained model')
-parser.add_argument('--eval_set', default='demo')
+parser.add_argument('--eval_set', default='train')
 
 # visualization flog
 parser.add_argument('--pyflex', type=int, default=1)
-parser.add_argument('--vispy', type=int, default=1)
+parser.add_argument('--vis', type=str, default='plt')
+
+
+'''
+control
+'''
+parser.add_argument('--opt_algo', type=str, default='max')
+parser.add_argument('--control_algo', type=str, default='fix')
+parser.add_argument('--predict_horizon', type=int, default=2)
+parser.add_argument('--control_sample_size', type=int, default=8)
+parser.add_argument('--control_batch_size', type=int, default=4)
+parser.add_argument('--reward_type', type=str, default='emd')
+parser.add_argument('--use_sim', type=int, default=0)
+parser.add_argument('--gt_action', type=int, default=0)
+parser.add_argument('--gt_state_goal', type=int, default=0)
+parser.add_argument('--subgoal', type=int, default=0)
+parser.add_argument('--correction', type=int, default=0)
+parser.add_argument('--n_grips', type=int, default=3)
+parser.add_argument('--debug', type=int, default=0)
+parser.add_argument('--shape_type', type=str, default='')
+parser.add_argument('--goal_shape_name', type=str, default='')
+parser.add_argument('--CEM_opt_iter', type=int, default=1)
+parser.add_argument('--CEM_init_pose_sample_size', type=int, default=40)
+parser.add_argument('--CEM_gripper_rate_sample_size', type=int, default=8)
+parser.add_argument('--GD_batch_size', type=int, default=1)
+
+### only useful for rl
+parser.add_argument("--algo", type=str, default='sac')
+parser.add_argument("--env_name", type=str, default="gripper_fixed-v1")
+parser.add_argument("--path", type=str, default='./tmp')
+parser.add_argument("--seed", type=int, default=0)
+parser.add_argument("--num_steps", type=int, default=None)
+
+# differentiable physics parameters
+parser.add_argument("--rllr", type=float, default=0.1)
+parser.add_argument("--optim", type=str, default='Adam', choices=['Adam', 'Momentum'])
+
+# parser.add_argument("--gripperf", type=str, default="../PlasticineLab/plb/envs/gripper_fixed.yml")
+
 
 
 def gen_args():
@@ -149,17 +200,13 @@ def gen_args():
         args.std_p = np.array([0.06167904, 0.05326168, 0.06180995])
         # args.mean_d = np.array([-1.62756886e-05, -1.10265409e-04, -1.71767924e-04])
         # args.std_d = np.array([0.08455442, 0.07277832, 0.08571255])
-        args.mean_d = np.array([4.00109732e-04, 6.71352200e-05, -1.17460513e-04])
-        args.std_d = np.array([0.0166535,  0.01636565, 0.01657304])
+        args.mean_d = np.array([0.0, 0.0, 0.0])
+        args.std_d = np.array([1.0, 1.0, 1.0])
 
     elif args.env == 'Gripper':
         args.env_idx = 1001
 
-        args.n_rollout = 50
-        if args.data_type == 'ngrip':
-            args.time_step = 59
-        else:
-            args.time_step = 49
+        args.time_step = 119
 
         # object states:
         # [x, y, z]
@@ -170,6 +217,14 @@ def gen_args():
         args.attr_dim = 3
 
         args.neighbor_radius = 0.05
+        
+        if 'small' in args.data_type:
+            args.gripper_extra_neighbor_radius = 0.0
+        elif 'robot' in args.data_type:
+            args.gripper_extra_neighbor_radius = 0.015
+        else:
+            args.gripper_extra_neighbor_radius = 0.015
+
         args.neighbor_k = 20
 
         suffix = ''
@@ -180,14 +235,20 @@ def gen_args():
 
         args.physics_param_range = (-5., -5.)
 
-        args.outf = 'dump/dump_Pinch/' + args.outf + '_' + args.stage + suffix + datetime.now().strftime(
-            "%d-%b-%Y-%H:%M:%S.%f")
-        args.evalf = 'dump/dump_Pinch/' + args.evalf + '_' + args.stage + suffix  # + datetime.now().strftime("%d-%b-%Y-%H:%M:%S.%f")
+        args.outf =  f'dump/dump_{args.data_type}/{args.outf}_{args.stage}{suffix}_{datetime.now().strftime("%d-%b-%Y-%H:%M:%S.%f")}'
+        args.evalf = f'dump/dump_{args.data_type}/{args.evalf}_{args.stage}{suffix}'
 
+        # if 'robot' in args.data_type:
+        #     args.mean_p = np.array([0.50932539, 0.11348496, 0.49837578])
+        #     args.std_p = np.array([0.06474939, 0.04888084, 0.05906044])
+        # else:
         args.mean_p = np.array([0.50932539, 0.11348496, 0.49837578])
         args.std_p = np.array([0.06474939, 0.04888084, 0.05906044])
-        # args.mean_d = np.array([-1.62756886e-05, -1.10265409e-04, -1.71767924e-04])
-        # args.std_d = np.array([0.08455442, 0.07277832, 0.08571255])
+        
+        # args.mean_d = np.array([-0.00284736, 0.00286124, -0.00130389])
+        # args.std_d = np.array([0.001755744, 0.001663332, 0.001677678])
+        # args.mean_d = np.array([0.0, 0.0, 0.0])
+        # args.std_d = np.array([1.0, 1.0, 1.0])
         args.mean_d = np.array([-0.00284736, 0.00286124, -0.00130389])
         args.std_d = np.array([0.01755744, 0.01663332, 0.01677678])
 
@@ -262,26 +323,28 @@ def gen_args():
 
 
     # path to data
-    if args.data_type != 'none':
-        args.dataf = 'data/' + args.dataf + '_' + args.data_type    #+ '_' + args.env
-    else:
-        args.dataf = 'data/' + args.dataf + '_' + args.env
+    args.dataf = f'data/data_{args.data_type}'
 
     # n_his
     args.outf += '_nHis%d' % args.n_his
     args.evalf += '_nHis%d' % args.n_his
-
 
     # data augmentation
     if args.augment_ratio > 0:
         args.outf += '_aug%.2f' % args.augment_ratio
         args.evalf += '_aug%.2f' % args.augment_ratio
 
-    args.outf += args.losstype
-    args.outf += f'_seqlen{args.sequence_length}'
-    args.outf += f'_uhw{args.uh_weight}'
-    args.outf += f'_clipw{args.clip_weight}'
     args.outf += f'_gt{args.gt_particles}'
+    args.outf += f'_seqlen{args.sequence_length}'
+    
+    # args.outf += f'_{args.loss_type}'
+    if args.loss_type == 'l1shape':
+        args.outf += f'_l1shape'
+    else:
+        args.outf += f'_emd{args.emd_weight}'
+        args.outf += f'_chamfer{args.chamfer_weight}'
+        args.outf += f'_uh{args.uh_weight}'
+        args.outf += f'_clip{args.clip_weight}'
 
 
     # evaluation checkpoints
@@ -293,6 +356,8 @@ def gen_args():
             args.evalf += '_dyEpoch_best'
 
         args.evalf += '_%s' % args.eval_set
+
+
 
 
     return args

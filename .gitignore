@@ -10,3 +10,6 @@ dump_*/
 *.swp
 *.swo
 data/*
+*.lprof
+interactive
+gether_results.py
