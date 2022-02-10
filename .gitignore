@@ -8,7 +8,6 @@ files/
 *.swp
 *.swo
 data/*
-dump/*
+dump_*/
 *.lprof
 interactive
-gether_results.py
