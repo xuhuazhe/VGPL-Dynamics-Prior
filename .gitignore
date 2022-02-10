@@ -8,6 +8,7 @@ files/
 *.swp
 *.swo
 data/*
+!data/data_ngrip_fixed
 dump_*/
 *.lprof
 interactive
