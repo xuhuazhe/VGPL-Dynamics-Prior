@@ -6,7 +6,7 @@ from datetime import datetime
 
 ### build arguments
 parser = argparse.ArgumentParser()
-parser.add_argument('--env', default='RigidFall')
+parser.add_argument('--env', default='Gripper')
 parser.add_argument('--stage', default='dy', help="dy: dynamics model")
 parser.add_argument('--pstep', type=int, default=2)
 parser.add_argument('--random_seed', type=int, default=42)
@@ -73,23 +73,23 @@ train
 '''
 parser.add_argument('--data_type', type=str, default='none')
 parser.add_argument('--gt_particles', type=int, default=0)
-parser.add_argument('--shape_aug', type=int, default=0)
+parser.add_argument('--shape_aug', type=int, default=1)
 
-parser.add_argument('--loss_type', type=str, default='l1')
+parser.add_argument('--loss_type', type=str, default='emd_chamfer_uh_clip')
 parser.add_argument('--uh_weight', type=float, default=0.0)
 parser.add_argument('--clip_weight', type=float, default=0.0)
-parser.add_argument('--emd_weight', type=float, default=0.0)
-parser.add_argument('--chamfer_weight', type=float, default=0.0)
-parser.add_argument('--p_rigid', type=float, default=1.)
+parser.add_argument('--emd_weight', type=float, default=0.9)
+parser.add_argument('--chamfer_weight', type=float, default=0.1)
+parser.add_argument('--p_rigid', type=float, default=1.0)
 
 # use a flexible number of frames for each training iteration
 parser.add_argument('--n_his', type=int, default=4)
-parser.add_argument('--sequence_length', type=int, default=0)
+parser.add_argument('--sequence_length', type=int, default=6)
 
 parser.add_argument('--n_rollout', type=int, default=0)
 parser.add_argument('--train_valid_ratio', type=float, default=0.9)
-parser.add_argument('--num_workers', type=int, default=10)
-parser.add_argument('--log_per_iter', type=int, default=50)
+parser.add_argument('--num_workers', type=int, default=4)
+parser.add_argument('--log_per_iter', type=int, default=100)
 parser.add_argument('--ckp_per_iter', type=int, default=1000)
 
 parser.add_argument('--n_epoch', type=int, default=100) # 100 FOR TEST, *1000* 
@@ -97,7 +97,7 @@ parser.add_argument('--beta1', type=float, default=0.9)
 parser.add_argument('--lr', type=float, default=0.0001)
 parser.add_argument('--optimizer', default='Adam', help='Adam|SGD')
 parser.add_argument('--max_grad_norm', type=float, default=1.0)
-parser.add_argument('--batch_size', type=int, default=1)
+parser.add_argument('--batch_size', type=int, default=4)
 
 # data generation
 parser.add_argument('--gen_data', type=int, default=0)
@@ -105,11 +105,11 @@ parser.add_argument('--gen_stat', type=int, default=0)
 parser.add_argument('--gen_vision', type=int, default=0)
 
 parser.add_argument('--resume', type=int, default=0)
-parser.add_argument('--resume_epoch', type=int, default=-1)
-parser.add_argument('--resume_iter', type=int, default=-1)
+parser.add_argument('--resume_epoch', type=int, default=0)
+parser.add_argument('--resume_iter', type=int, default=0)
 
 # data augmentation
-parser.add_argument('--augment_ratio', type=float, default=0.)
+parser.add_argument('--augment_ratio', type=float, default=0.05)
 
 
 '''

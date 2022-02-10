@@ -1,37 +1,7 @@
 # Task 1: N Grip
 python train.py \
-	--env Gripper \
-	--stage dy \
-	--gen_data 0 \
-	--gen_stat 0 \
-	--gen_vision 0 \
-	--num_workers 4 \
-	--resume 0 \
-	--resume_epoch 0 \
-	--resume_iter 0 \
-	--lr 0.0001 \
-	--optimizer Adam \
-	--batch_size 4 \
-	--n_his 4 \
-	--verbose_data 0 \
-	--verbose_model 0 \
-	--log_per_iter 100 \
-	--valid 0 \
-	--stdreg 0 \
-	--matched_motion 0 \
-	--matched_motion_weight 0.0 \
-	--eval 1 \
-	--gt_particles 0 \
-    --shape_aug 1 \
-	--n_epoch 1 \
-	--n_rollout 5 \
-	--ckp_per_iter 100 \
-	--sequence_length 6 \
-	--emd_weight 0.9 \
-	--chamfer_weight 0.1 \
-	--uh_weight 0.0 \
-	--clip_weight 0.0 \
-	--augment_ratio 0.05 \
-	--p_rigid 1.0 \
 	--data_type ngrip_fixed \
-	--loss_type emd_chamfer_uh_clip
+	--n_epoch 1 \
+	--ckp_per_iter 100 \
+	--eval 1 \
+	--n_rollout 5
