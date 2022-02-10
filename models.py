@@ -1,7 +1,4 @@
 import numpy as np
-import open3d as o3d
-import pdb
-
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
@@ -318,9 +315,6 @@ class DynamicsPredictor(nn.Module):
         rigid_motion = (rigid_motion - mean_d) / std_d
 
         """regularize non regid motion within a cluster"""
-        # TODO： now it does not align with torch std, missing (n-1)/n
-        # non_rigid_motion_dist = torch.norm(non_rigid_motion, 2, dim=2)
-        # counter = torch.ones_like(non_rigid_motion)
         if cluster is not None:
             X = non_rigid_motion.transpose(1,2).bmm(cluster)
             X2 = torch.square(non_rigid_motion).transpose(1,2).bmm(cluster)
@@ -330,19 +324,7 @@ class DynamicsPredictor(nn.Module):
             mean_std = torch.mean(std)
         else:
             mean_std = None
-        # total_std = []
-        # for j in range(cluster.shape[0]):
-        #     for i in range(cluster.shape[2]):
-        #         index = (cluster[j, :, i] == 1).nonzero(as_tuple=True)[0]
-        #         this_cluster_mo = non_rigid_motion[j, index]
-        #         this_std = torch.std(this_cluster_mo, dim=0)
-        #         total_std.append(this_std)
-        # total_std = torch.stack(total_std)
-        # pdb.set_trace()
-        # merge rigid and non-rigid motion
-        # rigid_motion      (B x n_instance x n_p x state_dim)
-        # non_rigid_motion  (B x n_p x state_dim)
-        # pdb.set_trace()
+
         n_gripper_touch = torch.zeros(B)
         if self.use_gpu:
             n_gripper_touch = n_gripper_touch.cuda()
@@ -433,7 +415,6 @@ class Model(nn.Module):
         return ret
 
 
-
 class ChamferLoss(torch.nn.Module):
     def __init__(self):
         super(ChamferLoss, self).__init__()
@@ -454,62 +435,6 @@ class ChamferLoss(torch.nn.Module):
         # label: [B, M, D]
         return self.chamfer_distance(pred, label)
 
-
-class UpdatedHausdorffLoss(torch.nn.Module):
-    def __init__(self):
-        super(UpdatedHausdorffLoss, self).__init__()
-
-    def hausdorff_distance(self, x, y):
-        # x: [B, N, D]
-        # y: [B, M, D]
-        x = x[:, :, None, :].repeat(1, 1, y.size(1), 1) # x: [B, N, M, D]
-        y = y[:, None, :, :].repeat(1, x.size(1), 1, 1) # y: [B, N, M, D]
-        dis = torch.norm(torch.add(x, -y), 2, dim=3)    # dis: [B, N, M]
-        # print(dis.shape)
-        dis_xy = torch.max(torch.min(dis, dim=2)[0])   # dis_xy: mean over N
-        dis_yx = torch.max(torch.min(dis, dim=1)[0])   # dis_yx: mean over M
-
-        return dis_xy + dis_yx
-
-    def __call__(self, pred, label):
-        # pred: [B, N, D]
-        # label: [B, M, D]
-        return self.hausdorff_distance(pred, label)
-
-class ClipLoss(torch.nn.Module):
-    def __init__(self):
-        super(ClipLoss, self).__init__()
-
-    def clip_loss(self, x, y):
-        x = x[:, :, None, :].repeat(1, 1, y.size(1), 1)  # x: [B, N, M, D]
-        y = y[:, None, :, :].repeat(1, x.size(1), 1, 1)  # y: [B, N, M, D]
-        dis = torch.norm(torch.add(x, -y), 2, dim=3)  # dis: [B, N, M]
-        dxy = torch.topk(dis, k=2, dim=2, largest=False)[0][:, :, 1]  # dxy [B, M, 1]
-
-        return torch.min(dxy)
-
-    def __call__(self, array1, array2):
-        return self.clip_loss(array1, array2)
-
-class HausdorfLoss(torch.nn.Module):
-    def __init__(self):
-        super(HausdorfLoss, self).__init__()
-
-    def hausdorf_distance(self, x, y):
-        # x: [B, N, D]
-        # y: [B, M, D]
-        x = x[:, :, None, :].repeat(1, 1, y.size(1), 1) # x: [B, N, M, D]
-        y = y[:, None, :, :].repeat(1, x.size(1), 1, 1) # y: [B, N, M, D]
-        dis = torch.norm(torch.add(x, -y), 2, dim=3)    # dis: [B, N, M]
-        dis_xy = torch.mean(torch.min(dis, dim=2)[0])   # dis_xy: mean over N
-        dis_yx = torch.mean(torch.min(dis, dim=1)[0])   # dis_yx: mean over M
-
-        return torch.max(dis_xy, dis_yx)
-
-    def __call__(self, pred, label):
-        # pred: [B, N, D]
-        # label: [B, M, D]
-        return self.hausdorf_distance(pred, label)
 
 class EarthMoverLoss(torch.nn.Module):
     def __init__(self):
@@ -549,57 +474,42 @@ class EarthMoverLoss(torch.nn.Module):
         return self.em_distance(pred, label)
 
 
-class L1ShapeLoss(torch.nn.Module):
+class HausdorffLoss(torch.nn.Module):
     def __init__(self):
-        super(L1ShapeLoss, self).__init__()
+        super(HausdorffLoss, self).__init__()
 
-    def __call__(self, x, y):
-        c1 = 0.0001
-        # grid1 = p2g(x)
-        # grid2 = p2g(y)
-        grid1 = p2v(x)
-        grid2 = p2v(y)
-        l1 = torch.abs(grid1 - grid2).sum()
-        # print(f"L1: {l1.shape}")
-        return c1 * l1
+    def hausdorff_distance(self, x, y):
+        # x: [B, N, D]
+        # y: [B, M, D]
+        x = x[:, :, None, :].repeat(1, 1, y.size(1), 1) # x: [B, N, M, D]
+        y = y[:, None, :, :].repeat(1, x.size(1), 1, 1) # y: [B, N, M, D]
+        dis = torch.norm(torch.add(x, -y), 2, dim=3)    # dis: [B, N, M]
+        # print(dis.shape)
+        dis_xy = torch.max(torch.min(dis, dim=2)[0])   # dis_xy: mean over N
+        dis_yx = torch.max(torch.min(dis, dim=1)[0])   # dis_yx: mean over M
+
+        return dis_xy + dis_yx
+
+    def __call__(self, pred, label):
+        # pred: [B, N, D]
+        # label: [B, M, D]
+        return self.hausdorff_distance(pred, label)
 
 
-class AlphaShapeLoss(torch.nn.Module):
-    def __init__(self):
-        super(AlphaShapeLoss, self).__init__()
+# class ClipLoss(torch.nn.Module):
+#     def __init__(self):
+#         super(ClipLoss, self).__init__()
 
-    def __call__(self, x_batch, y_batch, alpha):
-        emd_list = []
-        for i in range(x_batch.shape[0]):
-            x = x_batch[i]
-            y = y_batch[i]
-            ind_x = alpha_shape_3D(x.detach().cpu().numpy(), alpha)
-            ind_y = alpha_shape_3D(y.detach().cpu().numpy(), alpha)
-            v1 = x[ind_x]
-            v2 = y[ind_y]
-            
-            # print(ind_x.shape)
-            # pcd1 = o3d.geometry.PointCloud()
-            # pcd1.points = o3d.utility.Vector3dVector(x.detach().cpu().numpy())
-            # colors1 = np.tile([0.0, 1.0, 0.0], (x.shape[0], 1))
-            # colors1[ind_x] = np.array([0.0, 0.0, 0.0])
-            # pcd1.colors = o3d.utility.Vector3dVector(colors1)
-            # o3d.visualization.draw_geometries([pcd1])
+#     def clip_loss(self, x, y):
+#         x = x[:, :, None, :].repeat(1, 1, y.size(1), 1)  # x: [B, N, M, D]
+#         y = y[:, None, :, :].repeat(1, x.size(1), 1, 1)  # y: [B, N, M, D]
+#         dis = torch.norm(torch.add(x, -y), 2, dim=3)  # dis: [B, N, M]
+#         dxy = torch.topk(dis, k=2, dim=2, largest=False)[0][:, :, 1]  # dxy [B, M, 1]
 
-            # emd
-            v1_ = v1[:, None, :].repeat(1, v2.size(0), 1)  # x: [N, M, D]
-            v2_ = v2[None, :, :].repeat(v1.size(0), 1, 1)  # y: [N, M, D]
-            dis = torch.norm(torch.add(v1_, -v2_), 2, dim=2)  # dis: [N, M]
+#         return torch.min(dxy)
 
-            try:
-                ind1, ind2 = scipy.optimize.linear_sum_assignment(dis.detach().cpu().numpy(), maximize=False)
-            except:
-                print("Error in linear sum assignment!")
-            
-            emd = torch.mean(torch.norm(torch.add(v1[ind1], -v2[ind2]), 2, dim=1))
-            emd_list.append(emd)
-
-        return torch.mean(torch.stack(emd_list))
+#     def __call__(self, array1, array2):
+#         return self.clip_loss(array1, array2)
 
 
 if __name__ == "__main__":

@@ -17,8 +17,9 @@ from data_utils import load_data, get_scene_info, normalize_scene_param
 from data_utils import get_env_group, prepare_input, denormalize
 from data_utils import real_sim_remap
 from models import Model
-from utils import train_plot_curves, eval_plot_curves, eval_plot_curves_with_bar, set_seed, Tee, count_parameters
-from models import EarthMoverLoss, ChamferLoss, UpdatedHausdorffLoss
+from models import EarthMoverLoss, ChamferLoss, HausdorffLoss
+from utils import set_seed, Tee, count_parameters
+from visualize import train_plot_curves, eval_plot_curves, eval_plot_curves_with_bar 
 
 import matplotlib.pyplot as plt
 import matplotlib.animation as animation
@@ -228,7 +229,7 @@ def evaluate(args, eval_epoch, eval_iter):
 
     emd_loss = EarthMoverLoss()
     chamfer_loss = ChamferLoss()
-    uh_loss = UpdatedHausdorffLoss()
+    uh_loss = HausdorffLoss()
 
     loss_list_over_episodes = []
 

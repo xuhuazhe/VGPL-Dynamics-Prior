@@ -81,7 +81,6 @@ parser.add_argument('--clip_weight', type=float, default=0.0)
 parser.add_argument('--emd_weight', type=float, default=0.0)
 parser.add_argument('--chamfer_weight', type=float, default=0.0)
 parser.add_argument('--p_rigid', type=float, default=1.)
-parser.add_argument('--alpha', type=float, default=0.05)
 
 # use a flexible number of frames for each training iteration
 parser.add_argument('--n_his', type=int, default=4)

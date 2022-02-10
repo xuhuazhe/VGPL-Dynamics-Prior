@@ -15,7 +15,7 @@ import torch
 from config import gen_args
 from data_utils import load_data, get_scene_info, get_env_group, prepare_input
 from matplotlib import cm
-from models import Model, EarthMoverLoss, ChamferLoss, UpdatedHausdorffLoss, ClipLoss, L1ShapeLoss
+from models import Model, EarthMoverLoss, ChamferLoss, HausdorffLoss, ClipLoss, L1ShapeLoss
 from plb.engine.taichi_env import TaichiEnv
 from plb.config import load
 from plb.algorithms import sample_data
@@ -48,7 +48,7 @@ task_params = {
 
 emd_loss = EarthMoverLoss()
 chamfer_loss = ChamferLoss()
-uh_loss = UpdatedHausdorffLoss()
+uh_loss = HausdorffLoss()
 clip_loss = ClipLoss()
 shape_loss = L1ShapeLoss()
 

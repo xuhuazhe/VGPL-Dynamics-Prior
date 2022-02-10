@@ -1,12 +1,6 @@
 import os
-import time
-import sys
-import copy
-
-import multiprocessing as mp
 from progressbar import ProgressBar
 
-import argparse
 import numpy as np
 import torch
 import torch.nn.functional as F
@@ -17,15 +11,10 @@ from torch.utils.data import DataLoader
 from config import gen_args
 from data_utils import PhysicsFleXDataset
 from data_utils import prepare_input, get_scene_info, get_env_group
-from models import Model, ChamferLoss, HausdorfLoss, EarthMoverLoss, UpdatedHausdorffLoss, ClipLoss, L1ShapeLoss, AlphaShapeLoss
-from utils import make_graph, check_gradient, set_seed, AverageMeter, get_lr, Tee
-from utils import count_parameters, my_collate, matched_motion
+from models import Model, ChamferLoss, EarthMoverLoss, HausdorffLoss
+from utils import set_seed, AverageMeter, get_lr, Tee, count_parameters, my_collate, matched_motion
 
 from eval import evaluate
-
-import cProfile
-import pstats
-import io
 
 args = gen_args()
 set_seed(args.random_seed)
@@ -105,13 +94,9 @@ def main():
     scheduler = ReduceLROnPlateau(optimizer, 'min', factor=0.8, patience=3, verbose=True)
 
     # define loss
-    particle_dist_loss = ChamferLoss()   #torch.nn.L1Loss()
-    h_loss = HausdorfLoss()
+    chamfer_loss = ChamferLoss()
     emd_loss = EarthMoverLoss()
-    uh_loss = UpdatedHausdorffLoss()
-    clip_loss = ClipLoss()
-    shape_loss = L1ShapeLoss()
-    alpha_shape_loss = AlphaShapeLoss()
+    h_loss = HausdorffLoss()
 
     if use_gpu:
         model = model.cuda()
@@ -243,15 +228,15 @@ def main():
                             gt_motion_norm = (gt_motion - mean_d) / std_d
                             pred_motion_norm = torch.cat([pred_motion_norm, gt_motion_norm[:, n_particle:]], 1)
                             if args.loss_type == 'chamfer_uh_clip':
-                                loss += particle_dist_loss(pred_pos_p, gt_pos_p)
+                                loss += chamfer_loss(pred_pos_p, gt_pos_p)
                                 if args.uh_weight > 0:
-                                    loss += args.uh_weight * uh_loss(pred_pos_p, gt_pos_p)
+                                    loss += args.uh_weight * h_loss(pred_pos_p, gt_pos_p)
                                 if args.clip_weight > 0:
                                     loss += args.clip_weight * clip_loss(pred_pos_p, pred_pos_p)
                             elif args.loss_type == 'emd_uh_clip':
                                 loss += emd_loss(pred_pos_p, gt_pos_p)
                                 if args.uh_weight > 0:
-                                    loss += args.uh_weight * uh_loss(pred_pos_p, gt_pos_p)
+                                    loss += args.uh_weight * h_loss(pred_pos_p, gt_pos_p)
                                 if args.clip_weight > 0:
                                     loss += args.clip_weight * clip_loss(pred_pos_p, pred_pos_p)
                             elif args.loss_type == 'emd_chamfer_uh_clip':
@@ -259,19 +244,15 @@ def main():
                                     emd_l = args.emd_weight * emd_loss(pred_pos_p, gt_pos_p)
                                     loss += emd_l
                                 if args.chamfer_weight > 0:
-                                    chamfer_l = args.chamfer_weight * particle_dist_loss(pred_pos_p, gt_pos_p)
+                                    chamfer_l = args.chamfer_weight * chamfer_loss(pred_pos_p, gt_pos_p)
                                     loss += chamfer_l
                                 if args.uh_weight > 0:
-                                    uh_l = args.uh_weight * uh_loss(pred_pos_p, gt_pos_p)
+                                    uh_l = args.uh_weight * h_loss(pred_pos_p, gt_pos_p)
                                     loss += uh_l
                                 if args.clip_weight > 0:
                                     clip_l = args.clip_weight * clip_loss(pred_pos_p, pred_pos_p)
                                     loss += clip_l
                                 # print(f"EMD: {emd_l.item()}; Chamfer: {chamfer_l.item()}; UH: {uh_l.item()}; Clip: {clip_l.item()}")
-                            elif args.loss_type == 'l1shape':
-                                loss += shape_loss(pred_pos_p, gt_pos_p)
-                            elif args.loss_type == 'alpha_shape':
-                                loss += alpha_shape_loss(pred_pos_p, gt_pos_p, args.alpha)
                             else:
                                 raise NotImplementedError
 
