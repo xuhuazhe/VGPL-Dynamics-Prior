@@ -1,43 +1,27 @@
-import argparse
-import copy
 import glob
-import os
-import pdb
-import time
-import cv2
-
 import numpy as np
-import scipy.misc
+import os
 import torch
-import torch.nn.functional as F
-from torch.autograd import Variable
 
 from config import gen_args
-from data_utils import load_data, get_scene_info, normalize_scene_param
-from data_utils import get_env_group, prepare_input, denormalize
-from data_utils import real_sim_remap
-from models import Model
-from models import EarthMoverLoss, ChamferLoss, HausdorffLoss
+from model import Model, EarthMoverLoss, ChamferLoss, HausdorffLoss
 from utils import set_seed, Tee, count_parameters
+from utils import load_data, get_env_group, get_scene_info, prepare_input
 from visualize import train_plot_curves, eval_plot_curves, eval_plot_curves_with_bar, plt_render
-
-import matplotlib.pyplot as plt
-
-import cProfile
-import pstats
-import io
 
 use_gpu = True
 device = torch.device("cuda" if torch.cuda.is_available() and use_gpu else "cpu")
 
 
-def evaluate(args, eval_epoch, eval_iter):
-    args.evalf = os.path.join(args.outf, 'eval')
+def evaluate(args):
+    set_seed(args.random_seed)
+    args.outf = os.path.dirname(args.model_path)
 
-    os.system('mkdir -p ' + os.path.join(args.evalf, 'plot'))
-    os.system('mkdir -p ' + os.path.join(args.evalf, 'render'))
+    eval_out_path = os.path.join(args.outf, 'eval')
+    os.system('mkdir -p ' + os.path.join(eval_out_path, 'plot'))
+    os.system('mkdir -p ' + os.path.join(eval_out_path, 'render'))
 
-    tee = Tee(os.path.join(args.evalf, 'eval.log'), 'w')
+    tee = Tee(os.path.join(eval_out_path, 'eval.log'), 'w')
 
     data_names = args.data_names
 
@@ -45,16 +29,10 @@ def evaluate(args, eval_epoch, eval_iter):
     model = Model(args, use_gpu)
     print("model_kp #params: %d" % count_parameters(model))
 
-    if eval_epoch < 0:
-        model_name = 'net_best.pth'
-    else:
-        model_name = 'net_epoch_%d_iter_%d.pth' % (eval_epoch, eval_iter)
-
-    model_path = os.path.join(args.outf, model_name)
-    print("Loading network from %s" % model_path)
+    print("Loading network from %s" % args.model_path)
 
     if args.stage == 'dy':
-        pretrained_dict = torch.load(model_path, map_location=device)
+        pretrained_dict = torch.load(args.model_path, map_location=device)
         model_dict = model.state_dict()
         # only load parameters in dynamics_predictor
         pretrained_dict = {
@@ -122,10 +100,7 @@ def evaluate(args, eval_epoch, eval_iter):
             if load_gt: 
                 p_gt.append(gt_data[0])
 
-            if 'robot' in args.data_type:
-                new_state = real_sim_remap(args, data, n_particle)
-            else:
-                new_state = data[0]
+            new_state = data[0]
 
             p_sample.append(new_state)
 
@@ -235,7 +210,7 @@ def evaluate(args, eval_epoch, eval_iter):
             p_gt = p_gt.numpy()[:ed_idx]
 
         # vid_path = os.path.join(args.dataf, 'vid', str(idx_episode).zfill(3))
-        render_path = os.path.join(args.evalf, 'render', f'vid_{idx_episode}_plt.gif')
+        render_path = os.path.join(eval_out_path, 'render', f'vid_{idx_episode}_plt.gif')
 
         if args.vis == 'plt':
             plt_render([p_gt, p_sample, p_pred], n_particle, render_path)
@@ -250,13 +225,13 @@ def evaluate(args, eval_epoch, eval_iter):
     with open(os.path.join(args.outf, 'train.npy'), 'rb') as f:
         train_log = np.load(f, allow_pickle=True)
         train_log = train_log[None][0]
-        train_plot_curves(train_log['iters'], train_log['loss'], path=os.path.join(args.evalf, 'plot', 'train_loss_curves.png'))
+        train_plot_curves(train_log['iters'], train_log['loss'], path=os.path.join(eval_out_path, 'plot', 'train_loss_curves.png'))
 
     loss_list_over_episodes = np.array(loss_list_over_episodes)
     loss_mean = np.mean(loss_list_over_episodes, axis=0)
     loss_std = np.std(loss_list_over_episodes, axis=0)
-    path = os.path.join(args.evalf, 'plot', 'eval_loss_curves.pdf')
-    # eval_plot_curves(np.mean(loss_list_over_episodes, axis=0), path=os.path.join(args.evalf, 'plot', 'eval_loss_curves.png'))
+    path = os.path.join(eval_out_path, 'plot', 'eval_loss_curves.pdf')
+    # eval_plot_curves(np.mean(loss_list_over_episodes, axis=0), path=os.path.join(eval_out_path, 'plot', 'eval_loss_curves.png'))
     eval_plot_curves_with_bar(loss_mean[:, :-1], loss_std[:, :-1], path=path)
 
     print(f"\nAverage emd loss at last frame: {np.mean(loss_list_over_episodes[:, -1, 1])} (+- {np.std(loss_list_over_episodes[:, -1, 1])})")
@@ -270,10 +245,4 @@ def evaluate(args, eval_epoch, eval_iter):
 
 if __name__ == '__main__':
     args = gen_args()
-    set_seed(args.random_seed)
-
-    if len(args.outf_eval) > 0:
-        args.outf = args.outf_eval
-
-    evaluate(args, args.eval_epoch, args.eval_iter)
-    
+    evaluate(args)

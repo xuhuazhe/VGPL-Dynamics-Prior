@@ -1,12 +1,12 @@
 import numpy as np
+import scipy
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
+
+from scipy import optimize
 from torch.autograd import Variable
 
-from data_utils import p2g, compute_sdf, p2v, alpha_shape_3D
-import scipy
-from scipy import optimize
 
 class Encoder(nn.Module):
     def __init__(self, input_size, hidden_size, output_size):
@@ -494,26 +494,3 @@ class HausdorffLoss(torch.nn.Module):
         # pred: [B, N, D]
         # label: [B, M, D]
         return self.hausdorff_distance(pred, label)
-
-
-# class ClipLoss(torch.nn.Module):
-#     def __init__(self):
-#         super(ClipLoss, self).__init__()
-
-#     def clip_loss(self, x, y):
-#         x = x[:, :, None, :].repeat(1, 1, y.size(1), 1)  # x: [B, N, M, D]
-#         y = y[:, None, :, :].repeat(1, x.size(1), 1, 1)  # y: [B, N, M, D]
-#         dis = torch.norm(torch.add(x, -y), 2, dim=3)  # dis: [B, N, M]
-#         dxy = torch.topk(dis, k=2, dim=2, largest=False)[0][:, :, 1]  # dxy [B, M, 1]
-
-#         return torch.min(dxy)
-
-#     def __call__(self, array1, array2):
-#         return self.clip_loss(array1, array2)
-
-
-if __name__ == "__main__":
-    x = torch.tensor(np.array([[[1.,2.,3.],[4.,5.,6.]]]), requires_grad=True)
-    y = torch.tensor(np.array([[[4.1, 5.1, 6.1], [1.1, 2.1, 3.1]]]), requires_grad=True)
-    emdLoss = EarthMoverLoss()
-    emd = emdLoss(x, y)

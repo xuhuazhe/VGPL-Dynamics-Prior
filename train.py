@@ -9,9 +9,9 @@ from torch.optim.lr_scheduler import ReduceLROnPlateau
 from torch.utils.data import DataLoader
 
 from config import gen_args
-from data_utils import PhysicsFleXDataset
-from data_utils import prepare_input, get_scene_info, get_env_group
-from models import Model, ChamferLoss, EarthMoverLoss, HausdorffLoss
+from utils import PhysicsFleXDataset
+from utils import prepare_input, get_scene_info, get_env_group
+from model import Model, ChamferLoss, EarthMoverLoss, HausdorffLoss
 from utils import set_seed, AverageMeter, get_lr, Tee, count_parameters, my_collate, matched_motion
 
 from eval import evaluate
@@ -300,19 +300,9 @@ def main():
                     best_valid_loss = meter_loss.avg
                     torch.save(model.state_dict(), '%s/net_best.pth' % (args.outf))
     
-    if args.eval and rollout_epoch != -1 and rollout_iter != -1:
-        evaluate(args, rollout_epoch, rollout_iter)
+    if args.eval and model_path is not None:
+        args.model_path = model_path
+        evaluate(args)
 
 if __name__ == '__main__':
-    # pr = cProfile.Profile()
-    # pr.enable()
-    
     main()
-
-    # pr.disable()
-    # s = io.StringIO()
-    # ps = pstats.Stats(pr, stream=s).sort_stats('tottime')
-    # ps.print_stats()
-
-    # with open(os.path.join(args.outf, 'train_and_eval_profile.txt'), 'w+') as f:
-    #     f.write(s.getvalue())

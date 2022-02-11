@@ -5,7 +5,7 @@ from datetime import datetime
 ### build arguments
 parser = argparse.ArgumentParser()
 parser.add_argument('--env', default='Gripper')
-parser.add_argument('--stage', default='dy', help="dy: dynamics model")
+parser.add_argument('--stage', default='dy', help="dy: dynamics model; control")
 parser.add_argument('--pstep', type=int, default=2)
 parser.add_argument('--random_seed', type=int, default=42)
 
@@ -33,7 +33,7 @@ parser.add_argument('--eps', type=float, default=1e-6)
 
 # file paths
 parser.add_argument('--outf_eval', default='')
-parser.add_argument('--outf_control', default='')
+parser.add_argument('--controlf', default='')
 parser.add_argument('--outf_new', default='')
 parser.add_argument('--gripperf', default='../PlasticineLab/plb/envs/gripper_fixed.yml')
 
@@ -105,13 +105,6 @@ parser.add_argument('--resume_iter', type=int, default=0)
 parser.add_argument('--augment_ratio', type=float, default=0.05)
 
 
-'''
-eval
-'''
-parser.add_argument('--eval_epoch', type=int, default=-1, help='pretrained model')
-parser.add_argument('--eval_iter', type=int, default=-1, help='pretrained model')
-parser.add_argument('--eval_set', default='train')
-
 # visualization flog
 parser.add_argument('--pyflex', type=int, default=1)
 parser.add_argument('--vis', type=str, default='plt')
@@ -120,6 +113,7 @@ parser.add_argument('--vis', type=str, default='plt')
 '''
 control
 '''
+parser.add_argument('--model_path', type=str, default='')
 parser.add_argument('--opt_algo', type=str, default='max')
 parser.add_argument('--control_algo', type=str, default='fix')
 parser.add_argument('--predict_horizon', type=int, default=2)

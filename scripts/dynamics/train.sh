@@ -1,5 +1,7 @@
-# Task 1: N Grip
+#!/usr/bin/env bash
+
 python train.py \
+	--stage dy \
 	--data_type ngrip_fixed \
 	--n_epoch 1 \
 	--ckp_per_iter 100 \
