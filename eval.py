@@ -7,7 +7,7 @@ from config import gen_args
 from model import Model, EarthMoverLoss, ChamferLoss, HausdorffLoss
 from utils import set_seed, Tee, count_parameters
 from utils import load_data, get_env_group, get_scene_info, prepare_input
-from visualize import train_plot_curves, eval_plot_curves, eval_plot_curves_with_bar, plt_render
+from visualize import train_plot_curves, eval_plot_curves, eval_plot_curves, plt_render
 
 use_gpu = True
 device = torch.device("cuda" if torch.cuda.is_available() and use_gpu else "cpu")
@@ -173,15 +173,10 @@ def evaluate(args):
                 sample_motion_norm = (sample_motion - mean_d) / std_d
                 pred_motion_norm = torch.cat([pred_motion_norm, sample_motion_norm[:, n_particle:]], 1)
 
-                # loss_cur = F.l1_loss(pred_motion_norm[:, :n_particle], sample_motion_norm[:, :n_particle])
-                # loss_cur_raw = F.l1_loss(pred_pos_p, sample_pos_p)
                 loss_emd = emd_loss(pred_pos_p, sample_pos_p)
                 loss_chamfer = chamfer_loss(pred_pos_p, sample_pos_p)
                 loss_uh = uh_loss(pred_pos_p, sample_pos_p)
 
-                # loss += loss_cur
-                # loss_raw += loss_cur_raw
-                # loss_counter += 1
                 loss_list.append([step_id, loss_emd.item(), loss_chamfer.item(), loss_uh.item()])
                 # state_cur (unnormalized): B x n_his x (n_p + n_s) x state_dim
                 state_cur = torch.cat([state_cur[:, 1:], pred_pos.unsqueeze(1)], 1)
@@ -190,12 +185,7 @@ def evaluate(args):
                 # record the prediction
                 p_pred[step_id] = state_cur[-1].detach().cpu()
 
-        # loss /= loss_counter
-        # loss_raw /= loss_counter
-        # print("loss: %.6f, loss_raw: %.10f" % (loss.item(), loss_raw.item()))
-
         loss_list_over_episodes.append(loss_list)
-        # print(loss_list)
 
         # visualization
         group_info = [d.data.cpu().numpy()[0, ...] for d in group_info]
@@ -214,10 +204,6 @@ def evaluate(args):
 
         if args.vis == 'plt':
             plt_render([p_gt, p_sample, p_pred], n_particle, render_path)
-            # if 'robot' in args.data_type:
-            #     plt_render_robot([p_sample, p_pred], n_particle, render_path)
-            # else:
-            #     plt_render([p_gt, p_sample, p_pred], n_particle, render_path)
         else:
             raise NotImplementedError
 
@@ -230,9 +216,7 @@ def evaluate(args):
     loss_list_over_episodes = np.array(loss_list_over_episodes)
     loss_mean = np.mean(loss_list_over_episodes, axis=0)
     loss_std = np.std(loss_list_over_episodes, axis=0)
-    path = os.path.join(eval_out_path, 'plot', 'eval_loss_curves.pdf')
-    # eval_plot_curves(np.mean(loss_list_over_episodes, axis=0), path=os.path.join(eval_out_path, 'plot', 'eval_loss_curves.png'))
-    eval_plot_curves_with_bar(loss_mean[:, :-1], loss_std[:, :-1], path=path)
+    eval_plot_curves(loss_mean[:, :-1], loss_std[:, :-1], path=os.path.join(eval_out_path, 'plot', 'eval_loss_curves.png'))
 
     print(f"\nAverage emd loss at last frame: {np.mean(loss_list_over_episodes[:, -1, 1])} (+- {np.std(loss_list_over_episodes[:, -1, 1])})")
     print(f"Average chamfer loss at last frame: {np.mean(loss_list_over_episodes[:, -1, 2])} (+- {np.std(loss_list_over_episodes[:, -1, 2])})")

@@ -4,27 +4,29 @@ import matplotlib.pyplot as plt
 import matplotlib.animation as animation
 import numpy as np
 import os
-import taichi as ti
 
+import taichi as ti
 ti.init(arch=ti.cpu)
+
 import torch
 
 from config import gen_args
-from utils import load_data, get_scene_info, get_env_group, prepare_input
 from matplotlib import cm
-from model import Model, EarthMoverLoss, ChamferLoss, HausdorffLoss, ClipLoss, L1ShapeLoss
+from model import Model, EarthMoverLoss, ChamferLoss, HausdorffLoss
 from plb.engine.taichi_env import TaichiEnv
 from plb.config import load
 from plb.algorithms import sample_data
 from tqdm import tqdm, trange
-from sys import platform
-from utils import create_instance_colors, set_seed,  Tee, count_parameters
-
 from transforms3d.quaternions import *
 from transforms3d.axangles import axangle2mat
+from sys import platform
+from utils import set_seed,  Tee, count_parameters
+from utils import load_data, get_scene_info, get_env_group, prepare_input
+
 
 use_gpu = True
 device = torch.device("cuda" if torch.cuda.is_available() and use_gpu else "cpu")
+
 
 task_params = {
     "mid_point": np.array([0.5, 0.14, 0.5, 0, 0, 0]),
@@ -46,8 +48,6 @@ task_params = {
 emd_loss = EarthMoverLoss()
 chamfer_loss = ChamferLoss()
 uh_loss = HausdorffLoss()
-clip_loss = ClipLoss()
-shape_loss = L1ShapeLoss()
 
 
 def visualize_sampled_init_pos(init_pose_seqs, reward_seqs, idx, path):
@@ -429,7 +429,6 @@ class Planner(object):
             self.CEM_gripper_rate_sample_size = 4
 
 
-    @profile
     def trajectory_optimization(self):
         state_goal_final = self.get_state_goal(self.args.n_grips - 1)
         visualize_points(state_goal_final[-1], self.n_particle, os.path.join(self.rollout_path, f'goal_particles'))
@@ -715,7 +714,6 @@ class Planner(object):
         return reward_seqs_rollout, state_seqs_rollout
 
 
-    @profile
     def sim_rollout(self, init_pose_seqs, act_seqs):
         sample_state_seq_batch = []
         state_seq_batch = []
@@ -749,7 +747,6 @@ class Planner(object):
         return sample_state_seq_batch, state_seq_batch
 
 
-    @profile
     def model_rollout(
         self,
         state_cur,      # [1, n_his, state_dim]
@@ -869,8 +866,6 @@ class Planner(object):
                     loss += chamfer_weight * chamfer_loss(state_final, state_goal)
                 if uh_weight > 0:
                     loss += uh_weight * uh_loss(state_final, state_goal)
-                if clip_weight > 0:
-                    loss += clip_weight * clip_loss(state_final, state_final)
             else:
                 raise NotImplementedError
 
@@ -1143,6 +1138,7 @@ def main():
 
     args = gen_args()
     set_seed(args.random_seed)
+    args.outf = os.path.dirname(args.model_path)
 
     # Update task params
     if not 'fixed' in args.data_type:
@@ -1236,12 +1232,10 @@ def main():
     # load dynamics model
     model = Model(args, use_gpu)
     print("model_kp #params: %d" % count_parameters(model))
-    model_name = 'net_epoch_%d_iter_%d.pth' % (args.eval_epoch, args.eval_iter)
-    model_path = os.path.join(args.outf, model_name)
     if use_gpu:
-        pretrained_dict = torch.load(model_path)
+        pretrained_dict = torch.load(args.model_path)
     else:
-        pretrained_dict = torch.load(model_path, map_location=torch.device('cpu'))
+        pretrained_dict = torch.load(args.model_path, map_location=torch.device('cpu'))
     model_dict = model.state_dict()
     # only load parameters in dynamics_predictor
     pretrained_dict = {

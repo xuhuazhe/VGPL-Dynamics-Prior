@@ -1,7 +1,7 @@
 python control.py \
 	--stage control \
 	--data_type ngrip_fixed \
-	--model_path dump/dump_ngrip_fixed/out_11-Feb-2022-13:38:13.259666/net_epoch_0_iter_100.pth \
+	--model_path dump/dump_ngrip_fixed/out_11-Feb-2022-13:52:16.436052/net_epoch_0_iter_100.pth \
 	--use_sim 0 \
 	--gt_action 0 \
 	--gt_state_goal 0 \

@@ -5,6 +5,7 @@ import numpy as np
 
 matplotlib.rcParams["legend.loc"] = 'lower right'
 
+
 def train_plot_curves(iters, loss, path=''):
     plt.figure(figsize=[16,9])
     plt.plot(iters, loss)
@@ -19,7 +20,8 @@ def train_plot_curves(iters, loss, path=''):
     else:
         plt.show()
 
-def eval_plot_curves_with_bar(loss_mean, loss_std, colors=['orange', 'royalblue'], 
+
+def eval_plot_curves(loss_mean, loss_std, colors=['orange', 'royalblue'], 
     alpha_fill=0.3, ax=None, path=''):
     iters, loss_mean_emd, loss_mean_chamfer = loss_mean.T
     _, loss_std_emd, loss_std_chamfer = loss_std.T
@@ -49,20 +51,6 @@ def eval_plot_curves_with_bar(loss_mean, loss_std, colors=['orange', 'royalblue'
         plt.savefig(path)
     else:
         plt.show()
-
-def eval_plot_curves(loss_list, path=''):
-    iters, loss_emd, loss_chamfer, loss_uh = map(list, zip(*loss_list))
-    plt.figure(figsize=[16, 9])
-    plt.plot(iters, loss_emd, linewidth=6, label='EMD')
-    plt.plot(iters, loss_chamfer, linewidth=6, label='Chamfer')
-    plt.plot(iters, loss_uh, linewidth=6, color='r', label='Hausdorff')
-    plt.xlabel('frames', fontsize=30)
-    plt.ylabel('loss', fontsize=30)
-    plt.title('Test Loss', fontsize=35)
-    plt.legend(fontsize=30)
-    plt.xticks(fontsize=25)
-    plt.yticks(fontsize=25)
-    plt.show()
 
 
 def visualize_points(ax, all_points, n_particles):
