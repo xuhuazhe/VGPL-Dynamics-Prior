@@ -545,6 +545,7 @@ class Planner(object):
 
         init_pose_seqs_pool, act_seqs_pool = self.sample_action_params(n_grips_sample)
 
+        # import pdb; pdb.set_trace()
         reward_seqs, model_state_seqs = self.rollout(init_pose_seqs_pool, act_seqs_pool, state_cur, state_goal)
         print('sampling: max: %.4f, mean: %.4f, std: %.4f' % (torch.max(reward_seqs), torch.mean(reward_seqs), torch.std(reward_seqs)))
 
@@ -611,72 +612,82 @@ class Planner(object):
 
 
     def sample_action_params(self, n_grips):
-        if n_grips > 1:
-            raise ValueError
-
         init_pose_seqs = []
         act_seqs = []
-        n_p = (3, 3)
-        n_r = 4
-        n_g = 3
-        init_pose_seq = []
-        act_seq = []
-        for p in range(n_p[0] * n_p[1]):
-            p_noise_x = task_params["p_noise_scale"] * (p // n_p[0] - 1)
-            p_noise_z = task_params["p_noise_scale"] * (p % n_p[1] - 1)
-            p_noise = np.array([p_noise_x, 0, p_noise_z])
-            new_mid_point = task_params["mid_point"][:3] + p_noise
-            for r in range(n_r):
-                rot_noise = r / n_r * np.pi
-                init_pose = get_pose(new_mid_point, rot_noise)
-                # print(init_pose.shape)
 
-                for g in range(n_g):
-                    gripper_rate = task_params["gripper_rate_limits"][1] - (g / n_g) * (task_params["gripper_rate_limits"][1] - task_params["gripper_rate_limits"][0])
+        if self.args.sample_method == 'uniform':
+            if n_grips > 1:
+                raise ValueError
+
+            if self.args.debug:
+                n_p = (2, 2)
+                n_r = 1
+                n_g = 2
+            else:
+                n_p = (3, 3)
+                n_r = 4 # 4
+                n_g = 3 # 3
+            init_pose_seq = []
+            act_seq = []
+            for p in range(n_p[0] * n_p[1]):
+                p_noise_x = task_params["p_noise_scale"] * (p // n_p[0] - 1)
+                p_noise_z = task_params["p_noise_scale"] * (p % n_p[1] - 1)
+                p_noise = np.array([p_noise_x, 0, p_noise_z])
+                new_mid_point = task_params["mid_point"][:3] + p_noise
+                for r in range(n_r):
+                    rot_noise = r / n_r * np.pi
+                    init_pose = get_pose(new_mid_point, rot_noise)
+                    # print(init_pose.shape)
+
+                    for g in range(n_g):
+                        gripper_rate = task_params["gripper_rate_limits"][1] - (g / n_g) * (task_params["gripper_rate_limits"][1] - task_params["gripper_rate_limits"][0])
+                        actions = get_action_seq(rot_noise, gripper_rate)
+                        # print(actions.shape)
+                        # print(new_mid_point, rot_noise, gripper_rate)
+
+                        init_pose_seq.append(init_pose)
+                        act_seq.append(actions)
+            
+            init_pose_seq = torch.stack(init_pose_seq)
+            init_pose_seqs = init_pose_seq.unsqueeze(1)
+            act_seq = torch.stack(act_seq)
+            act_seqs = act_seq.unsqueeze(1)
+
+            return init_pose_seqs, act_seqs
+
+        elif self.args.sample_method == 'random':
+            n_sampled = 0
+            while n_sampled < self.sample_size:
+                init_pose_seq = []
+                act_seq = []
+                for i in range(n_grips):
+                    p_noise_x = task_params["p_noise_scale"] * (np.random.rand() * 2 - 1)
+                    p_noise_z = task_params["p_noise_scale"] * (np.random.rand() * 2 - 1)
+                    p_noise = np.clip(np.array([p_noise_x, 0, p_noise_z]), a_min=-0.1, a_max=0.1)
+                    new_mid_point = task_params["mid_point"][:3] + p_noise
+                    rot_noise = np.random.uniform(0, np.pi)
+
+                    init_pose = get_pose(new_mid_point, rot_noise)
+                    # print(init_pose.shape)
+                    init_pose_seq.append(init_pose)
+
+                    gripper_rate = np.random.uniform(*task_params["gripper_rate_limits"])
                     actions = get_action_seq(rot_noise, gripper_rate)
                     # print(actions.shape)
-                    # print(new_mid_point, rot_noise, gripper_rate)
-
-                    init_pose_seq.append(init_pose)
                     act_seq.append(actions)
-        
-        init_pose_seq = torch.stack(init_pose_seq)
-        init_pose_seqs = init_pose_seq.unsqueeze(1)
-        act_seq = torch.stack(act_seq)
-        act_seqs = act_seq.unsqueeze(1)
 
-        return init_pose_seqs, act_seqs
+                init_pose_seq = torch.stack(init_pose_seq)
+                init_pose_seqs.append(init_pose_seq)
 
-        # n_sampled = 0
-        # while n_sampled < self.sample_size:
-        #     init_pose_seq = []
-        #     act_seq = []
-        #     for i in range(n_grips):
-        #         p_noise_x = task_params["p_noise_scale"] * (np.random.rand() * 2 - 1)
-        #         p_noise_z = task_params["p_noise_scale"] * (np.random.rand() * 2 - 1)
-        #         p_noise = np.clip(np.array([p_noise_x, 0, p_noise_z]), a_min=-0.1, a_max=0.1)
-        #         new_mid_point = task_params["mid_point"][:3] + p_noise
-        #         rot_noise = np.random.uniform(0, np.pi)
+                act_seq = torch.stack(act_seq)
+                act_seqs.append(act_seq)
 
-        #         init_pose = get_pose(new_mid_point, rot_noise)
-        #         # print(init_pose.shape)
-        #         init_pose_seq.append(init_pose)
+                n_sampled += 1
 
-        #         gripper_rate = np.random.uniform(*task_params["gripper_rate_limits"])
-        #         actions = get_action_seq(rot_noise, gripper_rate)
-        #         # print(actions.shape)
-        #         act_seq.append(actions)
+            return torch.stack(init_pose_seqs), torch.stack(act_seqs)
 
-        #     init_pose_seq = torch.stack(init_pose_seq)
-        #     init_pose_seqs.append(init_pose_seq)
-
-        #     act_seq = torch.stack(act_seq)
-        #     act_seqs.append(act_seq)
-
-        #     n_sampled += 1
-
-        # return torch.stack(init_pose_seqs), torch.stack(act_seqs)
-
+        else:
+            raise NotImplementedError
 
     def rollout(self, init_pose_seqs_pool, act_seqs_pool, state_cur, state_goal):
         # import pdb; pdb.set_trace()
@@ -1213,8 +1224,8 @@ def main():
         if iter == n_iters: break
 
         print(f"Spinning at iteration {iter}")
-        ros_correction_path = "/scr/hxu/catkin_ws/src/panda_plasticine_pipeline/panda_plasticine_pipeline/dataset/"\
-            + f"ngrip_fixed_robot_1-25/25-Jan-2022-23:37:28.610647/plasticine_{iter}.bag"
+        ros_correction_path = "/scr/hxu/catkin_ws/src/robocook_ros/dataset/"\
+            + f"ngrip_fixed_robot_3-29/31-Mar-2022-22:31:47.002937/plasticine_{iter}.bag"
 
         if iter > last_iter and os.path.exists(ros_correction_path):
             with torch.no_grad():

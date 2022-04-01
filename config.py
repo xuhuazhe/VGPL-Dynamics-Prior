@@ -147,6 +147,7 @@ parser.add_argument('--CEM_opt_iter', type=int, default=1)
 parser.add_argument('--CEM_init_pose_sample_size', type=int, default=40)
 parser.add_argument('--CEM_gripper_rate_sample_size', type=int, default=8)
 parser.add_argument('--GD_batch_size', type=int, default=1)
+parser.add_argument('--sample_method', type=str, default="random")
 
 ### only useful for rl
 parser.add_argument("--algo", type=str, default='sac')
