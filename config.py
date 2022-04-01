@@ -158,7 +158,7 @@ parser.add_argument("--num_steps", type=int, default=None)
 # differentiable physics parameters
 parser.add_argument("--rllr", type=float, default=0.1)
 parser.add_argument("--optim", type=str, default='Adam', choices=['Adam', 'Momentum'])
-
+parser.add_argument("--outf_rl", type=str, default='')
 # parser.add_argument("--gripperf", type=str, default="../PlasticineLab/plb/envs/gripper_fixed.yml")
 
 
