@@ -1176,3 +1176,4 @@ def farthest_point_sampling(points, K_ratio=0.5):
         d = ((points[fp_idx[i]] - points)**2).sum(axis=1)
         distances = np.minimum(distances, d)
     return fp_idx
+
