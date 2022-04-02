@@ -550,6 +550,60 @@ class EarthMoverLoss(torch.nn.Module):
         # label: [B, M, D]
         return self.em_distance(pred, label)
 
+class IOU(torch.nn.Module):
+    def __init__(self):
+        super(IOU, self).__init__()
+
+    def iou(self, x, y):
+        # x: [N, D]
+        # y: [N, D]
+        N = x.shape[0]
+        xy = np.concatenate([x, y], axis=0)
+        min_bound = np.floor(np.min(xy, axis=0))
+        max_bound = np.ceil(np.max(xy, axis=0))
+        voxel_size = 0.2
+        grid_x = np.zeros([int((max_bound[0]-min_bound[0])/voxel_size)+1,
+                           int((max_bound[1]-min_bound[1])/voxel_size)+1,
+                           int((max_bound[2]-min_bound[2])/voxel_size)+1])
+
+        grid_y = np.zeros_like(grid_x)
+        # import pdb; pdb.set_trace()
+        for i in range(N):
+            x1 = int(np.floor((x[i][0] - min_bound[0]) / voxel_size))
+            x2 = int(np.floor((x[i][1] - min_bound[1]) / voxel_size))
+            x3 = int(np.floor((x[i][2] - min_bound[2]) / voxel_size))
+            grid_x[x1, x2, x3] = 1
+            print('x1x2x3', x1, x2, x3)
+            y1 = int(np.floor((y[i][0] - min_bound[0]) / voxel_size))
+            y2 = int(np.floor((y[i][1] - min_bound[1]) / voxel_size))
+            y3 = int(np.floor((y[i][2] - min_bound[2]) / voxel_size))
+            grid_y[y1, y2, y3] = 1
+            print('y1y2y3', y1, y2, y3)
+
+        intersection = grid_x * grid_y
+        union = grid_x + grid_y - grid_x * grid_y
+        iou = np.sum(intersection)/np.sum(union)
+        return iou
+
+    # def dense_mat(self, voxel):
+    #
+    #     max_ind = np.max(indices, axis=0)
+    #     grid = np.zeros(max_ind+1)
+    #     # for ind in indices:
+    #     #     import pdb; pdb.set_trace()
+    #     # count = 0
+    #     for ind in indices:
+    #         # import pdb; pdb.set_trace()
+    #         grid[ind[0], ind[1], ind[2]] = 1
+    #         # count += 1
+    #     # print(count)
+    #     return grid
+
+    def __call__(self, pred, label):
+        # pred: [B, N, D]
+        # label: [B, M, D]
+        return self.iou(pred, label)
+
 
 class L1ShapeLoss(torch.nn.Module):
     def __init__(self):
@@ -605,7 +659,13 @@ class AlphaShapeLoss(torch.nn.Module):
 
 
 if __name__ == "__main__":
-    x = torch.tensor(np.array([[[1.,2.,3.],[4.,5.,6.]]]), requires_grad=True)
-    y = torch.tensor(np.array([[[4.1, 5.1, 6.1], [1.1, 2.1, 3.1]]]), requires_grad=True)
-    emdLoss = EarthMoverLoss()
-    emd = emdLoss(x, y)
+    # x = torch.tensor(np.array([[[1.,2.,3.],[4.,5.,6.]]]), requires_grad=True)
+    # y = torch.tensor(np.array([[[4.1, 5.1, 6.1], [1.1, 2.1, 3.1]]]), requires_grad=True)
+    # emdLoss = EarthMoverLoss()
+    # emd = emdLoss(x, y)
+    x = np.random.randn(5000,3)
+    y = np.random.randn(5000,3)
+    iouloss = IOU()
+    iou = iouloss(x,y)
+    print(iou)
+    # import pdb; pdb.set_trace()
