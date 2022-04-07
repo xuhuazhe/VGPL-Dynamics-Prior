@@ -17,8 +17,10 @@ from data_utils import load_data, get_scene_info, normalize_scene_param
 from data_utils import get_env_group, prepare_input, denormalize
 from data_utils import real_sim_remap
 from models import Model
-from utils import train_plot_curves, eval_plot_curves, eval_plot_curves_with_bar, set_seed, Tee, count_parameters
-from models import EarthMoverLoss, ChamferLoss, UpdatedHausdorffLoss
+from utils import *
+from models import EarthMoverLoss, ChamferLoss, UpdatedHausdorffLoss, IOULoss
+
+from compute_control_loss import voxelize
 
 import matplotlib.pyplot as plt
 import matplotlib.animation as animation
@@ -190,6 +192,8 @@ def plt_render_robot(particles_set, n_particle, render_path):
 
 
 def evaluate(args, eval_epoch, eval_iter):
+    visualize = False
+
     args.evalf = os.path.join(args.outf, 'eval')
 
     os.system('mkdir -p ' + os.path.join(args.evalf, 'plot'))
@@ -229,6 +233,7 @@ def evaluate(args, eval_epoch, eval_iter):
     emd_loss = EarthMoverLoss()
     chamfer_loss = ChamferLoss()
     uh_loss = UpdatedHausdorffLoss()
+    iou_loss = IOULoss()
 
     loss_list_over_episodes = []
 
@@ -360,12 +365,19 @@ def evaluate(args, eval_epoch, eval_iter):
                 # loss_cur_raw = F.l1_loss(pred_pos_p, sample_pos_p)
                 loss_emd = emd_loss(pred_pos_p, sample_pos_p)
                 loss_chamfer = chamfer_loss(pred_pos_p, sample_pos_p)
+
+                # if step_id > 20:
+                #     visualize = True
+                pred_pos_p_upsample = voxelize(pred_pos_p.cpu().numpy()[0], visualize=visualize)
+                sample_pos_p_upsample = voxelize(sample_pos_p.cpu().numpy()[0], visualize=visualize)
+                loss_iou = iou_loss(pred_pos_p_upsample, sample_pos_p_upsample)
                 loss_uh = uh_loss(pred_pos_p, sample_pos_p)
+                # import pdb; pdb.set_trace()
 
                 # loss += loss_cur
                 # loss_raw += loss_cur_raw
                 # loss_counter += 1
-                loss_list.append([step_id, loss_emd.item(), loss_chamfer.item(), loss_uh.item()])
+                loss_list.append([step_id, loss_emd.item(), loss_chamfer.item(), loss_iou, loss_uh.item()])
                 # state_cur (unnormalized): B x n_his x (n_p + n_s) x state_dim
                 state_cur = torch.cat([state_cur[:, 1:], pred_pos.unsqueeze(1)], 1)
                 state_cur = state_cur.detach()[0]
@@ -396,11 +408,11 @@ def evaluate(args, eval_epoch, eval_iter):
         render_path = os.path.join(args.evalf, 'render', f'vid_{idx_episode}_plt.gif')
 
         if args.vis == 'plt':
-            plt_render_frames_rm([p_sample, p_pred], n_particle, render_path=os.path.join(args.evalf, 'render'))
-            # if 'robot' in args.data_type:
-            #     plt_render_robot([p_sample, p_pred], n_particle, render_path)
-            # else:
-            #     plt_render([p_gt, p_sample, p_pred], n_particle, render_path)
+            # plt_render_frames_rm([p_sample, p_pred], n_particle, render_path=os.path.join(args.evalf, 'render'))
+            if 'robot' in args.data_type:
+                plt_render_robot([p_sample, p_pred], n_particle, render_path)
+            else:
+                plt_render([p_gt, p_sample, p_pred], n_particle, render_path)
         else:
             raise NotImplementedError
 
@@ -413,9 +425,10 @@ def evaluate(args, eval_epoch, eval_iter):
     loss_list_over_episodes = np.array(loss_list_over_episodes)
     loss_mean = np.mean(loss_list_over_episodes, axis=0)
     loss_std = np.std(loss_list_over_episodes, axis=0)
-    path = os.path.join(args.evalf, 'plot', 'eval_loss_curves.pdf')
+    # path = os.path.join(args.evalf, 'plot', 'eval_loss_curves.pdf')
     # eval_plot_curves(np.mean(loss_list_over_episodes, axis=0), path=os.path.join(args.evalf, 'plot', 'eval_loss_curves.png'))
-    eval_plot_curves_with_bar(loss_mean[:, :-1], loss_std[:, :-1], path=path)
+    eval_plot_curves_with_bar(loss_mean[:, :-1], loss_std[:, :-1], path=os.path.join(args.evalf, 'plot', 'eval_loss_curves.pdf'))
+    eval_plot_curves_with_bar_iou(loss_mean[:, :-1], loss_std[:, :-1], path=os.path.join(args.evalf, 'plot', 'eval_loss_curves_iou.pdf'))
 
     print(f"\nAverage emd loss at last frame: {np.mean(loss_list_over_episodes[:, -1, 1])} (+- {np.std(loss_list_over_episodes[:, -1, 1])})")
     print(f"Average chamfer loss at last frame: {np.mean(loss_list_over_episodes[:, -1, 2])} (+- {np.std(loss_list_over_episodes[:, -1, 2])})")

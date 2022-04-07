@@ -550,17 +550,17 @@ class EarthMoverLoss(torch.nn.Module):
         # label: [B, M, D]
         return self.em_distance(pred, label)
 
-class IOU(torch.nn.Module):
+
+class IOULoss(torch.nn.Module):
     def __init__(self):
-        super(IOU, self).__init__()
+        super(IOULoss, self).__init__()
 
     def iou(self, x, y):
         # x: [N, D]
         # y: [N, D]
-        N = x.shape[0]
         xy = np.concatenate([x, y], axis=0)
-        min_bound = np.floor(np.min(xy, axis=0))
-        max_bound = np.ceil(np.max(xy, axis=0))
+        min_bound = np.floor(np.min(xy, axis=0) * 10) / 10
+        max_bound = np.ceil(np.max(xy, axis=0) * 10) / 10
         voxel_size = 0.2
         grid_x = np.zeros([int((max_bound[0]-min_bound[0])/voxel_size)+1,
                            int((max_bound[1]-min_bound[1])/voxel_size)+1,
@@ -568,17 +568,19 @@ class IOU(torch.nn.Module):
 
         grid_y = np.zeros_like(grid_x)
         # import pdb; pdb.set_trace()
-        for i in range(N):
+        for i in range(x.shape[0]):
             x1 = int(np.floor((x[i][0] - min_bound[0]) / voxel_size))
             x2 = int(np.floor((x[i][1] - min_bound[1]) / voxel_size))
             x3 = int(np.floor((x[i][2] - min_bound[2]) / voxel_size))
             grid_x[x1, x2, x3] = 1
-            print('x1x2x3', x1, x2, x3)
+            # print('x1x2x3', x1, x2, x3)
+
+        for i in range(y.shape[0]):
             y1 = int(np.floor((y[i][0] - min_bound[0]) / voxel_size))
             y2 = int(np.floor((y[i][1] - min_bound[1]) / voxel_size))
             y3 = int(np.floor((y[i][2] - min_bound[2]) / voxel_size))
             grid_y[y1, y2, y3] = 1
-            print('y1y2y3', y1, y2, y3)
+            # print('y1y2y3', y1, y2, y3)
 
         intersection = grid_x * grid_y
         union = grid_x + grid_y - grid_x * grid_y
@@ -665,7 +667,7 @@ if __name__ == "__main__":
     # emd = emdLoss(x, y)
     x = np.random.randn(5000,3)
     y = np.random.randn(5000,3)
-    iouloss = IOU()
+    iouloss = IOULoss()
     iou = iouloss(x,y)
     print(iou)
     # import pdb; pdb.set_trace()

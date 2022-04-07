@@ -33,8 +33,8 @@ def train_plot_curves(iters, loss, path=''):
 
 def eval_plot_curves_with_bar(loss_mean, loss_std, colors=['orange', 'royalblue'], 
     alpha_fill=0.3, ax=None, path=''):
-    iters, loss_mean_emd, loss_mean_chamfer = loss_mean.T
-    _, loss_std_emd, loss_std_chamfer = loss_std.T
+    iters, loss_mean_emd, loss_mean_chamfer, loss_mean_iou = loss_mean.T
+    _, loss_std_emd, loss_std_chamfer, loss_std_iou = loss_std.T
     plt.figure(figsize=[16, 9])
 
     emd_min = loss_mean_emd - loss_std_emd
@@ -56,6 +56,30 @@ def eval_plot_curves_with_bar(loss_mean, loss_std, colors=['orange', 'royalblue'
     plt.xticks(fontsize=25)
     plt.yticks(fontsize=25)
 
+
+    if len(path) > 0:
+        plt.savefig(path)
+    else:
+        plt.show()
+
+def eval_plot_curves_with_bar_iou(loss_mean, loss_std, colors=['orange'], 
+    alpha_fill=0.3, ax=None, path=''):
+    iters, loss_mean_emd, loss_mean_chamfer, loss_mean_iou = loss_mean.T
+    _, loss_std_emd, loss_std_chamfer, loss_std_iou = loss_std.T
+    plt.figure(figsize=[16, 9])
+
+    iou_min = loss_mean_iou - loss_std_iou
+    iou_max = loss_mean_iou + loss_std_iou
+
+    plt.plot(iters, loss_mean_iou, color=colors[0], linewidth=6, label='IOU')
+    plt.fill_between(iters, iou_max, iou_min, color=colors[0], alpha=alpha_fill)
+
+    plt.xlabel('Time Steps', fontsize=30)
+    plt.ylabel('Loss', fontsize=30)
+    plt.title('Dyanmics Model Evaluation Loss', fontsize=35)
+    plt.legend(fontsize=30)
+    plt.xticks(fontsize=25)
+    plt.yticks(fontsize=25)
 
     if len(path) > 0:
         plt.savefig(path)
